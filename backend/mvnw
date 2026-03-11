@@ -1,0 +1,46 @@
+#!/bin/sh
+
+set -eu
+
+BASE_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+WRAPPER_DIR="$BASE_DIR/.mvn/wrapper"
+PROPS_FILE="$WRAPPER_DIR/maven-wrapper.properties"
+
+if [ ! -f "$PROPS_FILE" ]; then
+  echo "Missing $PROPS_FILE" >&2
+  exit 1
+fi
+
+DISTRIBUTION_URL=$(sed -n 's/^distributionUrl=//p' "$PROPS_FILE")
+DISTRIBUTION_SHA512=$(sed -n 's/^distributionSha512Sum=//p' "$PROPS_FILE")
+
+if [ -z "$DISTRIBUTION_URL" ]; then
+  echo "distributionUrl is missing in $PROPS_FILE" >&2
+  exit 1
+fi
+
+ZIP_NAME=$(basename "$DISTRIBUTION_URL")
+MAVEN_VERSION=${ZIP_NAME#apache-maven-}
+MAVEN_VERSION=${MAVEN_VERSION%-bin.zip}
+MAVEN_HOME="$BASE_DIR/.mvn/apache-maven-$MAVEN_VERSION"
+MAVEN_BIN="$MAVEN_HOME/bin/mvn"
+
+if [ ! -x "$MAVEN_BIN" ]; then
+  mkdir -p "$WRAPPER_DIR"
+  DOWNLOAD_ZIP="$WRAPPER_DIR/$ZIP_NAME"
+
+  echo "Downloading Maven $MAVEN_VERSION..."
+  curl -fsSL "$DISTRIBUTION_URL" -o "$DOWNLOAD_ZIP"
+
+  if [ -n "$DISTRIBUTION_SHA512" ]; then
+    ACTUAL_SHA=$(sha512sum "$DOWNLOAD_ZIP" | awk '{print $1}')
+    if [ "$ACTUAL_SHA" != "$DISTRIBUTION_SHA512" ]; then
+      echo "SHA-512 mismatch while downloading Maven distribution." >&2
+      exit 1
+    fi
+  fi
+
+  unzip -oq "$DOWNLOAD_ZIP" -d "$BASE_DIR/.mvn"
+fi
+
+exec "$MAVEN_BIN" "$@"
