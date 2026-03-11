@@ -2,24 +2,132 @@
 
 Initial solution setup with a clear separation between frontend and backend.
 
+## Purpose
+
+RITMA RUNNERS is being prepared to register, organize, and plan running races.
+
+At this stage, the goal is only to keep the solution cleanly split into:
+
+- a dedicated `frontend` project
+- a dedicated `backend` project
+
+Detailed domain structure, modules, business rules, and API design are intentionally deferred.
+
 ## Structure
 
 - `frontend/`: React + TypeScript application created with Vite and prepared to use Ant Design and Font Awesome.
 - `backend/`: Spring Boot application prepared as the API base, with PostgreSQL planned in the stack.
+- `CHANGELOG.md`: short project history with a more detailed summary of each relevant commit.
+
+## Tech stack
+
+- Frontend: React + TypeScript
+- Backend: Spring Boot
+- Database: PostgreSQL
+- UI library: Ant Design
+- Icons: Font Awesome
+- Deploy target: Vercel
+
+## Prerequisites
+
+Install these tools on a new machine before working on the project:
+
+- `Git`
+- `Node.js 20.x` or newer
+- `npm` (comes with Node.js)
+- `Java 17`
+
+You do not need to install Maven globally.
+The backend uses the Maven Wrapper: `mvnw` / `mvnw.cmd`.
+
+## New machine setup
+
+From a fresh machine:
+
+```powershell
+git clone https://github.com/HugoNeves0808/RITMA-RUNNERS.git
+cd RITMA-RUNNERS
+```
+
+Install frontend dependencies:
+
+```powershell
+cd frontend
+npm install
+cd ..
+```
+
+No extra installation is required for the backend beyond Java 17.
+The first backend run downloads Maven locally through the wrapper.
+
+## Project conventions
+
+- Project-facing text and commit messages should be written in English.
+- Conversation with the user can be in Portuguese.
+- Do not use Docker for this project.
+- Keep frontend and backend as separate projects.
+- Avoid defining domain structure, modules, or endpoints prematurely unless explicitly requested.
 
 ## Current phase notes
 
 - Domain, modules, endpoints, and detailed internal structure have not been defined yet.
 - The backend starts without a configured datasource so this initial setup phase is not blocked.
+- PostgreSQL is part of the intended stack, but it is not wired yet in this initial phase.
 
-## Running the projects
+## Running the project
+
+Start the backend:
+
+```powershell
+cd backend
+.\mvnw.cmd spring-boot:run
+```
+
+Start the frontend in a second terminal:
+
+```powershell
+cd frontend
+npm run dev
+```
+
+Default local URLs:
+
+- Frontend: `http://localhost:5173`
+- Backend: `http://localhost:8081`
+
+The Maven wrapper downloads Maven locally into the `.mvn/` folder on first execution.
+The backend runs on port `8081` by default.
+
+## First-time verification
+
+After starting both applications:
+
+- open `http://localhost:5173`
+- confirm the frontend loads
+- confirm the frontend status card reports that the backend is reachable
+- confirm the backend health endpoint responds at `http://localhost:8081/api/health`
+
+Expected health response:
+
+```json
+{
+  "status": "ok",
+  "application": "ritma-runners-backend"
+}
+```
+
+## Useful commands
 
 Frontend:
 
 ```powershell
 cd frontend
-npm install
 npm run dev
+```
+
+```powershell
+cd frontend
+npm run build
 ```
 
 Backend:
@@ -29,8 +137,10 @@ cd backend
 .\mvnw.cmd spring-boot:run
 ```
 
-The Maven wrapper downloads Maven locally into the `.mvn/` folder on first execution.
-The backend runs on port `8081` by default.
+```powershell
+cd backend
+.\mvnw.cmd test
+```
 
 ## Connectivity test
 
@@ -38,3 +148,29 @@ With both projects running:
 
 - the backend responds at `http://localhost:8081/api/health`
 - the frontend shows on the initial screen whether it was able to communicate with that endpoint
+
+## Troubleshooting
+
+If the backend does not start:
+
+- confirm Java 17 is installed with `java -version`
+- confirm port `8081` is free
+- run `.\mvnw.cmd test` inside `backend`
+
+If the frontend does not start:
+
+- confirm Node.js is installed with `node -v`
+- confirm dependencies were installed with `npm install`
+- run `npm run build` inside `frontend`
+
+If frontend cannot reach backend:
+
+- confirm backend is running on `http://localhost:8081`
+- open `http://localhost:8081/api/health` directly in the browser
+- confirm the frontend is running on `http://localhost:5173`
+
+## Notes for future work
+
+- Add real PostgreSQL configuration when the backend data model is ready.
+- Replace the temporary health-check flow with real API integration once the first endpoints are defined.
+- Introduce internal folder structure only when there is enough domain clarity to justify it.
