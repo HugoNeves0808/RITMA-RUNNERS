@@ -11,6 +11,14 @@ This file keeps a short, slightly more detailed record of what was done in each 
 
 ## Entries
 
+### `1cd6ef8` - Restructure frontend into scalable application architecture
+
+- Reorganized the frontend into `app`, `routes`, `pages`, `components`, `layouts`, `features`, `services`, `hooks`, `contexts`, `types`, `utils`, `constants`, and `assets`.
+- Moved the existing authentication, session handling, admin diagnostics access, and protected routing into the new frontend architecture instead of duplicating them.
+- Centralized route constants, token storage helpers, shared API access, and shared frontend types for cleaner growth.
+- Added feature-oriented foundations for `auth`, `admin`, `races`, `profile`, and `best-efforts`, with real services where needed and placeholders elsewhere.
+- Kept the frontend build working while preparing the project to grow by functionality in a cleaner structure.
+
 ### `dcd1842` - Restructure backend into modular domain packages
 
 - Reorganized backend packages into domain-focused modules with layered internal structure for auth, security, race, and shared concerns.
