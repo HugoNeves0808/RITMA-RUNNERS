@@ -11,6 +11,15 @@ This file keeps a short, slightly more detailed record of what was done in each 
 
 ## Entries
 
+### `3ec32b0` - Harden health visibility and refine auth testing
+
+- Reduced the public `/api/health` payload to a minimal status response and moved the health probe logic into a dedicated backend component.
+- Kept technical diagnostics in protected admin-only endpoints and restricted `/api/db-check` to `ADMIN`.
+- Updated Spring Security exception handling so missing or invalid tokens return `401` while authenticated access without the required role returns `403`.
+- Refined frontend health handling to work with the reduced public health payload.
+- Replaced raw `HTTP 401` login feedback with a user-friendly invalid-credentials message and added a temporary logout button for testing.
+- Added and updated an Excel-based test checklist covering current API, auth, authorization, race preview, and frontend validation scenarios.
+
 ### `93fcedb` - Improve frontend styling and feature organization
 
 - Migrated page and layout styling from shared global CSS into CSS Modules while keeping the current visual behavior intact.
