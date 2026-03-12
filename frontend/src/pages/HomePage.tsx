@@ -3,18 +3,12 @@ import { faCalendarDays, faDatabase, faFlagCheckered } from '@fortawesome/free-s
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { Alert, Button, Card, Col, Row, Space, Spin, Tag, Typography } from 'antd'
 import { Link } from 'react-router-dom'
-import { buildApiUrl } from '../api'
-import { useAuth } from '../auth/AuthProvider'
+import { ROUTES } from '../constants/routes'
+import { useAuth } from '../hooks/useAuth'
+import { fetchBackendHealth } from '../services/healthService'
+import type { BackendHealth } from '../types/system'
 
 const { Paragraph, Title } = Typography
-
-type BackendHealth = {
-  status: string
-  application: string
-  databaseConfigured: boolean
-  databaseStatus: string
-  databaseName?: string
-}
 
 export function HomePage() {
   const { isAuthenticated, isAdmin, user } = useAuth()
@@ -25,13 +19,7 @@ export function HomePage() {
   useEffect(() => {
     const loadBackendHealth = async () => {
       try {
-        const response = await fetch(buildApiUrl('/api/health'))
-
-        if (!response.ok) {
-          throw new Error(`Health HTTP ${response.status}`)
-        }
-
-        const healthData = (await response.json()) as BackendHealth
+        const healthData = await fetchBackendHealth()
         setBackendHealth(healthData)
       } catch (fetchError) {
         setError(fetchError instanceof Error ? fetchError.message : 'Unknown error')
@@ -147,7 +135,7 @@ export function HomePage() {
                 </Paragraph>
                 {isAdmin ? (
                   <Button type="link">
-                    <Link to="/admin/diagnostics">Open diagnostics</Link>
+                    <Link to={ROUTES.adminDiagnostics}>Open diagnostics</Link>
                   </Button>
                 ) : null}
               </div>

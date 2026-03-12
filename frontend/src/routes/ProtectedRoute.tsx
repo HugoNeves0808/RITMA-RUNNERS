@@ -1,6 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { Spin } from 'antd'
-import { useAuth } from '../auth/AuthProvider'
+import { ROUTES } from '../constants/routes'
+import { useAuth } from '../hooks/useAuth'
 
 type ProtectedRouteProps = {
   requiredRole?: 'ADMIN' | 'USER'
@@ -15,11 +16,11 @@ export function ProtectedRoute({ requiredRole }: ProtectedRouteProps) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace state={{ from: location }} />
+    return <Navigate to={ROUTES.login} replace state={{ from: location }} />
   }
 
   if (requiredRole === 'ADMIN' && !isAdmin) {
-    return <Navigate to="/" replace />
+    return <Navigate to={ROUTES.home} replace />
   }
 
   return <Outlet />

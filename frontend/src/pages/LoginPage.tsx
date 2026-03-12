@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Alert, Button, Card, Form, Input, Typography } from 'antd'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { useAuth } from '../auth/AuthProvider'
+import { ROUTES } from '../constants/routes'
+import { useAuth } from '../hooks/useAuth'
 
 const { Paragraph, Title } = Typography
 
@@ -17,7 +18,7 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const redirectTarget = isAuthenticated && isAdmin ? '/admin/diagnostics' : '/'
+  const redirectTarget = isAuthenticated && isAdmin ? ROUTES.adminDiagnostics : ROUTES.home
   const requestedTarget = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname
 
   if (isAuthenticated) {
@@ -30,7 +31,7 @@ export function LoginPage() {
 
     try {
       await login(values)
-      navigate(requestedTarget ?? '/', { replace: true })
+      navigate(requestedTarget ?? ROUTES.home, { replace: true })
     } catch (loginError) {
       setError(loginError instanceof Error ? loginError.message : 'Login failed')
     } finally {
@@ -56,7 +57,7 @@ export function LoginPage() {
       ) : null}
       <Form<LoginFormValues> layout="vertical" onFinish={handleFinish}>
         <Form.Item label="Email" name="email" rules={[{ required: true, type: 'email' }]}>
-          <Input placeholder="admin@ritmarunners.local" size="large" />
+          <Input placeholder="admin@ritma.com" size="large" />
         </Form.Item>
         <Form.Item label="Password" name="password" rules={[{ required: true }]}>
           <Input.Password placeholder="Enter your password" size="large" />

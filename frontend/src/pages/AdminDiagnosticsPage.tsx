@@ -1,20 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Alert, Card, Descriptions, Spin, Typography } from 'antd'
-import { buildApiUrl } from '../api'
-import { useAuth } from '../auth/AuthProvider'
+import { useAuth } from '../hooks/useAuth'
+import { fetchAdminDiagnostics } from '../features/admin/services/diagnosticsService'
+import type { DiagnosticsPayload } from '../types/system'
 
 const { Paragraph, Title } = Typography
-
-type DiagnosticsPayload = {
-  status: string
-  application: string
-  database: string
-  serverTime: string
-  currentUser: {
-    email: string
-    role: string
-  }
-}
 
 export function AdminDiagnosticsPage() {
   const { token } = useAuth()
@@ -25,17 +15,7 @@ export function AdminDiagnosticsPage() {
   useEffect(() => {
     const loadDiagnostics = async () => {
       try {
-        const response = await fetch(buildApiUrl('/api/admin/system-health'), {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-
-        if (!response.ok) {
-          throw new Error(`Diagnostics HTTP ${response.status}`)
-        }
-
-        const payload = (await response.json()) as DiagnosticsPayload
+        const payload = await fetchAdminDiagnostics(token ?? '')
         setData(payload)
       } catch (fetchError) {
         setError(fetchError instanceof Error ? fetchError.message : 'Unknown error')
