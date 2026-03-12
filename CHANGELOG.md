@@ -11,6 +11,14 @@ This file keeps a short, slightly more detailed record of what was done in each 
 
 ## Entries
 
+### `93fcedb` - Improve frontend styling and feature organization
+
+- Migrated page and layout styling from shared global CSS into CSS Modules while keeping the current visual behavior intact.
+- Moved page files into per-page folders so each page now colocates its component and styles.
+- Consolidated authentication context, hook, and types under `features/auth` to make the auth feature more cohesive.
+- Moved the backend health request into a small `features/system` area so domain-specific services no longer live in global `src/services`.
+- Kept `services/apiClient.ts` as the shared infrastructure layer for API access across features.
+
 ### `5b078bd` - Refine login experience and remove embedded Postman assets
 
 - Removed leftover Postman project folders from the repository and kept them ignored through `.gitignore`.
