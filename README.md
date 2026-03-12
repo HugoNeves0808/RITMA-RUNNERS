@@ -71,8 +71,32 @@ The first backend run downloads Maven locally through the wrapper.
 ## Current phase notes
 
 - Domain, modules, endpoints, and detailed internal structure have not been defined yet.
-- The backend starts without a configured datasource so this initial setup phase is not blocked.
-- PostgreSQL is part of the intended stack, but it is not wired yet in this initial phase.
+- PostgreSQL is now wired in the backend through environment-based datasource configuration.
+- Flyway applies the initial database schema automatically on backend startup.
+
+## Database configuration
+
+The backend reads PostgreSQL connection settings from environment variables:
+
+- `PGHOST`
+- `PGPORT`
+- `PGDATABASE`
+- `PGUSER`
+- `PGPASSWORD`
+
+Default local fallback values are:
+
+```text
+PGHOST=localhost
+PGPORT=5432
+PGDATABASE=ritmarunners
+PGUSER=postgres
+PGPASSWORD=postgres
+```
+
+The initial schema lives in:
+
+- `backend/src/main/resources/db/migration/V1__initial_schema.sql`
 
 ## Running the project
 
@@ -155,6 +179,7 @@ If the backend does not start:
 
 - confirm Java 17 is installed with `java -version`
 - confirm port `8081` is free
+- confirm PostgreSQL is running and the configured database exists
 - run `.\mvnw.cmd test` inside `backend`
 
 If the frontend does not start:

@@ -6,3 +6,4 @@ backend/.mvn/wrapper/*.zip
 .idea/
 .vscode/
 .DS_Store
+.env

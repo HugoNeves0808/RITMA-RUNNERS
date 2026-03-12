@@ -1,120 +1,71 @@
-import { useEffect, useState } from 'react'
-import { faCalendarDays, faFlagCheckered } from '@fortawesome/free-solid-svg-icons'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { Alert, Button, Card, Col, Layout, Row, Space, Spin, Tag, Typography } from 'antd'
+import { Button, Layout, Menu, Space, Spin, Typography } from 'antd'
+import { Link, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { useAuth } from './auth/AuthProvider'
+import { ProtectedRoute } from './components/ProtectedRoute'
+import { AdminDiagnosticsPage } from './pages/AdminDiagnosticsPage'
+import { HomePage } from './pages/HomePage'
+import { LoginPage } from './pages/LoginPage'
 import './App.css'
 
-const { Content } = Layout
-const { Paragraph, Title } = Typography
-
-type BackendHealth = {
-  status: string
-  application: string
-}
+const { Content, Header } = Layout
+const { Text, Title } = Typography
 
 function App() {
-  const [backendHealth, setBackendHealth] = useState<BackendHealth | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { isAdmin, isAuthenticated, isLoading, logout, user } = useAuth()
+  const location = useLocation()
+  const navigate = useNavigate()
 
-  useEffect(() => {
-    const checkBackend = async () => {
-      try {
-        const response = await fetch('http://localhost:8081/api/health')
+  const navigationItems = [
+    { key: '/', label: <Link to="/">Home</Link> },
+    ...(isAdmin ? [{ key: '/admin/diagnostics', label: <Link to="/admin/diagnostics">Diagnostics</Link> }] : []),
+  ]
 
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`)
-        }
+  const handleLogout = () => {
+    logout()
+    navigate('/')
+  }
 
-        const data = (await response.json()) as BackendHealth
-        setBackendHealth(data)
-      } catch (fetchError) {
-        setError(fetchError instanceof Error ? fetchError.message : 'Unknown error')
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    void checkBackend()
-  }, [])
+  if (isLoading) {
+    return (
+      <Layout className="app-shell">
+        <Content className="app-content app-loading">
+          <Spin size="large" />
+        </Content>
+      </Layout>
+    )
+  }
 
   return (
     <Layout className="app-shell">
-      <Content className="app-content">
-        <section className="hero">
-          <Tag bordered={false} color="gold">
-            Initial setup
-          </Tag>
-          <Title>RITMA RUNNERS</Title>
-          <Paragraph className="hero-copy">
-            Application prepared to register, organize, and plan running races
-            with frontend and backend evolving independently.
-          </Paragraph>
-          <Space size="middle" wrap>
-            <Button type="primary" size="large">
-              Frontend React + TypeScript
-            </Button>
-            <Button size="large">Backend Spring Boot</Button>
-          </Space>
-        </section>
-
-        <Card className="status-card" variant="borderless">
-          <Title level={4}>Frontend to backend connectivity test</Title>
-          {isLoading ? (
+      <Header className="app-header">
+        <Title level={3} className="app-brand">RITMA RUNNERS</Title>
+        <Space size="large">
+          <Menu
+            mode="horizontal"
+            selectedKeys={[location.pathname]}
+            items={navigationItems}
+            className="app-menu"
+          />
+          {isAuthenticated ? (
             <Space>
-              <Spin size="small" />
-              <span>Checking backend at http://localhost:8081/api/health</span>
+              <Text>{user?.email}</Text>
+              <Button onClick={handleLogout}>Logout</Button>
             </Space>
-          ) : null}
-          {backendHealth ? (
-            <Alert
-              type="success"
-              showIcon
-              message="Backend reachable"
-              description={`Received response: ${backendHealth.application} (${backendHealth.status})`}
-            />
-          ) : null}
-          {error ? (
-            <Alert
-              type="error"
-              showIcon
-              message="Backend unavailable"
-              description={`Could not get a response from http://localhost:8081/api/health (${error})`}
-            />
-          ) : null}
-        </Card>
-
-        <Row gutter={[24, 24]}>
-          <Col xs={24} md={12}>
-            <Card className="info-card" variant="borderless">
-              <Space align="start">
-                <FontAwesomeIcon icon={faFlagCheckered} className="card-icon" />
-                <div>
-                  <Title level={4}>Independent frontend</Title>
-                  <Paragraph>
-                    Vite project with React, TypeScript, Ant Design, and Font
-                    Awesome, ready to grow without tight backend coupling.
-                  </Paragraph>
-                </div>
-              </Space>
-            </Card>
-          </Col>
-          <Col xs={24} md={12}>
-            <Card className="info-card" variant="borderless">
-              <Space align="start">
-                <FontAwesomeIcon icon={faCalendarDays} className="card-icon" />
-                <div>
-                  <Title level={4}>Independent backend</Title>
-                  <Paragraph>
-                    Spring Boot project prepared as the API foundation, with
-                    PostgreSQL planned in the stack and no domain or endpoints
-                    defined yet.
-                  </Paragraph>
-                </div>
-              </Space>
-            </Card>
-          </Col>
-        </Row>
+          ) : (
+            <Button type="primary">
+              <Link to="/login">Login</Link>
+            </Button>
+          )}
+        </Space>
+      </Header>
+      <Content className="app-content">
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route element={<ProtectedRoute requiredRole="ADMIN" />}>
+            <Route path="/admin/diagnostics" element={<AdminDiagnosticsPage />} />
+          </Route>
+        </Routes>
       </Content>
     </Layout>
   )
