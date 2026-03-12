@@ -11,6 +11,14 @@ This file keeps a short, slightly more detailed record of what was done in each 
 
 ## Entries
 
+### `5b078bd` - Refine login experience and remove embedded Postman assets
+
+- Removed leftover Postman project folders from the repository and kept them ignored through `.gitignore`.
+- Simplified the application shell by removing the global navbar and allowing the login route to use a full-screen layout.
+- Reworked the login page into a split-screen experience with a stronger visual hierarchy, persistent branding, and non-functional UI placeholders for remember-password and account request.
+- Added a new frontend base font and reused public assets for the login experience, including the updated logo and check icon.
+- Replaced the diagnostics-focused login copy with product-oriented messaging about race organization, history tracking, and best performances.
+
 ### `1cd6ef8` - Restructure frontend into scalable application architecture
 
 - Reorganized the frontend into `app`, `routes`, `pages`, `components`, `layouts`, `features`, `services`, `hooks`, `contexts`, `types`, `utils`, `constants`, and `assets`.
