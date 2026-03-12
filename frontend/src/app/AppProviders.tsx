@@ -1,5 +1,5 @@
 import { BrowserRouter } from 'react-router-dom'
-import { AuthProvider } from '../contexts/AuthContext'
+import { AuthProvider } from '../features/auth'
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
   return (

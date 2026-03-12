@@ -1,0 +1,25 @@
+.appShell {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top, rgba(255, 214, 102, 0.35), transparent 28%),
+    linear-gradient(145deg, #f7f1e3 0%, #fffdf8 45%, #e8ecf3 100%);
+}
+
+.appContent {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 64px 24px;
+}
+
+.appContentAuth {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+@media (max-width: 768px) {
+  .appContent {
+    padding: 32px 16px;
+  }
+}

@@ -1,9 +1,9 @@
 import { Route, Routes } from 'react-router-dom'
 import { ProtectedRoute } from './ProtectedRoute'
 import { ROUTES } from '../constants/routes'
-import { AdminDiagnosticsPage } from '../pages/AdminDiagnosticsPage'
-import { HomePage } from '../pages/HomePage'
-import { LoginPage } from '../pages/LoginPage'
+import { AdminDiagnosticsPage } from '../pages/AdminDiagnosticsPage/AdminDiagnosticsPage'
+import { HomePage } from '../pages/HomePage/HomePage'
+import { LoginPage } from '../pages/LoginPage/LoginPage'
 
 export function AppRoutes() {
   return (

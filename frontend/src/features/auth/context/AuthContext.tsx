@@ -1,6 +1,6 @@
 import { createContext, useEffect, useState } from 'react'
-import { getCurrentUser, loginRequest } from '../features/auth/services/authService'
-import { clearStoredToken, getStoredToken, setStoredToken } from '../utils/tokenStorage'
+import { getCurrentUser, loginRequest } from '../services/authService'
+import { clearStoredToken, getStoredToken, setStoredToken } from '../../../utils/tokenStorage'
 import type { AuthenticatedUser, LoginPayload } from '../types/auth'
 
 export type AuthContextValue = {
