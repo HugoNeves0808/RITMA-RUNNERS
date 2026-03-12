@@ -11,7 +11,23 @@ This file keeps a short, slightly more detailed record of what was done in each 
 
 ## Entries
 
-### `Unreleased` - Add initial PostgreSQL schema integration
+### `dcd1842` - Restructure backend into modular domain packages
+
+- Reorganized backend packages into domain-focused modules with layered internal structure for auth, security, race, and shared concerns.
+- Moved the existing auth and security foundation into dedicated `controller`, `service`, `repository`, `entity`, `dto`, `config`, `jwt`, and `filter` packages.
+- Introduced shared backend primitives for exceptions, API error responses, security utilities, and shared enums under `common`.
+- Added lightweight service placeholders for planned modules such as user, user settings, race result, race analysis, shoe, team, circuit, race type, profile, and best effort.
+- Kept the existing backend functional while preparing the package architecture for incremental business implementation.
+
+### `b95616a` - Add authentication and authorization foundation
+
+- Added JWT-based authentication in the backend with stateless Spring Security configuration.
+- Added role-aware access control for `ADMIN` and `USER`, including an admin-only diagnostics endpoint.
+- Added backend auth endpoints for login and current-user retrieval using the existing PostgreSQL users table.
+- Added frontend authentication state, login page, protected routes, and admin-only diagnostics page visibility.
+- Seeded temporary `admin@ritma.com` and `user@ritma.com` accounts through Flyway instead of hardcoding runtime admin creation.
+
+### `316de55` - Add initial PostgreSQL schema integration
 
 - Enabled backend datasource configuration through PostgreSQL environment variables.
 - Added Flyway to manage database schema changes from versioned SQL migrations.
