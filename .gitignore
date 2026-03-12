@@ -7,3 +7,5 @@ backend/.mvn/wrapper/*.zip
 .vscode/
 .DS_Store
 .env
+.postman/
+postman/
