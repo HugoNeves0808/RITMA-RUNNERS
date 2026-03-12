@@ -35,7 +35,7 @@ export function LoginPage() {
       await login(values)
       navigate(requestedTarget ?? ROUTES.home, { replace: true })
     } catch (loginError) {
-      setError(loginError instanceof Error ? loginError.message : 'Login failed')
+      setError(getLoginErrorMessage(loginError))
     } finally {
       setIsSubmitting(false)
     }
@@ -130,4 +130,16 @@ export function LoginPage() {
       </div>
     </div>
   )
+}
+
+function getLoginErrorMessage(error: unknown) {
+  if (!(error instanceof Error)) {
+    return 'Unable to sign in right now. Please try again.'
+  }
+
+  if (error.message === 'HTTP 401') {
+    return 'Invalid email or password.'
+  }
+
+  return 'Unable to sign in right now. Please try again.'
 }

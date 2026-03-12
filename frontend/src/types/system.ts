@@ -1,9 +1,5 @@
 export type BackendHealth = {
   status: string
-  application: string
-  databaseConfigured: boolean
-  databaseStatus: string
-  databaseName?: string
 }
 
 export type DiagnosticsPayload = {

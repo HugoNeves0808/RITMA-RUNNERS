@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { faCalendarDays, faDatabase, faFlagCheckered } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { Alert, Button, Card, Col, Row, Space, Spin, Tag, Typography } from 'antd'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { ROUTES } from '../../constants/routes'
 import { useAuth } from '../../features/auth'
 import { fetchBackendHealth } from '../../features/system'
@@ -12,7 +12,8 @@ import styles from './HomePage.module.css'
 const { Paragraph, Title } = Typography
 
 export function HomePage() {
-  const { isAuthenticated, isAdmin, user } = useAuth()
+  const { isAuthenticated, isAdmin, logout, user } = useAuth()
+  const navigate = useNavigate()
   const [backendHealth, setBackendHealth] = useState<BackendHealth | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -32,6 +33,11 @@ export function HomePage() {
     void loadBackendHealth()
   }, [])
 
+  const handleTemporaryLogout = () => {
+    logout()
+    navigate(ROUTES.login)
+  }
+
   return (
     <>
       <section className={styles.hero}>
@@ -49,6 +55,11 @@ export function HomePage() {
           </Button>
           <Button size="large">Backend Spring Boot</Button>
           {isAuthenticated ? <Tag color="green">{user?.email}</Tag> : null}
+          {isAuthenticated ? (
+            <Button danger onClick={handleTemporaryLogout}>
+              Temporary logout test
+            </Button>
+          ) : null}
         </Space>
       </section>
 
@@ -62,12 +73,12 @@ export function HomePage() {
         ) : null}
         {backendHealth ? (
           <Alert
-            type={backendHealth.databaseStatus === 'connected' ? 'success' : 'warning'}
+            type={backendHealth.status === 'ok' ? 'success' : 'warning'}
             showIcon
-            message={backendHealth.databaseStatus === 'connected'
+            message={backendHealth.status === 'ok'
               ? 'Backend and PostgreSQL reachable'
-              : 'Backend reachable but database not connected'}
-            description={`Received response: ${backendHealth.application} (${backendHealth.status}) | DB: ${backendHealth.databaseName ?? 'unknown'} (${backendHealth.databaseStatus})`}
+              : 'Health check reported a degraded status'}
+            description={`Received public health status: ${backendHealth.status}.`}
           />
         ) : null}
         {error ? (
@@ -92,12 +103,12 @@ export function HomePage() {
         </Space>
         {backendHealth ? (
           <Alert
-            type={backendHealth.databaseStatus === 'connected' ? 'success' : 'warning'}
+            type={backendHealth.status === 'ok' ? 'success' : 'warning'}
             showIcon
-            message={backendHealth.databaseStatus === 'connected' ? 'Database connected' : 'Database unavailable'}
-            description={backendHealth.databaseStatus === 'connected'
-              ? `Connected to database "${backendHealth.databaseName ?? 'unknown'}".`
-              : 'The backend is running, but the database connection is not available.'}
+            message={backendHealth.status === 'ok' ? 'Database connectivity verified' : 'Database connectivity needs attention'}
+            description={backendHealth.status === 'ok'
+              ? 'The backend public health check completed successfully.'
+              : 'Check the admin diagnostics endpoint for technical details.'}
           />
         ) : (
           <Alert

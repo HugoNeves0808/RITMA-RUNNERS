@@ -9,6 +9,7 @@ import java.util.UUID;
 
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -66,6 +67,7 @@ public class RacePreviewController {
     }
 
     @GetMapping("/db-check")
+    @PreAuthorize("hasRole('ADMIN')")
     public DatabaseCheckResponse databaseCheck() {
         JdbcTemplate jdbcTemplate = jdbcTemplateProvider.getIfAvailable();
         if (jdbcTemplate == null) {
