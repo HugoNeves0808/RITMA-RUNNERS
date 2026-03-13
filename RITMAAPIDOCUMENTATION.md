@@ -183,6 +183,14 @@ Expected response example:
 }
 ```
 
+Possible existing-account response:
+
+- if the email already exists and is still `PENDING`, the API returns:
+
+```text
+This account is still pending administrator approval. Please wait.
+```
+
 ### `GET /api/auth/me`
 
 Returns the authenticated user profile for the current token.

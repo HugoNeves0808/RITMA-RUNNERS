@@ -11,6 +11,14 @@ This file keeps a short, slightly more detailed record of what was done in each 
 
 ## Entries
 
+### `dfd386c` - Add mobile app foundation and refine request account UX
+
+- Added a separate Expo-based `mobile` app foundation with a clean structure for navigation, auth-related services, shared UI components, and theme tokens.
+- Implemented the first two mobile screens: a RITMA-aligned login screen and a public `Future Goals` screen adapted for mobile navigation and scrolling.
+- Added mobile request-account support against the existing backend, including local API base URL configuration through `EXPO_PUBLIC_API_BASE_URL`.
+- Improved the mobile request-account UX with clearer feedback, visible timeout notifications, and safer handling when an email already exists in `PENDING` state.
+- Tightened backend request-account behavior so an existing pending account now returns a specific wait-for-admin-approval message instead of a generic duplicate-account error.
+
 ### `1530786` - Refine frontend account flows and public product pages
 
 - Improved the request-account and forced-password-change frontend flows with cleaner validation feedback and less duplicated messaging.
