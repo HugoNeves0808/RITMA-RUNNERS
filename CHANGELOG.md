@@ -11,6 +11,14 @@ This file keeps a short, slightly more detailed record of what was done in each 
 
 ## Entries
 
+### `3aa17ea` - Add pending account approval flow and first-login password reset
+
+- Added a request-account flow that creates new users in `PENDING` state, stores a temporary encoded password, and keeps them blocked from sign-in until admin approval.
+- Added a temporary admin review page and protected backend endpoints to list pending accounts, approve them into `ACTIVE`, or reject them by deleting the pending record.
+- Moved temporary password email delivery to the admin approval step so credentials are only sent after the account has been accepted.
+- Added forced password change handling on first login, including a blocking frontend modal, stronger password validation, and automatic logout when an invalid session or deleted user is detected.
+- Refined auth-related frontend behavior with request-account modal feedback, protected root routing, and cleanup of session/error handling around password changes.
+
 ### `3ec32b0` - Harden health visibility and refine auth testing
 
 - Reduced the public `/api/health` payload to a minimal status response and moved the health probe logic into a dedicated backend component.
