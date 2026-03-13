@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Alert, Button, Card, Checkbox, Form, Input, Space, Typography } from 'antd'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { ROUTES } from '../../constants/routes'
-import { useAuth } from '../../features/auth'
+import { RequestAccountModal, useAuth } from '../../features/auth'
 import styles from './LoginPage.module.css'
 
 const { Link, Paragraph, Title } = Typography
@@ -19,6 +19,7 @@ export function LoginPage() {
   const location = useLocation()
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isRequestAccountOpen, setIsRequestAccountOpen] = useState(false)
 
   const redirectTarget = isAuthenticated && isAdmin ? ROUTES.adminDiagnostics : ROUTES.home
   const requestedTarget = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname
@@ -78,7 +79,9 @@ export function LoginPage() {
               <Form.Item name="rememberPassword" valuePropName="checked" noStyle>
                 <Checkbox>Remember password</Checkbox>
               </Form.Item>
-              <Link className={styles.secondaryLink}>Request account</Link>
+              <Link className={styles.secondaryLink} onClick={() => setIsRequestAccountOpen(true)}>
+                Request account
+              </Link>
             </div>
 
             <Button type="primary" htmlType="submit" size="large" loading={isSubmitting} block>
@@ -128,6 +131,11 @@ export function LoginPage() {
           </div>
         </div>
       </div>
+
+      <RequestAccountModal
+        open={isRequestAccountOpen}
+        onCancel={() => setIsRequestAccountOpen(false)}
+      />
     </div>
   )
 }
@@ -139,6 +147,10 @@ function getLoginErrorMessage(error: unknown) {
 
   if (error.message === 'HTTP 401') {
     return 'Invalid email or password.'
+  }
+
+  if (error.message === 'Invalid email or password') {
+    return error.message
   }
 
   return 'Unable to sign in right now. Please try again.'

@@ -1,7 +1,7 @@
 import { createContext, useEffect, useState } from 'react'
-import { getCurrentUser, loginRequest } from '../services/authService'
+import { changePassword, getCurrentUser, loginRequest } from '../services/authService'
 import { clearStoredToken, getStoredToken, setStoredToken } from '../../../utils/tokenStorage'
-import type { AuthenticatedUser, LoginPayload } from '../types/auth'
+import type { AuthenticatedUser, ChangePasswordPayload, LoginPayload } from '../types/auth'
 
 export type AuthContextValue = {
   user: AuthenticatedUser | null
@@ -10,6 +10,7 @@ export type AuthContextValue = {
   isAdmin: boolean
   isLoading: boolean
   login: (payload: LoginPayload) => Promise<void>
+  submitPasswordChange: (payload: ChangePasswordPayload) => Promise<void>
   logout: () => void
 }
 
@@ -50,6 +51,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(response.user)
   }
 
+  const submitPasswordChange = async (payload: ChangePasswordPayload) => {
+    if (!token || !user) {
+      throw new Error('You must be signed in to change your password.')
+    }
+
+    await changePassword(payload, token)
+    setUser({
+      ...user,
+      forcePasswordChange: false,
+    })
+  }
+
   const logout = () => {
     clearStoredToken()
     setToken(null)
@@ -65,6 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAdmin: user?.role === 'ADMIN',
         isLoading,
         login,
+        submitPasswordChange,
         logout,
       }}
     >

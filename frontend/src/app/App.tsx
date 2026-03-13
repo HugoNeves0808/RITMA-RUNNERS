@@ -1,5 +1,5 @@
 import { Spin } from 'antd'
-import { useAuth } from '../features/auth'
+import { ForcePasswordChangeModal, useAuth } from '../features/auth'
 import { AppShell } from '../layouts/AppShell'
 import { AppRoutes } from '../routes/AppRoutes'
 import styles from './App.module.css'
@@ -14,6 +14,7 @@ function App() {
   return (
     <AppShell>
       <AppRoutes />
+      <ForcePasswordChangeModal />
     </AppShell>
   )
 }

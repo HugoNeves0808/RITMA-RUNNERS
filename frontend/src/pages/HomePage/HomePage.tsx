@@ -146,9 +146,14 @@ export function HomePage() {
                   the entry point and access the route.
                 </Paragraph>
                 {isAdmin ? (
-                  <Button type="link">
-                    <Link to={ROUTES.adminDiagnostics}>Open diagnostics</Link>
-                  </Button>
+                  <Space>
+                    <Button type="link">
+                      <Link to={ROUTES.adminDiagnostics}>Open diagnostics</Link>
+                    </Button>
+                    <Button type="link">
+                      <Link to={ROUTES.adminPendingAccounts}>Review pending accounts</Link>
+                    </Button>
+                  </Space>
                 ) : null}
               </div>
             </Space>

@@ -16,3 +16,16 @@ export type LoginResponse = {
   token: string
   user: AuthenticatedUser
 }
+
+export type RequestAccountPayload = {
+  email: string
+}
+
+export type RequestAccountResponse = {
+  message: string
+}
+
+export type ChangePasswordPayload = {
+  currentPassword: string
+  newPassword: string
+}

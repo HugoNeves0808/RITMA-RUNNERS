@@ -7,6 +7,7 @@ public record AppUser(
         String email,
         String passwordHash,
         String role,
-        boolean forcePasswordChange
+        boolean forcePasswordChange,
+        String accountStatus
 ) {
 }
