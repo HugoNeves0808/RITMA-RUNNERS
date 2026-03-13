@@ -32,6 +32,8 @@ public class AuthService {
             "Your request has been submitted. An admin must approve the account before sign-in.";
     private static final String ACCOUNT_EXISTS_MESSAGE =
             "An account with that email already exists.";
+    private static final String ACCOUNT_PENDING_MESSAGE =
+            "This account is still pending administrator approval. Please wait.";
     private static final String STRONG_PASSWORD_MESSAGE = "Choose a stronger password.";
     private static final String ACCOUNT_ACTIVE = "ACTIVE";
     private static final String ACCOUNT_PENDING = "PENDING";
@@ -97,7 +99,12 @@ public class AuthService {
     public RequestAccountResponse requestAccount(RequestAccountRequest request) {
         validateInviteDomain(request.email());
 
-        if (appUserRepository.existsByEmail(request.email())) {
+        AppUser existingUser = appUserRepository.findByEmail(request.email()).orElse(null);
+        if (existingUser != null) {
+            if (ACCOUNT_PENDING.equals(existingUser.accountStatus())) {
+                throw new ResponseStatusException(BAD_REQUEST, ACCOUNT_PENDING_MESSAGE);
+            }
+
             throw new ResponseStatusException(BAD_REQUEST, ACCOUNT_EXISTS_MESSAGE);
         }
 

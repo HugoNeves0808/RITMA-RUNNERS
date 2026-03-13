@@ -1,0 +1,16 @@
+export const colors = {
+  pageBackground: '#f7faf8',
+  cardBackground: '#ffffff',
+  panelBackground: '#eef5f4',
+  textPrimary: '#101828',
+  textSecondary: '#475467',
+  teal: '#0f766e',
+  mint: 'rgb(99, 230, 190)',
+  purple: 'rgb(177, 151, 252)',
+  border: 'rgba(15, 118, 110, 0.14)',
+  inputBorder: '#d0d5dd',
+  inputBackground: '#ffffff',
+  primaryButton: '#101828',
+  primaryButtonText: '#ffffff',
+  error: '#d92d20',
+} as const

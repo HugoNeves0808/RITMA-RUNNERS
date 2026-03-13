@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "RITMA RUNNERS Mobile",
+    "slug": "ritma-runners-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#f7faf8"
+      }
+    }
+  }
+}
