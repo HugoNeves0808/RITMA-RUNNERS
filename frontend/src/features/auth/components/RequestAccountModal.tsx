@@ -82,7 +82,7 @@ export function RequestAccountModal({ open, onCancel }: RequestAccountModalProps
           />
         ) : null}
 
-        <Form<RequestAccountFormValues> form={form} layout="vertical">
+        <Form<RequestAccountFormValues> form={form} layout="vertical" validateTrigger="onSubmit">
           <Form.Item
             label="Email"
             name="email"

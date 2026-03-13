@@ -1,6 +1,9 @@
 import { useState } from 'react'
+import { faBuffer } from '@fortawesome/free-brands-svg-icons'
+import { faArrowTrendUp, faRankingStar, faWrench } from '@fortawesome/free-solid-svg-icons'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { Alert, Button, Card, Checkbox, Form, Input, Space, Typography } from 'antd'
-import { Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Link as RouterLink, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { ROUTES } from '../../constants/routes'
 import { RequestAccountModal, useAuth } from '../../features/auth'
 import styles from './LoginPage.module.css'
@@ -92,41 +95,34 @@ export function LoginPage() {
 
         <div className={styles.sidePanel}>
           <div className={styles.sideContent}>
-            <Paragraph className={styles.sideIntro}>With RITMA, you will be able to...</Paragraph>
             <div className={styles.sidePoints}>
               <div className={styles.sidePoint}>
-                <img
-                  src="/icons/circle-check-solid-full.svg"
-                  alt=""
-                  aria-hidden="true"
-                  className={styles.sidePointIcon}
-                />
+                <FontAwesomeIcon icon={faBuffer} className={styles.sidePointIcon} />
                 <Paragraph className={styles.sideCopy}>
-                  Manage your races in one place, with everything organized in a simple way.
+                  Manage your races in one place
                 </Paragraph>
               </div>
               <div className={styles.sidePoint}>
-                <img
-                  src="/icons/circle-check-solid-full.svg"
-                  alt=""
-                  aria-hidden="true"
-                  className={styles.sidePointIcon}
-                />
+                <FontAwesomeIcon icon={faArrowTrendUp} className={styles.sidePointIcon} />
                 <Paragraph className={styles.sideCopy}>
-                  Track results, progress, and history without losing context between seasons.
+                  Track results, progress, and history
                 </Paragraph>
               </div>
               <div className={styles.sidePoint}>
-                <img
-                  src="/icons/circle-check-solid-full.svg"
-                  alt=""
-                  aria-hidden="true"
-                  className={styles.sidePointIcon}
-                />
+                <FontAwesomeIcon icon={faRankingStar} className={styles.sidePointIcon} />
                 <Paragraph className={styles.sideCopy}>
-                  Identify your best performances and see where you are improving.
+                  Identify your best performances
                 </Paragraph>
               </div>
+            </div>
+            <div className={styles.sideDevelopment}>
+              <FontAwesomeIcon icon={faWrench} className={styles.sideDevelopmentIcon} />
+              <Paragraph className={styles.sideDevelopmentCopy}>
+                RITMA is still in development.{' '}
+                <RouterLink to={ROUTES.futureGoals} className={styles.sideDevelopmentLink}>
+                  See what is planned next.
+                </RouterLink>
+              </Paragraph>
             </div>
           </div>
         </div>

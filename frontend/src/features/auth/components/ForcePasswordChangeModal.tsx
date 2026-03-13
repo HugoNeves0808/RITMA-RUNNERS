@@ -17,10 +17,8 @@ export function ForcePasswordChangeModal() {
   const [form] = Form.useForm<ChangePasswordFormValues>()
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [showPasswordHint, setShowPasswordHint] = useState(false)
 
   const isOpen = Boolean(user?.forcePasswordChange)
-  const newPasswordValue = Form.useWatch('newPassword', form)
 
   const handleSubmit = async () => {
     setError(null)
@@ -35,7 +33,6 @@ export function ForcePasswordChangeModal() {
       })
 
       form.resetFields()
-      setShowPasswordHint(false)
     } catch (submitError) {
       if (
         typeof submitError === 'object'
@@ -57,8 +54,11 @@ export function ForcePasswordChangeModal() {
           return
         }
 
-        if (submitError.message === 'Choose a stronger password.') {
-          setError('Choose a stronger password.')
+        if (
+          submitError.message === 'Choose a stronger password.'
+          || submitError.message === 'Use at least 8 characters, including uppercase, lowercase, a number, and a symbol.'
+        ) {
+          setError('Use at least 8 characters, including uppercase, lowercase, a number, and a symbol.')
           return
         }
 
@@ -114,7 +114,6 @@ export function ForcePasswordChangeModal() {
             validateTrigger={['onBlur', 'onSubmit']}
             rules={[
               { required: true, message: 'New password is required' },
-              { min: 8, message: 'Use at least 8 characters' },
               {
                 validator(_, value) {
                   if (!value) {
@@ -131,33 +130,18 @@ export function ForcePasswordChangeModal() {
                     return Promise.resolve()
                   }
 
-                  return Promise.reject(new Error('Choose a stronger password.'))
+                  return Promise.reject(
+                    new Error(
+                      'Use at least 8 characters, including uppercase, lowercase, a number, and a symbol.',
+                    ),
+                  )
                 },
               },
             ]}
-            extra={showPasswordHint
-              ? 'Use at least 8 characters, including uppercase, lowercase, a number, and a symbol.'
-              : undefined}
           >
             <Input.Password
               placeholder="Enter your new password"
               size="large"
-              onBlur={() => {
-                const value = newPasswordValue ?? ''
-                const isStrongPassword =
-                  value.length >= 8
-                  && /[a-z]/.test(value)
-                  && /[A-Z]/.test(value)
-                  && /\d/.test(value)
-                  && /[^A-Za-z0-9]/.test(value)
-
-                setShowPasswordHint(Boolean(value) && !isStrongPassword)
-              }}
-              onChange={() => {
-                if (showPasswordHint) {
-                  setShowPasswordHint(false)
-                }
-              }}
             />
           </Form.Item>
 
