@@ -11,6 +11,14 @@ This file keeps a short, slightly more detailed record of what was done in each 
 
 ## Entries
 
+### `1530786` - Refine frontend account flows and public product pages
+
+- Improved the request-account and forced-password-change frontend flows with cleaner validation feedback and less duplicated messaging.
+- Refined the login experience by switching feature icons to Font Awesome, tightening the right-hand messaging, and adding a development notice that links to a new public roadmap page.
+- Added a public `/future-goals` page with tabs for product overview and future plans, and iterated on its layout to use the full page more effectively.
+- Expanded the manual test checklist with current frontend scenarios for request account, pending approvals, and forced password change behavior without overwriting existing tested states.
+- Added and aligned `RITMAAPIDOCUMENTATION.md` as a working reference for the current API endpoints and request flows.
+
 ### `3aa17ea` - Add pending account approval flow and first-login password reset
 
 - Added a request-account flow that creates new users in `PENDING` state, stores a temporary encoded password, and keeps them blocked from sign-in until admin approval.
