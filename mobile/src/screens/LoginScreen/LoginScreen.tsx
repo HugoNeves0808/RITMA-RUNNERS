@@ -1,17 +1,19 @@
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { FontAwesome6 } from '@expo/vector-icons'
 import { TextInputField } from '../../components/TextInputField'
 import { PrimaryButton } from '../../components/PrimaryButton'
 import { colors } from '../../theme/colors'
 import { loginRequest } from '../../features/auth/services/authService'
 import { RequestAccountModal } from '../../features/auth/components/RequestAccountModal'
+import type { AuthSession } from '../../features/auth/types/auth'
 
 type LoginScreenProps = {
   onOpenFutureGoals: () => void
+  onLoginSuccess: (session: AuthSession) => void
 }
 
-export function LoginScreen({ onOpenFutureGoals }: LoginScreenProps) {
+export function LoginScreen({ onOpenFutureGoals, onLoginSuccess }: LoginScreenProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [rememberPassword, setRememberPassword] = useState(false)
@@ -20,6 +22,19 @@ export function LoginScreen({ onOpenFutureGoals }: LoginScreenProps) {
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isRequestAccountOpen, setIsRequestAccountOpen] = useState(false)
+  const [requestAccountNotice, setRequestAccountNotice] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!requestAccountNotice) {
+      return undefined
+    }
+
+    const timeoutId = setTimeout(() => {
+      setRequestAccountNotice(null)
+    }, 8000)
+
+    return () => clearTimeout(timeoutId)
+  }, [requestAccountNotice])
 
   const handleLogin = async () => {
     const normalizedEmail = email.trim().toLowerCase()
@@ -49,7 +64,11 @@ export function LoginScreen({ onOpenFutureGoals }: LoginScreenProps) {
         email: normalizedEmail,
         password,
       })
-      setStatusMessage(`Signed in as ${response.user.email}. Mobile app flow will expand next.`)
+      setStatusMessage(null)
+      onLoginSuccess({
+        token: response.token,
+        user: response.user,
+      })
     } catch (loginError) {
       const message =
         loginError instanceof Error && loginError.message === 'HTTP 401'
@@ -66,6 +85,26 @@ export function LoginScreen({ onOpenFutureGoals }: LoginScreenProps) {
 
   return (
     <View style={styles.page}>
+      {requestAccountNotice ? (
+        <View style={styles.noticeWrapper} pointerEvents="box-none">
+          <View style={styles.notice}>
+            <View style={styles.noticeAccent} />
+            <View style={styles.noticeContent}>
+              <View style={styles.noticeHeader}>
+                <FontAwesome6 name="circle-check" size={18} color={colors.teal} />
+                <View style={styles.noticeCopy}>
+                  <Text style={styles.noticeTitle}>Request submitted</Text>
+                  <Text style={styles.noticeText}>{requestAccountNotice}</Text>
+                </View>
+              </View>
+            </View>
+            <Pressable style={styles.noticeCloseButton} hitSlop={10} onPress={() => setRequestAccountNotice(null)}>
+              <FontAwesome6 name="xmark" size={18} color={colors.textSecondary} />
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
+
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.logoRow}>
           <Image
@@ -112,6 +151,7 @@ export function LoginScreen({ onOpenFutureGoals }: LoginScreenProps) {
             label={isSubmitting ? 'Signing in...' : 'Sign in'}
             onPress={handleLogin}
             disabled={isSubmitting}
+            iconName="right-to-bracket"
           />
 
           {statusMessage ? <Text style={styles.statusMessage}>{statusMessage}</Text> : null}
@@ -131,6 +171,7 @@ export function LoginScreen({ onOpenFutureGoals }: LoginScreenProps) {
       <RequestAccountModal
         visible={isRequestAccountOpen}
         onClose={() => setIsRequestAccountOpen(false)}
+        onSuccessNotice={setRequestAccountNotice}
       />
     </View>
   )
@@ -140,6 +181,13 @@ const styles = StyleSheet.create({
   page: {
     flex: 1,
     backgroundColor: colors.pageBackground,
+  },
+  noticeWrapper: {
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    right: 20,
+    zIndex: 20,
   },
   content: {
     flexGrow: 1,
@@ -160,6 +208,56 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 8,
     gap: 28,
+  },
+  notice: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    borderRadius: 14,
+    backgroundColor: colors.cardBackground,
+    overflow: 'hidden',
+    shadowColor: '#101828',
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+  },
+  noticeAccent: {
+    width: 4,
+    alignSelf: 'stretch',
+    backgroundColor: colors.teal,
+  },
+  noticeContent: {
+    flex: 1,
+    paddingVertical: 11,
+  },
+  noticeHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  noticeCopy: {
+    flex: 1,
+    gap: 1,
+  },
+  noticeTitle: {
+    color: colors.teal,
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.1,
+  },
+  noticeText: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  noticeCloseButton: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 6,
+    marginRight: 12,
   },
   metaRow: {
     flexDirection: 'row',

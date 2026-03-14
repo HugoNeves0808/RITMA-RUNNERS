@@ -5,6 +5,31 @@
     linear-gradient(145deg, #f7f1e3 0%, #fffdf8 45%, #e8ecf3 100%);
 }
 
+.fixedAction {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 20;
+}
+
+.logoutButton:global(.ant-btn) {
+  height: auto;
+  padding: 10px 16px;
+  border-radius: 999px;
+  border-color: rgba(16, 24, 40, 0.14);
+  background: rgba(255, 255, 255, 0.88);
+  color: #101828;
+  font-weight: 600;
+  box-shadow: 0 12px 30px rgba(16, 24, 40, 0.08);
+}
+
+.logoutButton:global(.ant-btn):hover,
+.logoutButton:global(.ant-btn):focus {
+  border-color: rgba(16, 24, 40, 0.22) !important;
+  background: #ffffff !important;
+  color: #101828 !important;
+}
+
 .appContent {
   max-width: 1120px;
   margin: 0 auto;
@@ -19,6 +44,11 @@
 }
 
 @media (max-width: 768px) {
+  .fixedAction {
+    top: 16px;
+    right: 16px;
+  }
+
   .appContent {
     padding: 32px 16px;
   }

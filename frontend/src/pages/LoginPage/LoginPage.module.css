@@ -94,7 +94,35 @@
 
 .secondaryLink {
   color: #b54708;
-  font-weight: 500;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.secondaryLink:hover,
+.secondaryLink:focus {
+  color: #b54708 !important;
+}
+
+.primaryButton:global(.ant-btn-primary) {
+  background: #101828;
+  border-color: #101828;
+  box-shadow: none;
+}
+
+.primaryButton:global(.ant-btn-primary):hover,
+.primaryButton:global(.ant-btn-primary):focus {
+  background: #374151 !important;
+  border-color: #374151 !important;
+  box-shadow: none;
+}
+
+.primaryButton:global(.ant-btn-primary) span,
+.primaryButton:global(.ant-btn-primary) a,
+.primaryButton:global(.ant-btn-primary):hover span,
+.primaryButton:global(.ant-btn-primary):hover a,
+.primaryButton:global(.ant-btn-primary):focus span,
+.primaryButton:global(.ant-btn-primary):focus a {
+  color: #ffffff !important;
 }
 
 .sidePanel {

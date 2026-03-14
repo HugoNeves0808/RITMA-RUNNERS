@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { faCalendarDays, faDatabase, faFlagCheckered } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { Alert, Button, Card, Col, Row, Space, Spin, Tag, Typography } from 'antd'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { ROUTES } from '../../constants/routes'
 import { useAuth } from '../../features/auth'
 import { fetchBackendHealth } from '../../features/system'
@@ -12,8 +12,7 @@ import styles from './HomePage.module.css'
 const { Paragraph, Title } = Typography
 
 export function HomePage() {
-  const { isAuthenticated, isAdmin, logout, user } = useAuth()
-  const navigate = useNavigate()
+  const { isAuthenticated, isAdmin, user } = useAuth()
   const [backendHealth, setBackendHealth] = useState<BackendHealth | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -33,11 +32,6 @@ export function HomePage() {
     void loadBackendHealth()
   }, [])
 
-  const handleTemporaryLogout = () => {
-    logout()
-    navigate(ROUTES.login)
-  }
-
   return (
     <>
       <section className={styles.hero}>
@@ -55,11 +49,6 @@ export function HomePage() {
           </Button>
           <Button size="large">Backend Spring Boot</Button>
           {isAuthenticated ? <Tag color="green">{user?.email}</Tag> : null}
-          {isAuthenticated ? (
-            <Button danger onClick={handleTemporaryLogout}>
-              Temporary logout test
-            </Button>
-          ) : null}
         </Space>
       </section>
 

@@ -57,6 +57,14 @@ npm install
 cd ..
 ```
 
+Install mobile dependencies:
+
+```powershell
+cd mobile
+npm install
+cd ..
+```
+
 No extra installation is required for the backend beyond Java 17.
 The first backend run downloads Maven locally through the wrapper.
 
@@ -114,6 +122,13 @@ cd frontend
 npm run dev
 ```
 
+Start the mobile app in a third terminal:
+
+```powershell
+cd mobile
+npm run start
+```
+
 Default local URLs:
 
 - Frontend: `http://localhost:5173`
@@ -121,6 +136,20 @@ Default local URLs:
 
 The Maven wrapper downloads Maven locally into the `.mvn/` folder on first execution.
 The backend runs on port `8081` by default.
+
+## Mobile environment
+
+The mobile app reads its public API URL from:
+
+- `mobile/.env`
+
+Expected variable:
+
+```text
+EXPO_PUBLIC_API_BASE_URL=http://<your-machine-ip>:8081
+```
+
+Use your local machine IP when testing on a physical device with Expo Go.
 
 ## First-time verification
 
@@ -135,8 +164,7 @@ Expected health response:
 
 ```json
 {
-  "status": "ok",
-  "application": "ritma-runners-backend"
+  "status": "ok"
 }
 ```
 
@@ -152,6 +180,13 @@ npm run dev
 ```powershell
 cd frontend
 npm run build
+```
+
+Mobile:
+
+```powershell
+cd mobile
+npm run start
 ```
 
 Backend:
@@ -187,6 +222,13 @@ If the frontend does not start:
 - confirm Node.js is installed with `node -v`
 - confirm dependencies were installed with `npm install`
 - run `npm run build` inside `frontend`
+
+If the mobile app does not start:
+
+- confirm dependencies were installed with `npm install` inside `mobile`
+- confirm `mobile/.env` points to the correct backend machine IP
+- restart Expo with cache cleanup using `npx expo start -c`
+- confirm the backend is reachable from the device at `http://<your-machine-ip>:8081/api/health`
 
 If frontend cannot reach backend:
 

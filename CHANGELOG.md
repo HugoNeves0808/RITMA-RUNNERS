@@ -11,6 +11,14 @@ This file keeps a short, slightly more detailed record of what was done in each 
 
 ## Entries
 
+### `Unreleased` - Align frontend and mobile auth flows and polish account UX
+
+- Aligned frontend and mobile login, request-account, and forced-password-change flows so both clients now use the same messages, visual states, and first-login password-change behavior.
+- Added persisted mobile authentication with session restore, authenticated navigation, forced password change handling, logout support, and local storage for the current session.
+- Refined frontend auth UX with black primary buttons, stronger hover behavior, icon-aligned actions, and visible sign-out access even during forced password change.
+- Brought the public `Future Goals` content and styling closer together between frontend and mobile so the product overview is no longer inconsistent across platforms.
+- Improved mobile form controls and notifications with password visibility toggles, cleaner request-account feedback, and shared button/icon behavior.
+
 ### `dfd386c` - Add mobile app foundation and refine request account UX
 
 - Added a separate Expo-based `mobile` app foundation with a clean structure for navigation, auth-related services, shared UI components, and theme tokens.

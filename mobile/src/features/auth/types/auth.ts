@@ -23,3 +23,13 @@ export type LoginResponse = {
 export type RequestAccountResponse = {
   message: string
 }
+
+export type AuthSession = {
+  token: string
+  user: AuthenticatedUser
+}
+
+export type ChangePasswordPayload = {
+  currentPassword: string
+  newPassword: string
+}

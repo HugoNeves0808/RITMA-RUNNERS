@@ -1,3 +1,5 @@
+import { faKey, faRightFromBracket } from '@fortawesome/free-solid-svg-icons'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { useState } from 'react'
 import { Alert, Button, Form, Input, Modal } from 'antd'
 import { useNavigate } from 'react-router-dom'
@@ -19,6 +21,11 @@ export function ForcePasswordChangeModal() {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const isOpen = Boolean(user?.forcePasswordChange)
+
+  const handleLogout = () => {
+    logout()
+    navigate(ROUTES.login, { replace: true })
+  }
 
   const handleSubmit = async () => {
     setError(null)
@@ -82,7 +89,17 @@ export function ForcePasswordChangeModal() {
         maskClosable={false}
         keyboard={false}
         footer={[
-          <Button key="submit" type="primary" loading={isSubmitting} onClick={handleSubmit}>
+          <Button key="logout" icon={<FontAwesomeIcon icon={faRightFromBracket} />} onClick={handleLogout}>
+            Sign out
+          </Button>,
+          <Button
+            key="submit"
+            className={styles.primaryButton}
+            type="primary"
+            icon={<FontAwesomeIcon icon={faKey} />}
+            loading={isSubmitting}
+            onClick={handleSubmit}
+          >
             Update password
           </Button>,
         ]}

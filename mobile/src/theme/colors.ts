@@ -13,4 +13,5 @@ export const colors = {
   primaryButton: '#101828',
   primaryButtonText: '#ffffff',
   error: '#d92d20',
+  warning: '#b54708',
 } as const

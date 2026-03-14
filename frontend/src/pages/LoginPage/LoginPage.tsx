@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { faBuffer } from '@fortawesome/free-brands-svg-icons'
-import { faArrowTrendUp, faRankingStar, faWrench } from '@fortawesome/free-solid-svg-icons'
+import { faArrowTrendUp, faRankingStar, faRightToBracket, faWrench } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { Alert, Button, Card, Checkbox, Form, Input, Space, Typography } from 'antd'
 import { Link as RouterLink, Navigate, useLocation, useNavigate } from 'react-router-dom'
@@ -71,7 +71,7 @@ export function LoginPage() {
 
           <Form<LoginFormValues> layout="vertical" onFinish={handleFinish}>
             <Form.Item label="Email" name="email" rules={[{ required: true, type: 'email' }]}>
-              <Input placeholder="admin@ritma.com" size="large" />
+              <Input placeholder="Enter your email" size="large" />
             </Form.Item>
 
             <Form.Item label="Password" name="password" rules={[{ required: true }]}>
@@ -87,7 +87,15 @@ export function LoginPage() {
               </Link>
             </div>
 
-            <Button type="primary" htmlType="submit" size="large" loading={isSubmitting} block>
+            <Button
+              className={styles.primaryButton}
+              type="primary"
+              htmlType="submit"
+              size="large"
+              icon={<FontAwesomeIcon icon={faRightToBracket} />}
+              loading={isSubmitting}
+              block
+            >
               Sign in
             </Button>
           </Form>

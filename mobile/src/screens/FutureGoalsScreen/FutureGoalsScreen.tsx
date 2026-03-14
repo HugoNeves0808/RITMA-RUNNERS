@@ -49,29 +49,31 @@ export function FutureGoalsScreen({ onBack }: FutureGoalsScreenProps) {
         {activeTab === 'whatIsRitma' ? (
           <View style={styles.panel}>
             <Text style={styles.paragraph}>
-              RITMA RUNNERS helps runners organize races in a clearer, more structured way.
+              RITMA RUNNERS is a web application built to help runners organize races in a clear and
+              structured way.
             </Text>
             <Text style={styles.paragraph}>
-              It is still intentionally minimalist, but the direction is already clear: a practical
-              digital companion focused on continuity, clarity, and long-term progress.
+              It is still intentionally minimalist, but the direction is clear: a practical digital
+              companion for runners who want better structure, continuity, and clarity around their
+              racing journey.
             </Text>
 
             <View style={styles.cards}>
               <FeatureRow
                 icon="flag-checkered"
-                iconColor={colors.teal}
+                iconColor={colors.purple}
                 title="Race-focused organization"
                 description="Keep track of races with a clearer workflow."
               />
               <FeatureRow
                 icon="chart-line"
-                iconColor={colors.teal}
+                iconColor={colors.purple}
                 title="Clear performance history"
                 description="Build a consistent record of results and progress."
               />
               <FeatureRow
                 icon="compass-drafting"
-                iconColor={colors.teal}
+                iconColor={colors.purple}
                 title="Structured runner journey"
                 description="Create a stronger long-term view of your journey."
               />
@@ -80,8 +82,8 @@ export function FutureGoalsScreen({ onBack }: FutureGoalsScreenProps) {
         ) : (
           <View style={styles.panel}>
             <Text style={styles.paragraph}>
-              RITMA will grow step by step into a stronger platform for planning, analysis, and
-              long-term runner support.
+              RITMA will expand step by step into a more complete platform for planning, analysis,
+              and long-term runner support.
             </Text>
 
             <View style={styles.cards}>
@@ -102,6 +104,24 @@ export function FutureGoalsScreen({ onBack }: FutureGoalsScreenProps) {
                 iconColor={colors.purple}
                 title="Smarter support"
                 description="Use AI-assisted guidance and stronger decision support over time."
+              />
+              <FeatureRow
+                icon="chart-line"
+                iconColor={colors.purple}
+                title="Advanced statistics"
+                description="Expand race and training analysis with deeper performance insights."
+              />
+              <FeatureRow
+                icon="flag-checkered"
+                iconColor={colors.purple}
+                title="Progression analysis"
+                description="Understand consistency, progression, and preparation over longer cycles."
+              />
+              <FeatureRow
+                icon="compass-drafting"
+                iconColor={colors.purple}
+                title="Preparation tools"
+                description="Support better planning and decision-making before key races."
               />
             </View>
           </View>

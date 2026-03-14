@@ -12,6 +12,7 @@ type RequestAccountFormValues = {
 }
 
 export function RequestAccountModal({ open, onCancel }: RequestAccountModalProps) {
+  const pendingApprovalMessage = 'This account is still pending administrator approval. Please wait.'
   const [form] = Form.useForm<RequestAccountFormValues>()
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -45,6 +46,11 @@ export function RequestAccountModal({ open, onCancel }: RequestAccountModalProps
       }
 
       if (requestError instanceof Error) {
+        if (requestError.message === pendingApprovalMessage) {
+          await messageApi.warning(requestError.message)
+          return
+        }
+
         setError(requestError.message)
         return
       }

@@ -110,7 +110,7 @@ export function FutureGoalsPage() {
   return (
     <div className={styles.page}>
       <div className={styles.fixedAction}>
-        <Button type="primary">
+        <Button className={styles.primaryButton} type="primary">
           <Link to={ROUTES.login}>Back to login</Link>
         </Button>
       </div>

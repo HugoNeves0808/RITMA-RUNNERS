@@ -6,8 +6,10 @@ Initial mobile base for the RITMA RUNNERS ecosystem.
 
 - `Login` screen
 - `Future Goals` public screen
-- simple internal navigator for the current two-screen phase
-- lightweight auth/request-account service layer prepared to evolve later
+- persisted mobile authentication flow
+- forced password change flow on first login
+- request-account flow aligned with frontend feedback states
+- lightweight internal navigator prepared to evolve later
 
 ## Run locally
 
@@ -26,5 +28,6 @@ Then use Expo to open the app on:
 ## Notes
 
 - The mobile project is intentionally separate from the website.
-- The current API base URL is defined in `src/constants/config.ts`.
-- If you test on a physical device, you will probably need to replace `localhost` with your machine IP.
+- The current API base URL is read from `mobile/.env` through `EXPO_PUBLIC_API_BASE_URL`.
+- If you test on a physical device, use your machine IP instead of `localhost`.
+- Restart Expo with `npx expo start -c` after changing `.env` values.
