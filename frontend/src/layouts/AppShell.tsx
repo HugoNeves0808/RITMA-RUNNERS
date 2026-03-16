@@ -13,9 +13,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, logout } = useAuth()
   const isLoginPage = location.pathname === ROUTES.login
   const isPublicPage = location.pathname === ROUTES.login || location.pathname === ROUTES.futureGoals
+  const isFutureGoalsPage = location.pathname === ROUTES.futureGoals
 
   return (
-    <Layout className={styles.appShell}>
+    <Layout className={isFutureGoalsPage ? `${styles.appShell} ${styles.appShellPlain}` : styles.appShell}>
       {isAuthenticated && !isPublicPage ? (
         <div className={styles.fixedAction}>
           <Button className={styles.logoutButton} icon={<FontAwesomeIcon icon={faRightFromBracket} />} onClick={logout}>
@@ -24,9 +25,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       ) : null}
       <Content
-        className={isLoginPage
-          ? `${styles.appContent} ${styles.appContentAuth}`
-          : styles.appContent}
+        className={
+          isLoginPage || isFutureGoalsPage
+            ? `${styles.appContent} ${styles.appContentAuth}`
+            : styles.appContent
+        }
       >
         {children}
       </Content>

@@ -5,6 +5,10 @@
     linear-gradient(145deg, #f7f1e3 0%, #fffdf8 45%, #e8ecf3 100%);
 }
 
+.appShellPlain {
+  background: #f6f7f9;
+}
+
 .fixedAction {
   position: fixed;
   top: 24px;

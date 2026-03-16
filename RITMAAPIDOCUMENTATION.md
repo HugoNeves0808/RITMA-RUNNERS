@@ -156,10 +156,18 @@ This endpoint:
 - creates a pending `USER`
 - stores an encoded temporary password placeholder
 - sets `force_password_change = true`
+- sends a notification email to the configured RITMA mailbox
 - does not allow login yet
 - does not send credentials yet
 
 The account must be approved by an admin before it becomes active.
+
+Notification email behavior:
+
+- subject: `RITMA ACCOUNT REQUEST - user_email`
+- recipient: `app.mail.notification-to`
+- fallback recipient: `SMTP_USER` when no explicit notification mailbox is configured
+- body includes the new user's email and asks for review in the administration area
 
 Postman:
 
@@ -352,9 +360,15 @@ This endpoint:
 
 - validates that the account is still pending
 - generates a temporary password
-- sends the approval email with the temporary password
+- sends the approval email with the temporary password and the approved user's email in the greeting
 - changes `account_status` to `ACTIVE`
 - keeps `force_password_change = true`
+
+Approval email behavior:
+
+- subject: `RITMA account access`
+- recipient: approved user's email
+- body confirms approval, includes the generated temporary password, and instructs the user to change password as soon as possible
 
 Postman:
 
@@ -408,6 +422,7 @@ Expected response:
 - `Request Account` creates a pending account, not an active account.
 - Approval is required before login.
 - Temporary credentials are only sent on admin approval.
+- Request-account submissions also trigger an internal notification email to the configured RITMA mailbox.
 - Forced password change is part of the first-login security flow.
 - `/api/races` is still a technical preview endpoint and should later be restricted by authenticated user context.
 - The login and account-request frontend now use more user-friendly validation and error messages than the raw HTTP responses.

@@ -1,4 +1,4 @@
-import { PanResponder, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Image, PanResponder, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useMemo, useState } from 'react'
 import { FontAwesome6 } from '@expo/vector-icons'
 import { FeatureRow } from '../../components/FeatureRow'
@@ -33,6 +33,14 @@ export function FutureGoalsScreen({ onBack }: FutureGoalsScreenProps) {
       </Pressable>
 
       <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.logoWrap}>
+          <Image
+            source={require('../../../assets/images/ritma-logo.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </View>
+
         <View style={styles.tabRow}>
           <Pressable onPress={() => setActiveTab('whatIsRitma')} style={styles.tabButton}>
             <Text style={[styles.tabLabel, activeTab === 'whatIsRitma' ? styles.tabLabelActive : null]}>
@@ -149,10 +157,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   content: {
-    paddingTop: 92,
+    paddingTop: 0,
     paddingHorizontal: 24,
     paddingBottom: 28,
     gap: 18,
+  },
+  logoWrap: {
+    alignItems: 'flex-end',
+    justifyContent: 'flex-end',
+    marginRight: -24,
+    marginBottom: 0,
+  },
+  logo: {
+    width: 190,
+    height: 72,
   },
   tabRow: {
     flexDirection: 'row',

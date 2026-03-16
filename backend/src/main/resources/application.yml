@@ -38,6 +38,7 @@ app:
       password: ${APP_ADMIN_PASSWORD:Admin123!}
   mail:
     from: ${SMTP_FROM:RITMA <ritmarunners.app@gmail.com>}
+    notification-to: ${APP_NOTIFICATION_EMAIL:${SMTP_USER:ritmarunners.app@gmail.com}}
     invite-allowed-domains: ${INVITE_ALLOWED_DOMAINS:}
 
 server:

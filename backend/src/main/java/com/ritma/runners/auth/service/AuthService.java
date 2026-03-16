@@ -21,6 +21,7 @@ import com.ritma.runners.auth.dto.UserProfileResponse;
 import com.ritma.runners.auth.entity.AppUser;
 import com.ritma.runners.auth.repository.AppUserRepository;
 import com.ritma.runners.mail.config.MailProperties;
+import com.ritma.runners.mail.service.AccountMailService;
 import com.ritma.runners.security.jwt.JwtService;
 
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
@@ -42,15 +43,18 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final MailProperties mailProperties;
+    private final AccountMailService accountMailService;
 
     public AuthService(AppUserRepository appUserRepository,
                        PasswordEncoder passwordEncoder,
                        JwtService jwtService,
-                       MailProperties mailProperties) {
+                       MailProperties mailProperties,
+                       AccountMailService accountMailService) {
         this.appUserRepository = appUserRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.mailProperties = mailProperties;
+        this.accountMailService = accountMailService;
     }
 
     public AuthResponse login(LoginRequest request) {
@@ -116,6 +120,7 @@ public class AuthService {
                 ACCOUNT_PENDING
         );
         appUserRepository.createDefaultUserSettings(user.id());
+        accountMailService.sendAccountRequestNotification(user.email());
 
         return new RequestAccountResponse(REQUEST_ACCOUNT_SUCCESS_MESSAGE);
     }

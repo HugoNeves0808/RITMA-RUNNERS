@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 public class MailProperties {
 
     private String from;
+    private String notificationTo;
     private String inviteAllowedDomains;
 
     public String getFrom() {
@@ -16,6 +17,14 @@ public class MailProperties {
 
     public void setFrom(String from) {
         this.from = from;
+    }
+
+    public String getNotificationTo() {
+        return notificationTo;
+    }
+
+    public void setNotificationTo(String notificationTo) {
+        this.notificationTo = notificationTo;
     }
 
     public String getInviteAllowedDomains() {

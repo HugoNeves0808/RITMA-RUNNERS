@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 import { ROUTES } from '../../constants/routes'
 import styles from './FutureGoalsPage.module.css'
 
-const { Paragraph, Title } = Typography
+const { Paragraph } = Typography
 
 export function FutureGoalsPage() {
   const items = [
@@ -115,17 +115,9 @@ export function FutureGoalsPage() {
         </Button>
       </div>
       <div className={styles.content}>
-        <div className={styles.hero}>
-          <span className={styles.eyebrow}>Public overview</span>
-          <Title level={1} className={styles.title}>
-            RITMA vision and roadmap
-          </Title>
-          <Paragraph className={styles.lead}>
-            A public overview of what RITMA already stands for and where the platform is heading
-            next.
-          </Paragraph>
+        <div className={styles.logoWrap}>
+          <img src="/images/ritma-logo.png" alt="RITMA RUNNERS" className={styles.logo} />
         </div>
-
         <Tabs items={items} className={styles.tabs} />
       </div>
     </div>
