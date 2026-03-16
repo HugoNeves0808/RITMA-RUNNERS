@@ -9,29 +9,152 @@
   background: #f6f7f9;
 }
 
-.fixedAction {
+.authShell {
+  background: #f3f5f8;
+}
+
+.sidebar {
   position: fixed;
-  top: 24px;
-  right: 24px;
-  z-index: 20;
+  inset: 0 auto 0 0;
+  z-index: 10;
+  display: flex;
+  width: 272px;
+  min-height: 100vh;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 28px 22px 24px;
+  border-right: 1px solid rgba(16, 24, 40, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(247, 248, 250, 0.98) 100%);
+  box-shadow: 18px 0 44px rgba(15, 23, 42, 0.06);
 }
 
-.logoutButton:global(.ant-btn) {
+.logoLink {
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  margin-bottom: 28px;
+}
+
+.logo {
+  display: block;
+  width: 148px;
   height: auto;
-  padding: 10px 16px;
-  border-radius: 999px;
-  border-color: rgba(16, 24, 40, 0.14);
-  background: rgba(255, 255, 255, 0.88);
-  color: #101828;
-  font-weight: 600;
-  box-shadow: 0 12px 30px rgba(16, 24, 40, 0.08);
 }
 
-.logoutButton:global(.ant-btn):hover,
-.logoutButton:global(.ant-btn):focus {
-  border-color: rgba(16, 24, 40, 0.22) !important;
-  background: #ffffff !important;
+.navSection {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: none;
+  border-radius: 18px;
+  color: #475467;
+  font-size: 0.98rem;
+  font-weight: 600;
+  text-decoration: none;
+  background: transparent;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.navItem:hover {
+  background: linear-gradient(135deg, rgba(255, 239, 218, 0.88) 0%, rgba(255, 247, 238, 0.7) 55%, rgba(255, 255, 255, 0.45) 100%);
+  color: #101828;
+  transform: translateX(2px);
+}
+
+.navItemActive {
+  background: linear-gradient(135deg, rgba(255, 234, 208, 0.92) 0%, rgba(255, 244, 229, 0.78) 58%, rgba(255, 255, 255, 0.5) 100%);
+  color: #101828;
+}
+
+.navItemActive:hover {
+  background: linear-gradient(135deg, rgba(255, 228, 197, 0.94) 0%, rgba(255, 240, 222, 0.82) 58%, rgba(255, 255, 255, 0.54) 100%);
+}
+
+.navIcon {
+  width: 18px;
+  color: #b54708;
+}
+
+.sidebarFooter {
+  padding-top: 24px;
+  border-top: 1px solid rgba(16, 24, 40, 0.08);
+}
+
+.utilityRow {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.utilityButton,
+.utilityButton:global(.ant-btn) {
+  display: inline-flex;
+  height: 44px;
+  width: 44px;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 14px;
+  background: transparent;
+  color: #475467;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.utilityButton:hover,
+.utilityButton:global(.ant-btn):hover,
+.utilityButton:global(.ant-btn):focus {
+  background: linear-gradient(135deg, rgba(255, 239, 218, 0.88) 0%, rgba(255, 247, 238, 0.7) 55%, rgba(255, 255, 255, 0.45) 100%) !important;
   color: #101828 !important;
+  transform: translateY(-1px);
+}
+
+.utilityButtonActive {
+  background: linear-gradient(135deg, rgba(255, 234, 208, 0.92) 0%, rgba(255, 244, 229, 0.78) 58%, rgba(255, 255, 255, 0.5) 100%);
+  color: #b54708;
+}
+
+.utilityButtonActive:hover,
+.utilityButtonActive:global(.ant-btn):hover,
+.utilityButtonActive:global(.ant-btn):focus {
+  background: linear-gradient(135deg, rgba(255, 228, 197, 0.94) 0%, rgba(255, 240, 222, 0.82) 58%, rgba(255, 255, 255, 0.54) 100%) !important;
+  color: #b54708 !important;
+}
+
+.userEmail {
+  margin: 0;
+  color: #667085;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  text-align: center;
+  word-break: break-word;
+}
+
+.authMain {
+  width: 100%;
+  margin-left: 272px;
+  background: transparent;
+}
+
+.authContent {
+  min-height: 100vh;
+  padding: 32px;
+  overflow-x: auto;
 }
 
 .appContent {
@@ -47,12 +170,37 @@
   padding: 0;
 }
 
-@media (max-width: 768px) {
-  .fixedAction {
-    top: 16px;
-    right: 16px;
+@media (max-width: 960px) {
+  .sidebar {
+    position: static;
+    width: 100%;
+    min-height: auto;
+    gap: 24px;
   }
 
+  .authMain {
+    margin-left: 0;
+  }
+
+  .authContent {
+    min-height: auto;
+    padding: 20px 16px 32px;
+  }
+
+  .logo {
+    width: 126px;
+  }
+
+  .navSection {
+    flex: none;
+  }
+
+  .utilityRow {
+    margin-bottom: 10px;
+  }
+}
+
+@media (max-width: 768px) {
   .appContent {
     padding: 32px 16px;
   }

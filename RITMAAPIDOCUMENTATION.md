@@ -53,16 +53,32 @@ The current access flow is:
 5. approval sends the temporary password by email and changes the account to `ACTIVE`
 6. on first login, the approved user must change password before using the app
 
-## Related Frontend Routes
+## Related Client Navigation
 
-These are not backend API endpoints, but they are relevant to the current user flow:
+These are not backend API endpoints, but they are relevant to the current user flow and the way the authenticated clients are now structured:
 
 - `/login`
   Main login page, request-account modal, and entry point for authentication.
+- `/`
+  Authenticated `Races` entry route in the web app.
+- `/races`
+  Alias route that opens the same authenticated `Races` page in the web app.
+- `/best-efforts`
+  Authenticated web section for best efforts.
+- `/profile`
+  Authenticated web section reserved for profile.
+- `/settings`
+  Authenticated web section reserved for settings.
 - `/future-goals`
   Public product/roadmap page linked from the login screen.
 - `/admin/account-requests`
   Temporary admin frontend page used to review pending accounts.
+
+Authenticated client shell status:
+
+- web now uses a fixed left sidebar with `Races`, `Best Efforts`, account actions, and active route highlighting
+- mobile now uses a fixed top bar, fixed bottom navigation, and a fullscreen menu page opened from the hamburger button
+- both clients currently keep `Races`, `Best Efforts`, `Profile`, and `Settings` as lightweight placeholders while the navigation structure is being established
 
 ## System
 

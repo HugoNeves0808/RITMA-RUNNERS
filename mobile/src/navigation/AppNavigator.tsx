@@ -1,13 +1,17 @@
 import { ActivityIndicator, StyleSheet, View } from 'react-native'
 import { useEffect, useState } from 'react'
+import { AuthenticatedShell } from '../components/AuthenticatedShell'
 import { ForcePasswordChangeModal } from '../features/auth/components/ForcePasswordChangeModal'
 import { changePassword, getCurrentUser } from '../features/auth/services/authService'
 import { clearAuthSession, loadAuthSession, saveAuthSession } from '../features/auth/services/authStorage'
 import type { AuthSession } from '../features/auth/types/auth'
 import { routes, type MobileRoute } from '../constants/routes'
+import { BestEffortsScreen } from '../screens/BestEffortsScreen/BestEffortsScreen'
 import { FutureGoalsScreen } from '../screens/FutureGoalsScreen/FutureGoalsScreen'
 import { HomeScreen } from '../screens/HomeScreen/HomeScreen'
 import { LoginScreen } from '../screens/LoginScreen/LoginScreen'
+import { ProfileScreen } from '../screens/ProfileScreen/ProfileScreen'
+import { SettingsScreen } from '../screens/SettingsScreen/SettingsScreen'
 import { colors } from '../theme/colors'
 
 export function AppNavigator() {
@@ -27,7 +31,7 @@ export function AppNavigator() {
         const restoredSession = { token: storedSession.token, user }
         setAuthSession(restoredSession)
         await saveAuthSession(restoredSession)
-        setCurrentRoute(routes.home)
+        setCurrentRoute(routes.races)
       } catch {
         await clearAuthSession()
         setAuthSession(null)
@@ -42,7 +46,7 @@ export function AppNavigator() {
 
   const handleLoginSuccess = async (session: AuthSession) => {
     setAuthSession(session)
-    setCurrentRoute(routes.home)
+    setCurrentRoute(routes.races)
     await saveAuthSession(session)
   }
 
@@ -94,7 +98,17 @@ export function AppNavigator() {
 
     return (
       <>
-        <HomeScreen user={authSession.user} onLogout={handleLogout} />
+        <AuthenticatedShell
+          currentRoute={currentRoute}
+          user={authSession.user}
+          onNavigate={setCurrentRoute}
+          onLogout={handleLogout}
+        >
+          {currentRoute === routes.bestEfforts ? <BestEffortsScreen /> : null}
+          {currentRoute === routes.profile ? <ProfileScreen /> : null}
+          {currentRoute === routes.settings ? <SettingsScreen /> : null}
+          {currentRoute === routes.home || currentRoute === routes.races ? <HomeScreen /> : null}
+        </AuthenticatedShell>
         <ForcePasswordChangeModal
           visible={false}
           onSubmit={handlePasswordChange}

@@ -1,6 +1,6 @@
 import { StyleSheet, View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
-import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context'
+import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { AppNavigator } from './src/navigation/AppNavigator'
 import { colors } from './src/theme/colors'
 
@@ -13,10 +13,8 @@ export default function App() {
 }
 
 function AppShell() {
-  const insets = useSafeAreaInsets()
-
   return (
-    <View style={[styles.appShell, { paddingTop: insets.top + 12 }]}>
+    <View style={styles.appShell}>
       <StatusBar style="dark" backgroundColor={colors.pageBackground} translucent={false} />
       <AppNavigator />
     </View>

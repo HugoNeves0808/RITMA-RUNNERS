@@ -1,10 +1,10 @@
 import { StyleSheet, Text, View } from 'react-native'
 import { colors } from '../../theme/colors'
 
-export function HomeScreen() {
+export function SettingsScreen() {
   return (
     <View style={styles.page}>
-      <Text style={styles.title}>Races</Text>
+      <Text style={styles.title}>Settings</Text>
     </View>
   )
 }

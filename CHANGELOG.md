@@ -11,11 +11,12 @@ This file keeps a short, slightly more detailed record of what was done in each 
 
 ## Entries
 
-### `Unreleased` - Align auth UX, account emails, and public branding across clients
+### `Unreleased` - Align authenticated navigation, account emails, and branding across clients
 
 - Aligned frontend and mobile login, request-account, and forced-password-change flows so both clients now use the same messages, visual states, and first-login password-change behavior.
 - Added persisted mobile authentication with session restore, authenticated navigation, forced password change handling, logout support, and local storage for the current session.
-- Refined frontend auth UX with black primary buttons, stronger hover behavior, icon-aligned actions, and visible sign-out access even during forced password change.
+- Replaced the temporary authenticated web view with a real shell: fixed sidebar, active states, account actions, `Races` and `Best Efforts` navigation, and lightweight `Profile` and `Settings` placeholders.
+- Added matching mobile authenticated navigation with a fixed top bar, fixed bottom navigation, fullscreen menu page, and route-driven switching between `Races`, `Best Efforts`, `Profile`, and `Settings`.
 - Reworked the public `Future Goals` presentation in frontend and mobile to center the RITMA logo more prominently and keep the public product overview visually consistent.
 - Added account-request notification emails for the configured RITMA mailbox, updated approval email copy sent to approved users, and made the notification recipient fall back safely to `SMTP_USER`.
 - Replaced the default Vite tab icon with the RITMA logo so the browser tab now matches the product branding.
