@@ -59,6 +59,7 @@ These are not backend API endpoints, but they are relevant to the current user f
 
 - `/login`
   Main login page, request-account modal, and entry point for authentication.
+  In the web client, `Remember me` now keeps the token in persistent browser storage; when unchecked, the session uses session-only storage and ends when the browser is closed.
 - `/`
   Authenticated `Races` entry route in the web app.
 - `/races`
@@ -83,9 +84,9 @@ These are not backend API endpoints, but they are relevant to the current user f
 Authenticated client shell status:
 
 - web now uses a fixed left sidebar with admin-aware menu rendering, an `Admin Area` dropdown group for admins, `Races`, `Best Efforts`, account actions, and active route highlighting
-- mobile now uses a fixed top bar, fixed bottom navigation, and a fullscreen menu page opened from the hamburger button, including the same admin-only dropdown group
+- mobile now uses a fixed top bar, fixed bottom navigation, and a fullscreen menu page opened from the hamburger button, including the same admin-only dropdown group and account actions near the end of the menu
 - `Admin Area` is currently a grouped navigation label in both clients, not a standalone page or backend endpoint
-- both clients currently keep `Races`, `Best Efforts`, `Profile`, `Settings`, `RITMA Overview`, `User List`, and `Pending Approvals` as lightweight placeholders while the navigation structure is being established
+- both clients currently keep `Races`, `Best Efforts`, `Profile`, `Settings`, `Overview`, `Users`, and `Pending Approvals` as lightweight placeholders while the navigation structure is being established
 
 ## System
 

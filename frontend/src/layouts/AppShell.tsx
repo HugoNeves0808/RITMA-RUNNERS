@@ -77,13 +77,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const adminNavigationItems = [
     {
       key: 'admin-ritma-overview',
-      label: 'RITMA Overview',
+      label: 'Overview',
       to: ROUTES.adminRitmaOverview,
       isActive: location.pathname === ROUTES.adminRitmaOverview,
     },
     {
       key: 'admin-user-list',
-      label: 'User List',
+      label: 'Users',
       to: ROUTES.adminUserList,
       isActive: location.pathname === ROUTES.adminUserList,
     },

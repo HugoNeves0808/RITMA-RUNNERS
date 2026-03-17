@@ -19,6 +19,8 @@ This file keeps a short, slightly more detailed record of what was done in each 
 - Added matching mobile authenticated navigation with a fixed top bar, fixed bottom navigation, fullscreen menu page, and route-driven switching between `Races`, `Best Efforts`, `Profile`, and `Settings`.
 - Added admin-only navigation structure to both clients with an `Admin Area` dropdown group and placeholder subpages for `RITMA Overview`, `User List`, and `Pending Approvals`.
 - Refined the authenticated navigation polish across clients by tightening menu ordering, icon treatment, active states, logo sizing, and top-spacing behavior on public mobile screens.
+- Made the web `Remember me` checkbox effective by storing the auth token in `localStorage` only when requested and falling back to session-only persistence otherwise.
+- Simplified admin submenu copy across clients to `Overview` and `Users`, and removed the extra logo from the mobile fullscreen hamburger menu.
 - Reworked the public `Future Goals` presentation in frontend and mobile to center the RITMA logo more prominently and keep the public product overview visually consistent.
 - Added account-request notification emails for the configured RITMA mailbox, updated approval email copy sent to approved users, and made the notification recipient fall back safely to `SMTP_USER`.
 - Replaced the default Vite tab icon with the RITMA logo so the browser tab now matches the product branding.

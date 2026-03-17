@@ -36,7 +36,15 @@ export function LoginPage() {
     setIsSubmitting(true)
 
     try {
-      await login(values)
+      await login(
+        {
+          email: values.email,
+          password: values.password,
+        },
+        {
+          remember: values.rememberPassword ?? false,
+        },
+      )
       navigate(requestedTarget ?? ROUTES.home, { replace: true })
     } catch (loginError) {
       setError(getLoginErrorMessage(loginError))
@@ -80,7 +88,7 @@ export function LoginPage() {
 
             <div className={styles.metaRow}>
               <Form.Item name="rememberPassword" valuePropName="checked" noStyle>
-                <Checkbox>Remember password</Checkbox>
+                <Checkbox>Remember me</Checkbox>
               </Form.Item>
               <Link className={styles.secondaryLink} onClick={() => setIsRequestAccountOpen(true)}>
                 Request account

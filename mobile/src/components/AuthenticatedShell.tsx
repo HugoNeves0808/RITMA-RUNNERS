@@ -109,14 +109,14 @@ export function AuthenticatedShell({
     () => [
       {
         key: 'admin-ritma-overview',
-        label: 'RITMA Overview',
+        label: 'Overview',
         icon: 'map',
         isActive: currentRoute === routes.adminRitmaOverview,
         onPress: () => onNavigate(routes.adminRitmaOverview),
       },
       {
         key: 'admin-user-list',
-        label: 'User List',
+        label: 'Users',
         icon: 'users',
         isActive: currentRoute === routes.adminUserList,
         onPress: () => onNavigate(routes.adminUserList),
@@ -216,17 +216,6 @@ export function AuthenticatedShell({
           </Pressable>
 
           <ScrollView contentContainerStyle={styles.menuPageContent}>
-            <Pressable
-              style={styles.drawerLogoWrap}
-              onPress={() => handleItemPress(mainItems[0])}
-            >
-              <Image
-                source={require('../../assets/images/ritma-logo.png')}
-                style={styles.drawerLogo}
-                resizeMode="contain"
-              />
-            </Pressable>
-
             {isAdmin ? (
               <View style={styles.accountSection}>
                 <Pressable
@@ -425,15 +414,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 32,
     gap: 22,
-  },
-  drawerLogoWrap: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-  },
-  drawerLogo: {
-    width: 178,
-    height: 52,
   },
   drawerContent: {
     flexGrow: 1,

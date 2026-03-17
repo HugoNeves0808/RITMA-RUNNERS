@@ -9,7 +9,7 @@ export type AuthContextValue = {
   isAuthenticated: boolean
   isAdmin: boolean
   isLoading: boolean
-  login: (payload: LoginPayload) => Promise<void>
+  login: (payload: LoginPayload, options?: { remember?: boolean }) => Promise<void>
   submitPasswordChange: (payload: ChangePasswordPayload) => Promise<void>
   logout: () => void
 }
@@ -44,9 +44,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     void loadCurrentUser()
   }, [token])
 
-  const login = async (payload: LoginPayload) => {
+  const login = async (payload: LoginPayload, options?: { remember?: boolean }) => {
     const response = await loginRequest(payload)
-    setStoredToken(response.token)
+    setStoredToken(response.token, options?.remember ?? false)
     setToken(response.token)
     setUser(response.user)
   }

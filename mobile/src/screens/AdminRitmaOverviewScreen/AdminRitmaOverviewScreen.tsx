@@ -4,7 +4,7 @@ import { colors } from '../../theme/colors'
 export function AdminRitmaOverviewScreen() {
   return (
     <View style={styles.page}>
-      <Text style={styles.title}>RITMA Overview</Text>
+      <Text style={styles.title}>Overview</Text>
       <Text style={styles.description}>This placeholder screen is ready for the future admin overview of the platform.</Text>
     </View>
   )

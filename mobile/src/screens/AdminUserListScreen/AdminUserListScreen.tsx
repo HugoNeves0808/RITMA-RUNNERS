@@ -4,7 +4,7 @@ import { colors } from '../../theme/colors'
 export function AdminUserListScreen() {
   return (
     <View style={styles.page}>
-      <Text style={styles.title}>User List</Text>
+      <Text style={styles.title}>Users</Text>
       <Text style={styles.description}>This placeholder screen is ready for the future admin user list.</Text>
     </View>
   )
