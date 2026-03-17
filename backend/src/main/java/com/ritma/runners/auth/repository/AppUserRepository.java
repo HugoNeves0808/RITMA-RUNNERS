@@ -10,6 +10,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import com.ritma.runners.auth.entity.AppUser;
+import com.ritma.runners.admin.pendingapproval.dto.PendingApprovalResponse;
 import com.ritma.runners.auth.dto.PendingAccountResponse;
 
 @Repository
@@ -144,6 +145,17 @@ public class AppUserRepository {
     }
 
     public List<PendingAccountResponse> findPendingAccounts() {
+        return findPendingApprovals().stream()
+                .map(approval -> new PendingAccountResponse(
+                        approval.id(),
+                        approval.email(),
+                        approval.accountStatus(),
+                        approval.requestedAt()
+                ))
+                .toList();
+    }
+
+    public List<PendingApprovalResponse> findPendingApprovals() {
         JdbcTemplate jdbcTemplate = jdbcTemplate();
         return jdbcTemplate.query("""
                 SELECT id, email, account_status::text AS account_status, created_at
@@ -151,7 +163,7 @@ public class AppUserRepository {
                 WHERE account_status::text = 'PENDING'
                 ORDER BY created_at ASC
                 """,
-                (rs, rowNum) -> new PendingAccountResponse(
+                (rs, rowNum) -> new PendingApprovalResponse(
                         rs.getObject("id", UUID.class),
                         rs.getString("email"),
                         rs.getString("account_status"),

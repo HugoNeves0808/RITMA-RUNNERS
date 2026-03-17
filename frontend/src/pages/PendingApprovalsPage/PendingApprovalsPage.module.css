@@ -1,0 +1,73 @@
+.pageCard {
+  margin-bottom: 24px;
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at top right, rgba(255, 239, 218, 0.82), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.92));
+  box-shadow: 0 18px 50px rgba(16, 24, 40, 0.08);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.summaryBadge {
+  min-width: 84px;
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #b54708 0%, #d97706 100%);
+  color: #fff7ed;
+  text-align: center;
+  box-shadow: 0 10px 24px rgba(181, 71, 8, 0.18);
+}
+
+.summaryLabel {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.82;
+}
+
+.summaryValue {
+  display: block;
+  margin-top: 2px;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+}
+
+.approveButton {
+  background: #111111;
+  box-shadow: none;
+}
+
+.approveButton:hover,
+.approveButton:focus {
+  background: #2b2b2b !important;
+}
+
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+  }
+
+  .summaryBadge {
+    min-width: 100%;
+    text-align: left;
+  }
+
+  .actions {
+    flex-wrap: wrap;
+  }
+}

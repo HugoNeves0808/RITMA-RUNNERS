@@ -77,7 +77,7 @@ These are not backend API endpoints, but they are relevant to the current user f
 - `/admin-area/user-list`
   Admin-only web placeholder for the future user list area.
 - `/admin-area/pending-approvals`
-  Admin-only web placeholder for the future pending approvals area.
+  Admin-only web area for reviewing pending account approvals.
 - `/admin/account-requests`
   Temporary admin frontend page used to review pending accounts.
 
@@ -86,7 +86,8 @@ Authenticated client shell status:
 - web now uses a fixed left sidebar with admin-aware menu rendering, an `Admin Area` dropdown group for admins, `Races`, `Best Efforts`, account actions, and active route highlighting
 - mobile now uses a fixed top bar, fixed bottom navigation, and a fullscreen menu page opened from the hamburger button, including the same admin-only dropdown group and account actions near the end of the menu
 - `Admin Area` is currently a grouped navigation label in both clients, not a standalone page or backend endpoint
-- both clients currently keep `Races`, `Best Efforts`, `Profile`, `Settings`, `Overview`, `Users`, and `Pending Approvals` as lightweight placeholders while the navigation structure is being established
+- web `Pending Approvals` now shows the real pending-user list with actions, while the remaining admin overview and user-list sections are still placeholders
+- mobile `Pending Approvals` now also shows the real pending-user list with actions, while the remaining admin overview and user-list sections are still placeholders
 
 ## System
 
@@ -354,16 +355,20 @@ Expected response example:
 
 ### `GET /api/admin/account-requests`
 
+Legacy-compatible endpoint for the temporary admin page.
+
+### `GET /api/admin/pending-approvals`
+
 Lists all users currently waiting for admin approval.
 
 Postman:
 
 - Method: `GET`
-- URL: `{{baseUrl}}/api/admin/account-requests`
+- URL: `{{baseUrl}}/api/admin/pending-approvals`
 - Auth: `Bearer Token`
 - Token: admin token
 
-Expected response example:
+Expected response example for `/api/admin/pending-approvals`:
 
 ```json
 [
@@ -371,12 +376,27 @@ Expected response example:
     "id": "uuid",
     "email": "new.user@example.com",
     "accountStatus": "PENDING",
-    "createdAt": "2026-03-13T12:00:00Z"
+    "requestedAt": "2026-03-13T12:00:00Z"
   }
 ]
 ```
 
+Compatibility note:
+
+- `GET /api/admin/account-requests` returns the same pending rows using the existing `createdAt` field name
+- `GET /api/admin/pending-approvals` returns the same pending rows using the page-oriented `requestedAt` field name
+
+Current client usage:
+
+- web `Pending Approvals` currently consumes the stable `/api/admin/account-requests` endpoint and formats `createdAt` into a relative time label such as `15h 4min ago`
+- mobile `Pending Approvals` currently consumes the same stable `/api/admin/account-requests` endpoint and applies the same relative-time formatting
+- both clients paginate the rendered list locally with a maximum of 10 pending users per page
+
 ### `POST /api/admin/account-requests/{userId}/approve`
+
+Legacy-compatible endpoint for the temporary admin page.
+
+### `POST /api/admin/pending-approvals/{userId}/approve`
 
 Approves a pending account.
 
@@ -397,7 +417,7 @@ Approval email behavior:
 Postman:
 
 - Method: `POST`
-- URL: `{{baseUrl}}/api/admin/account-requests/{{userId}}/approve`
+- URL: `{{baseUrl}}/api/admin/pending-approvals/{{userId}}/approve`
 - Auth: `Bearer Token`
 - Token: admin token
 - Body: none
@@ -408,19 +428,23 @@ Expected response:
 
 Practical flow:
 
-1. call `GET /api/admin/account-requests`
+1. call `GET /api/admin/pending-approvals`
 2. copy the pending `id`
 3. store it in `{{userId}}`
 4. call approve
 
 ### `DELETE /api/admin/account-requests/{userId}`
 
+Legacy-compatible endpoint for the temporary admin page.
+
+### `DELETE /api/admin/pending-approvals/{userId}`
+
 Rejects a pending account request by deleting the pending user.
 
 Postman:
 
 - Method: `DELETE`
-- URL: `{{baseUrl}}/api/admin/account-requests/{{userId}}`
+- URL: `{{baseUrl}}/api/admin/pending-approvals/{{userId}}`
 - Auth: `Bearer Token`
 - Token: admin token
 
@@ -433,8 +457,8 @@ Expected response:
 1. `GET /api/health`
 2. `POST /api/auth/request-account`
 3. `POST /api/auth/login` as admin
-4. `GET /api/admin/account-requests`
-5. `POST /api/admin/account-requests/{userId}/approve`
+4. `GET /api/admin/pending-approvals`
+5. `POST /api/admin/pending-approvals/{userId}/approve`
 6. login with the approved user credentials received by email
 7. `GET /api/auth/me`
 8. `POST /api/auth/change-password`

@@ -109,7 +109,7 @@ export function AppNavigator() {
         >
           {currentRoute === routes.adminRitmaOverview ? <AdminRitmaOverviewScreen /> : null}
           {currentRoute === routes.adminUserList ? <AdminUserListScreen /> : null}
-          {currentRoute === routes.adminPendingApprovals ? <AdminPendingApprovalsScreen /> : null}
+          {currentRoute === routes.adminPendingApprovals ? <AdminPendingApprovalsScreen token={authSession.token} /> : null}
           {currentRoute === routes.bestEfforts ? <BestEffortsScreen /> : null}
           {currentRoute === routes.profile ? <ProfileScreen /> : null}
           {currentRoute === routes.settings ? <SettingsScreen /> : null}

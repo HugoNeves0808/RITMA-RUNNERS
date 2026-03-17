@@ -13,6 +13,11 @@ This file keeps a short, slightly more detailed record of what was done in each 
 
 ### `Unreleased` - Align authenticated navigation, account emails, and branding across clients
 
+- Added a dedicated backend admin module for `Pending Approvals` with a new `/api/admin/pending-approvals` endpoint family while keeping the older `/api/admin/account-requests` endpoints working for compatibility.
+- Covered the new pending-approval admin service with unit tests for listing, approving, rejecting, and invalid-state validation so the new admin page can be wired with more confidence.
+- Replaced the web `Pending Approvals` placeholder with a real admin table, relative request-time formatting, 10-row pagination, approval and rejection actions, and the final styling now used in the admin area.
+- Added the same `Pending Approvals` admin flow to mobile with live data loading, relative request-time formatting, 10-row pagination, refresh support, and approve/reject actions against the existing admin account-request endpoints.
+- Fixed authenticated layout sizing in the web shell so admin and authenticated pages no longer create horizontal page scroll beside the fixed sidebar.
 - Aligned frontend and mobile login, request-account, and forced-password-change flows so both clients now use the same messages, visual states, and first-login password-change behavior.
 - Added persisted mobile authentication with session restore, authenticated navigation, forced password change handling, logout support, and local storage for the current session.
 - Replaced the temporary authenticated web view with a real shell: fixed sidebar, active states, account actions, `Races` and `Best Efforts` navigation, and lightweight `Profile` and `Settings` placeholders.
