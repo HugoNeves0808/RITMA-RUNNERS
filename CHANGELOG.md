@@ -11,16 +11,22 @@ This file keeps a short, slightly more detailed record of what was done in each 
 
 ## Entries
 
-### `Unreleased` - Align authenticated navigation, account emails, and branding across clients
+### `c1d89e5` - Add admin users list across backend web and mobile
+
+- Added backend tracking for `last_login_at`, updated successful login to persist the latest login time, and introduced an admin-only `/api/admin/users` endpoint that lists active users with email, role, and last login.
+- Replaced the web `Users` placeholder with a real admin table showing active users, relative last-login formatting, 10-row pagination, green count styling, role-specific badges, and a stale-login warning icon for users inactive for more than one year.
+- Added the same real `Users` admin flow to mobile with active-user loading, relative last-login formatting, 10-row pagination, matching pagination button states, role-specific badges, and a stale-login warning icon for users inactive for more than one year.
+
+### `7c0e01d` - Add admin pending approvals across backend web and mobile
 
 - Added a dedicated backend admin module for `Pending Approvals` with a new `/api/admin/pending-approvals` endpoint family while keeping the older `/api/admin/account-requests` endpoints working for compatibility.
 - Covered the new pending-approval admin service with unit tests for listing, approving, rejecting, and invalid-state validation so the new admin page can be wired with more confidence.
 - Replaced the web `Pending Approvals` placeholder with a real admin table, relative request-time formatting, 10-row pagination, approval and rejection actions, and the final styling now used in the admin area.
 - Added the same `Pending Approvals` admin flow to mobile with live data loading, relative request-time formatting, 10-row pagination, refresh support, and approve/reject actions against the existing admin account-request endpoints.
-- Added backend tracking for `last_login_at`, updated successful login to persist the latest login time, and introduced an admin-only `/api/admin/users` endpoint that lists active users with email, role, and last login.
-- Replaced the web `Users` placeholder with a real admin table showing active users, relative last-login formatting, 10-row pagination, green count styling, and a stale-login warning icon for users inactive for more than one year.
-- Added the same real `Users` admin flow to mobile with active-user loading, relative last-login formatting, 10-row pagination, green count styling, and a stale-login warning icon for users inactive for more than one year.
 - Fixed authenticated layout sizing in the web shell so admin and authenticated pages no longer create horizontal page scroll beside the fixed sidebar.
+
+### `Unreleased` - Align authenticated navigation, account emails, and branding across clients
+
 - Aligned frontend and mobile login, request-account, and forced-password-change flows so both clients now use the same messages, visual states, and first-login password-change behavior.
 - Added persisted mobile authentication with session restore, authenticated navigation, forced password change handling, logout support, and local storage for the current session.
 - Replaced the temporary authenticated web view with a real shell: fixed sidebar, active states, account actions, `Races` and `Best Efforts` navigation, and lightweight `Profile` and `Settings` placeholders.
