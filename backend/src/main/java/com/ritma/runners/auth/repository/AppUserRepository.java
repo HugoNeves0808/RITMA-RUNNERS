@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 
 import com.ritma.runners.auth.entity.AppUser;
 import com.ritma.runners.admin.pendingapproval.dto.PendingApprovalResponse;
+import com.ritma.runners.admin.userlist.dto.AdminUserListItemResponse;
 import com.ritma.runners.auth.dto.PendingAccountResponse;
 
 @Repository
@@ -115,6 +116,17 @@ public class AppUserRepository {
         );
     }
 
+    public void updateLastLogin(UUID userId) {
+        JdbcTemplate jdbcTemplate = jdbcTemplate();
+        jdbcTemplate.update("""
+                UPDATE users
+                SET last_login_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """,
+                userId
+        );
+    }
+
     public void updatePasswordAndStatus(UUID userId,
                                         String passwordHash,
                                         boolean forcePasswordChange,
@@ -168,6 +180,23 @@ public class AppUserRepository {
                         rs.getString("email"),
                         rs.getString("account_status"),
                         rs.getObject("created_at", OffsetDateTime.class)
+                )
+        );
+    }
+
+    public List<AdminUserListItemResponse> findActiveUsersForAdminList() {
+        JdbcTemplate jdbcTemplate = jdbcTemplate();
+        return jdbcTemplate.query("""
+                SELECT id, email, role::text AS role, last_login_at
+                FROM users
+                WHERE account_status::text = 'ACTIVE'
+                ORDER BY lower(email) ASC
+                """,
+                (rs, rowNum) -> new AdminUserListItemResponse(
+                        rs.getObject("id", UUID.class),
+                        rs.getString("email"),
+                        rs.getString("role"),
+                        rs.getObject("last_login_at", OffsetDateTime.class)
                 )
         );
     }

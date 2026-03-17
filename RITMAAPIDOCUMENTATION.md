@@ -75,7 +75,7 @@ These are not backend API endpoints, but they are relevant to the current user f
 - `/admin-area/ritma-overview`
   Admin-only web placeholder for the RITMA overview area.
 - `/admin-area/user-list`
-  Admin-only web placeholder for the future user list area.
+  Admin-only web area for reviewing the active user list.
 - `/admin-area/pending-approvals`
   Admin-only web area for reviewing pending account approvals.
 - `/admin/account-requests`
@@ -86,8 +86,8 @@ Authenticated client shell status:
 - web now uses a fixed left sidebar with admin-aware menu rendering, an `Admin Area` dropdown group for admins, `Races`, `Best Efforts`, account actions, and active route highlighting
 - mobile now uses a fixed top bar, fixed bottom navigation, and a fullscreen menu page opened from the hamburger button, including the same admin-only dropdown group and account actions near the end of the menu
 - `Admin Area` is currently a grouped navigation label in both clients, not a standalone page or backend endpoint
-- web `Pending Approvals` now shows the real pending-user list with actions, while the remaining admin overview and user-list sections are still placeholders
-- mobile `Pending Approvals` now also shows the real pending-user list with actions, while the remaining admin overview and user-list sections are still placeholders
+- web `Pending Approvals` and `Users` now show real admin data with actions and pagination, while the admin overview section is still a placeholder
+- mobile `Pending Approvals` and `Users` now also show real admin data with actions and pagination, while the admin overview section is still a placeholder
 
 ## System
 
@@ -392,6 +392,55 @@ Current client usage:
 - mobile `Pending Approvals` currently consumes the same stable `/api/admin/account-requests` endpoint and applies the same relative-time formatting
 - both clients paginate the rendered list locally with a maximum of 10 pending users per page
 
+### `GET /api/admin/users`
+
+Lists active users for the admin user-list area.
+
+This endpoint:
+
+- returns users whose `account_status` is `ACTIVE`
+- includes the user's email
+- includes the user's role
+- includes `lastLoginAt`
+- returns `lastLoginAt = null` for users who have never logged in after this tracking field was introduced
+
+Backend note:
+
+- successful `POST /api/auth/login` now updates `last_login_at` for the authenticated user
+
+Postman:
+
+- Method: `GET`
+- URL: `{{baseUrl}}/api/admin/users`
+- Auth: `Bearer Token`
+- Token: admin token
+
+Expected response example:
+
+```json
+[
+  {
+    "id": "uuid",
+    "email": "admin@ritma.com",
+    "role": "ADMIN",
+    "lastLoginAt": "2026-03-17T17:20:00Z"
+  },
+  {
+    "id": "uuid",
+    "email": "user@ritma.com",
+    "role": "USER",
+    "lastLoginAt": null
+  }
+]
+```
+
+Current client usage:
+
+- web `Users` consumes `/api/admin/users` and formats `lastLoginAt` into relative labels such as `2 days ago`
+- mobile `Users` consumes `/api/admin/users` and applies the same relative-time formatting
+- both clients paginate the rendered list locally with a maximum of 10 active users per page
+- both clients show a warning indicator when the last login is older than one year
+
 ### `POST /api/admin/account-requests/{userId}/approve`
 
 Legacy-compatible endpoint for the temporary admin page.
@@ -462,8 +511,9 @@ Expected response:
 6. login with the approved user credentials received by email
 7. `GET /api/auth/me`
 8. `POST /api/auth/change-password`
-9. `GET /api/admin/system-health`
-10. `GET /api/db-check`
+9. `GET /api/admin/users`
+10. `GET /api/admin/system-health`
+11. `GET /api/db-check`
 
 ## Notes
 
@@ -472,5 +522,6 @@ Expected response:
 - Temporary credentials are only sent on admin approval.
 - Request-account submissions also trigger an internal notification email to the configured RITMA mailbox.
 - Forced password change is part of the first-login security flow.
+- `last_login_at` is now updated on successful login and is used by the admin `Users` screens in both clients.
 - `/api/races` is still a technical preview endpoint and should later be restricted by authenticated user context.
 - The login and account-request frontend now use more user-friendly validation and error messages than the raw HTTP responses.

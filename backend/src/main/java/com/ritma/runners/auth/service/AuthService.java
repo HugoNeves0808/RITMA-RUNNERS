@@ -69,6 +69,8 @@ public class AuthService {
             throw new BadCredentialsException("Invalid email or password");
         }
 
+        appUserRepository.updateLastLogin(user.id());
+
         String token = jwtService.generateToken(
                 user.id(),
                 user.email(),

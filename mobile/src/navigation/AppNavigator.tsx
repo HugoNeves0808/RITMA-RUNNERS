@@ -108,7 +108,7 @@ export function AppNavigator() {
           onLogout={handleLogout}
         >
           {currentRoute === routes.adminRitmaOverview ? <AdminRitmaOverviewScreen /> : null}
-          {currentRoute === routes.adminUserList ? <AdminUserListScreen /> : null}
+          {currentRoute === routes.adminUserList ? <AdminUserListScreen token={authSession.token} /> : null}
           {currentRoute === routes.adminPendingApprovals ? <AdminPendingApprovalsScreen token={authSession.token} /> : null}
           {currentRoute === routes.bestEfforts ? <BestEffortsScreen /> : null}
           {currentRoute === routes.profile ? <ProfileScreen /> : null}

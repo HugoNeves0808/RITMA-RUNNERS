@@ -436,13 +436,13 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 11,
-    backgroundColor: 'rgba(255, 244, 229, 0.95)',
+    backgroundColor: colors.primaryButton,
   },
   pageButtonDisabled: {
     backgroundColor: 'rgba(240, 242, 245, 0.9)',
   },
   pageButtonText: {
-    color: colors.textPrimary,
+    color: colors.primaryButtonText,
     fontSize: 14,
     fontWeight: '700',
     textAlign: 'center',
