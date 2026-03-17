@@ -6,6 +6,9 @@ import { changePassword, getCurrentUser } from '../features/auth/services/authSe
 import { clearAuthSession, loadAuthSession, saveAuthSession } from '../features/auth/services/authStorage'
 import type { AuthSession } from '../features/auth/types/auth'
 import { routes, type MobileRoute } from '../constants/routes'
+import { AdminPendingApprovalsScreen } from '../screens/AdminPendingApprovalsScreen/AdminPendingApprovalsScreen'
+import { AdminRitmaOverviewScreen } from '../screens/AdminRitmaOverviewScreen/AdminRitmaOverviewScreen'
+import { AdminUserListScreen } from '../screens/AdminUserListScreen/AdminUserListScreen'
 import { BestEffortsScreen } from '../screens/BestEffortsScreen/BestEffortsScreen'
 import { FutureGoalsScreen } from '../screens/FutureGoalsScreen/FutureGoalsScreen'
 import { HomeScreen } from '../screens/HomeScreen/HomeScreen'
@@ -104,6 +107,9 @@ export function AppNavigator() {
           onNavigate={setCurrentRoute}
           onLogout={handleLogout}
         >
+          {currentRoute === routes.adminRitmaOverview ? <AdminRitmaOverviewScreen /> : null}
+          {currentRoute === routes.adminUserList ? <AdminUserListScreen /> : null}
+          {currentRoute === routes.adminPendingApprovals ? <AdminPendingApprovalsScreen /> : null}
           {currentRoute === routes.bestEfforts ? <BestEffortsScreen /> : null}
           {currentRoute === routes.profile ? <ProfileScreen /> : null}
           {currentRoute === routes.settings ? <SettingsScreen /> : null}

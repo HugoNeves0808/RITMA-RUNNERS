@@ -1,6 +1,7 @@
 import { Image, PanResponder, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useMemo, useState } from 'react'
 import { FontAwesome6 } from '@expo/vector-icons'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { FeatureRow } from '../../components/FeatureRow'
 import { colors } from '../../theme/colors'
 
@@ -11,6 +12,7 @@ type FutureGoalsScreenProps = {
 type TabKey = 'whatIsRitma' | 'futurePlans'
 
 export function FutureGoalsScreen({ onBack }: FutureGoalsScreenProps) {
+  const insets = useSafeAreaInsets()
   const [activeTab, setActiveTab] = useState<TabKey>('whatIsRitma')
   const panResponder = useMemo(
     () =>
@@ -25,14 +27,15 @@ export function FutureGoalsScreen({ onBack }: FutureGoalsScreenProps) {
       }),
     [onBack],
   )
+  const headerOffset = insets.top + 18
 
   return (
     <View style={styles.page} {...panResponder.panHandlers}>
-      <Pressable style={styles.backButton} onPress={onBack}>
+      <Pressable style={[styles.backButton, { top: insets.top + 18 }]} onPress={onBack}>
         <FontAwesome6 name="chevron-left" size={18} color={colors.primaryButtonText} />
       </Pressable>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingTop: headerOffset }]}>
         <View style={styles.logoWrap}>
           <Image
             source={require('../../../assets/images/ritma-logo.png')}
@@ -157,20 +160,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   content: {
-    paddingTop: 0,
     paddingHorizontal: 24,
     paddingBottom: 28,
     gap: 18,
   },
   logoWrap: {
-    alignItems: 'flex-end',
-    justifyContent: 'flex-end',
-    marginRight: -24,
-    marginBottom: 0,
+    minHeight: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
   },
   logo: {
-    width: 190,
-    height: 72,
+    width: 176,
+    height: 48,
   },
   tabRow: {
     flexDirection: 'row',

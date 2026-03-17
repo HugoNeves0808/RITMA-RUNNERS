@@ -1,5 +1,5 @@
 import { FontAwesome6 } from '@expo/vector-icons'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { routes, type MobileRoute } from '../constants/routes'
@@ -31,6 +31,18 @@ export function AuthenticatedShell({
 }: AuthenticatedShellProps) {
   const insets = useSafeAreaInsets()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(false)
+  const isAdmin = user.role === 'ADMIN'
+  const isInAdminArea =
+    currentRoute === routes.adminRitmaOverview
+    || currentRoute === routes.adminUserList
+    || currentRoute === routes.adminPendingApprovals
+
+  useEffect(() => {
+    if (isInAdminArea) {
+      setIsAdminMenuOpen(true)
+    }
+  }, [isInAdminArea])
 
   const mainItems = useMemo<MenuItem[]>(
     () => [
@@ -48,6 +60,13 @@ export function AuthenticatedShell({
         isActive: currentRoute === routes.bestEfforts,
         onPress: () => onNavigate(routes.bestEfforts),
       },
+    ],
+    [currentRoute, onNavigate],
+  )
+
+  const bottomItems = useMemo<MenuItem[]>(
+    () => [
+      ...mainItems,
       {
         key: 'profile',
         label: 'Profile',
@@ -56,12 +75,18 @@ export function AuthenticatedShell({
         onPress: () => onNavigate(routes.profile),
       },
     ],
-    [currentRoute, onNavigate],
+    [currentRoute, mainItems, onNavigate],
   )
 
-  const drawerItems = useMemo<MenuItem[]>(
+  const accountItems = useMemo<MenuItem[]>(
     () => [
-      ...mainItems,
+      {
+        key: 'profile',
+        label: 'Profile',
+        icon: 'user',
+        isActive: currentRoute === routes.profile,
+        onPress: () => onNavigate(routes.profile),
+      },
       {
         key: 'settings',
         label: 'Settings',
@@ -77,10 +102,35 @@ export function AuthenticatedShell({
         onPress: onLogout,
       },
     ],
-    [currentRoute, mainItems, onLogout, onNavigate],
+    [currentRoute, onLogout, onNavigate],
   )
 
-  const bottomItems = mainItems
+  const adminSubItems = useMemo<MenuItem[]>(
+    () => [
+      {
+        key: 'admin-ritma-overview',
+        label: 'RITMA Overview',
+        icon: 'map',
+        isActive: currentRoute === routes.adminRitmaOverview,
+        onPress: () => onNavigate(routes.adminRitmaOverview),
+      },
+      {
+        key: 'admin-user-list',
+        label: 'User List',
+        icon: 'users',
+        isActive: currentRoute === routes.adminUserList,
+        onPress: () => onNavigate(routes.adminUserList),
+      },
+      {
+        key: 'admin-pending-approvals',
+        label: 'Pending Approvals',
+        icon: 'hourglass-half',
+        isActive: currentRoute === routes.adminPendingApprovals,
+        onPress: () => onNavigate(routes.adminPendingApprovals),
+      },
+    ],
+    [currentRoute, onNavigate],
+  )
 
   const handleItemPress = (item: MenuItem) => {
     setIsMenuOpen(false)
@@ -145,7 +195,7 @@ export function AuthenticatedShell({
               <FontAwesome6
                 name={item.icon}
                 size={21}
-                color={item.isActive ? colors.warning : colors.textSecondary}
+                color={colors.warning}
               />
             </View>
             <Text style={[styles.bottomLabel, item.isActive ? styles.bottomLabelActive : null]}>
@@ -168,7 +218,7 @@ export function AuthenticatedShell({
           <ScrollView contentContainerStyle={styles.menuPageContent}>
             <Pressable
               style={styles.drawerLogoWrap}
-              onPress={() => handleItemPress(drawerItems[0])}
+              onPress={() => handleItemPress(mainItems[0])}
             >
               <Image
                 source={require('../../assets/images/ritma-logo.png')}
@@ -177,8 +227,55 @@ export function AuthenticatedShell({
               />
             </Pressable>
 
-            <View style={styles.menuSection}>
-              {drawerItems.map((item) => (
+            {isAdmin ? (
+              <View style={styles.accountSection}>
+                <Pressable
+                  style={[styles.menuItem, isInAdminArea ? styles.menuItemActive : null]}
+                  onPress={() => setIsAdminMenuOpen((currentValue) => !currentValue)}
+                >
+                  <FontAwesome6
+                    name="shield-halved"
+                    size={18}
+                    color={colors.warning}
+                  />
+                  <Text style={[styles.menuLabel, isInAdminArea ? styles.menuLabelActive : null]}>
+                    Admin Area
+                  </Text>
+
+                  <View style={styles.adminToggle}>
+                    <FontAwesome6
+                      name={isAdminMenuOpen ? 'angle-down' : 'angle-right'}
+                      size={16}
+                      color={colors.textSecondary}
+                    />
+                  </View>
+                </Pressable>
+
+                {isAdminMenuOpen ? (
+                  <View style={styles.adminSubnav}>
+                    {adminSubItems.map((item) => (
+                      <Pressable
+                        key={item.key}
+                        style={[styles.adminSubItem, item.isActive ? styles.adminSubItemActive : null]}
+                        onPress={() => handleItemPress(item)}
+                      >
+                        <FontAwesome6
+                          name={item.icon}
+                          size={16}
+                          color={colors.warning}
+                        />
+                        <Text style={[styles.menuLabel, item.isActive ? styles.menuLabelActive : null]}>
+                          {item.label}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
+
+            <View style={styles.accountSection}>
+              {mainItems.map((item) => (
                 <Pressable
                   key={item.key}
                   style={[styles.menuItem, item.isActive ? styles.menuItemActive : null]}
@@ -187,7 +284,26 @@ export function AuthenticatedShell({
                   <FontAwesome6
                     name={item.icon}
                     size={18}
-                    color={item.isActive ? colors.textPrimary : colors.textSecondary}
+                    color={colors.warning}
+                  />
+                  <Text style={[styles.menuLabel, item.isActive ? styles.menuLabelActive : null]}>
+                    {item.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <View style={styles.accountSection}>
+              {accountItems.map((item) => (
+                <Pressable
+                  key={item.key}
+                  style={[styles.menuItem, item.isActive ? styles.menuItemActive : null]}
+                  onPress={() => handleItemPress(item)}
+                >
+                  <FontAwesome6
+                    name={item.icon}
+                    size={18}
+                    color={colors.warning}
                   />
                   <Text style={[styles.menuLabel, item.isActive ? styles.menuLabelActive : null]}>
                     {item.label}
@@ -324,6 +440,31 @@ const styles = StyleSheet.create({
   },
   menuSection: {
     gap: 10,
+  },
+  accountSection: {
+    gap: 10,
+    paddingTop: 18,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(16, 24, 40, 0.08)',
+  },
+  adminToggle: {
+    marginLeft: 'auto',
+    padding: 4,
+  },
+  adminSubnav: {
+    gap: 8,
+    paddingLeft: 14,
+  },
+  adminSubItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: 16,
+  },
+  adminSubItemActive: {
+    backgroundColor: 'rgba(255, 244, 229, 0.95)',
   },
   menuItem: {
     flexDirection: 'row',

@@ -71,14 +71,21 @@ These are not backend API endpoints, but they are relevant to the current user f
   Authenticated web section reserved for settings.
 - `/future-goals`
   Public product/roadmap page linked from the login screen.
+- `/admin-area/ritma-overview`
+  Admin-only web placeholder for the RITMA overview area.
+- `/admin-area/user-list`
+  Admin-only web placeholder for the future user list area.
+- `/admin-area/pending-approvals`
+  Admin-only web placeholder for the future pending approvals area.
 - `/admin/account-requests`
   Temporary admin frontend page used to review pending accounts.
 
 Authenticated client shell status:
 
-- web now uses a fixed left sidebar with `Races`, `Best Efforts`, account actions, and active route highlighting
-- mobile now uses a fixed top bar, fixed bottom navigation, and a fullscreen menu page opened from the hamburger button
-- both clients currently keep `Races`, `Best Efforts`, `Profile`, and `Settings` as lightweight placeholders while the navigation structure is being established
+- web now uses a fixed left sidebar with admin-aware menu rendering, an `Admin Area` dropdown group for admins, `Races`, `Best Efforts`, account actions, and active route highlighting
+- mobile now uses a fixed top bar, fixed bottom navigation, and a fullscreen menu page opened from the hamburger button, including the same admin-only dropdown group
+- `Admin Area` is currently a grouped navigation label in both clients, not a standalone page or backend endpoint
+- both clients currently keep `Races`, `Best Efforts`, `Profile`, `Settings`, `RITMA Overview`, `User List`, and `Pending Approvals` as lightweight placeholders while the navigation structure is being established
 
 ## System
 

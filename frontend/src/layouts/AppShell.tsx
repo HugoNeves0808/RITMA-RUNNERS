@@ -1,12 +1,19 @@
 import {
+  faAngleDown,
+  faAngleRight,
   faFlagCheckered,
   faGear,
+  faHourglassHalf,
+  faMap,
   faRankingStar,
   faRightFromBracket,
+  faShieldHalved,
   faUser,
+  faUsers,
 } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { Button, Layout } from 'antd'
+import { useEffect, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../features/auth'
 import { ROUTES } from '../constants/routes'
@@ -16,11 +23,22 @@ const { Content } = Layout
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const location = useLocation()
-  const { isAuthenticated, logout, user } = useAuth()
+  const { isAuthenticated, isAdmin, logout, user } = useAuth()
+  const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(false)
   const isLoginPage = location.pathname === ROUTES.login
   const isPublicPage = location.pathname === ROUTES.login || location.pathname === ROUTES.futureGoals
   const isFutureGoalsPage = location.pathname === ROUTES.futureGoals
   const isAuthenticatedArea = isAuthenticated && !isPublicPage
+  const isInAdminArea =
+    location.pathname === ROUTES.adminRitmaOverview
+    || location.pathname === ROUTES.adminUserList
+    || location.pathname === ROUTES.adminPendingApprovals
+
+  useEffect(() => {
+    if (isInAdminArea) {
+      setIsAdminMenuOpen(true)
+    }
+  }, [isInAdminArea])
 
   const mainNavigationItems = [
     {
@@ -56,6 +74,27 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     },
   ]
 
+  const adminNavigationItems = [
+    {
+      key: 'admin-ritma-overview',
+      label: 'RITMA Overview',
+      to: ROUTES.adminRitmaOverview,
+      isActive: location.pathname === ROUTES.adminRitmaOverview,
+    },
+    {
+      key: 'admin-user-list',
+      label: 'User List',
+      to: ROUTES.adminUserList,
+      isActive: location.pathname === ROUTES.adminUserList,
+    },
+    {
+      key: 'admin-pending-approvals',
+      label: 'Pending Approvals',
+      to: ROUTES.adminPendingApprovals,
+      isActive: location.pathname === ROUTES.adminPendingApprovals,
+    },
+  ]
+
   if (isAuthenticatedArea) {
     return (
       <Layout className={`${styles.appShell} ${styles.authShell}`}>
@@ -65,6 +104,47 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </NavLink>
 
           <nav className={styles.navSection} aria-label="Main navigation">
+            {isAdmin ? (
+              <div className={styles.adminSection}>
+                <button
+                  type="button"
+                  className={isInAdminArea ? `${styles.navItem} ${styles.navItemActive}` : styles.navItem}
+                  onClick={() => setIsAdminMenuOpen((currentValue) => !currentValue)}
+                >
+                  <FontAwesomeIcon icon={faShieldHalved} className={styles.navIcon} />
+                  <span>Admin Area</span>
+                  <span className={styles.adminToggle} aria-expanded={isAdminMenuOpen}>
+                    <span>Open admin menu</span>
+                    <FontAwesomeIcon icon={isAdminMenuOpen ? faAngleDown : faAngleRight} className={styles.adminToggleIcon} />
+                  </span>
+                </button>
+
+                {isAdminMenuOpen ? (
+                  <div className={styles.adminSubnav}>
+                    {adminNavigationItems.map((item) => (
+                      <NavLink
+                        key={item.key}
+                        to={item.to}
+                        className={item.isActive ? `${styles.adminSubItem} ${styles.adminSubItemActive}` : styles.adminSubItem}
+                      >
+                        <FontAwesomeIcon
+                          icon={
+                            item.key === 'admin-ritma-overview'
+                              ? faMap
+                              : item.key === 'admin-user-list'
+                                ? faUsers
+                                : faHourglassHalf
+                          }
+                          className={styles.adminSubIcon}
+                        />
+                        <span>{item.label}</span>
+                      </NavLink>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
             {mainNavigationItems.map((item) => (
               <NavLink
                 key={item.key}

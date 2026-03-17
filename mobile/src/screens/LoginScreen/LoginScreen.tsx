@@ -198,6 +198,7 @@ const styles = StyleSheet.create({
   },
   logoRow: {
     alignItems: 'center',
+    marginTop: 34,
     marginBottom: 28,
   },
   logo: {
