@@ -21,6 +21,37 @@ export async function fetchPendingApprovals(token: string) {
   } satisfies PendingApproval))
 }
 
+export async function fetchPendingApprovalsWithFilters(
+  token: string,
+  search?: string,
+  olderThanThreeDays?: boolean,
+) {
+  const searchParams = new URLSearchParams()
+
+  if (search?.trim()) {
+    searchParams.set('search', search.trim())
+  }
+
+  if (olderThanThreeDays) {
+    searchParams.set('olderThanThreeDays', 'true')
+  }
+
+  const query = searchParams.toString()
+  const rows = await apiRequest<PendingAccountApiResponse[]>(
+    `/api/admin/account-requests${query ? `?${query}` : ''}`,
+    {
+      token,
+    },
+  )
+
+  return rows.map((row) => ({
+    id: row.id,
+    email: row.email,
+    accountStatus: row.accountStatus,
+    requestedAt: row.createdAt,
+  } satisfies PendingApproval))
+}
+
 export function approvePendingApproval(userId: string, token: string) {
   return apiRequest<void>(`/api/admin/account-requests/${userId}/approve`, {
     method: 'POST',

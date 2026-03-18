@@ -59,9 +59,9 @@ class PendingApprovalAdminServiceTest {
                 "PENDING",
                 OffsetDateTime.parse("2026-03-17T10:15:30Z")
         ));
-        when(appUserRepository.findPendingApprovals()).thenReturn(expected);
+        when(appUserRepository.findPendingApprovals("pending", true)).thenReturn(expected);
 
-        List<PendingApprovalResponse> result = pendingApprovalAdminService.listPendingApprovals();
+        List<PendingApprovalResponse> result = pendingApprovalAdminService.listPendingApprovals("pending", true);
 
         assertEquals(expected, result);
     }

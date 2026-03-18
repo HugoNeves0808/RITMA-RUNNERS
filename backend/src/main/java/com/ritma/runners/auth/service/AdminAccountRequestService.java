@@ -18,8 +18,8 @@ public class AdminAccountRequestService {
         this.pendingApprovalAdminService = pendingApprovalAdminService;
     }
 
-    public List<PendingAccountResponse> listPendingAccounts() {
-        return pendingApprovalAdminService.listPendingApprovals().stream()
+    public List<PendingAccountResponse> listPendingAccounts(String search, boolean olderThanThreeDays) {
+        return pendingApprovalAdminService.listPendingApprovals(search, olderThanThreeDays).stream()
                 .map(this::toPendingAccountResponse)
                 .toList();
     }

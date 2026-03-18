@@ -1,7 +1,7 @@
-import { faTriangleExclamation } from '@fortawesome/free-solid-svg-icons'
+import { faRotateLeft, faTriangleExclamation } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { useEffect, useState } from 'react'
-import { Alert, Card, Space, Spin, Table, Typography } from 'antd'
+import { useDeferredValue, useEffect, useState } from 'react'
+import { Alert, Button, Card, Checkbox, Input, Space, Spin, Table, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useAuth } from '../../features/auth'
 import { fetchAdminUsers, type AdminUserListItem } from '../../features/admin'
@@ -75,6 +75,18 @@ export function UserListPage() {
   const [users, setUsers] = useState<AdminUserListItem[]>([])
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [onlyAdmins, setOnlyAdmins] = useState(false)
+  const [staleOnly, setStaleOnly] = useState(false)
+  const deferredSearch = useDeferredValue(search)
+  const normalizedSearch = search.trim().toLowerCase()
+  const filteredUsers = users.filter((user) => {
+    const matchesEmail = !normalizedSearch || user.email.toLowerCase().includes(normalizedSearch)
+    const matchesRole = !onlyAdmins || user.role === 'ADMIN'
+    const matchesStale = !staleOnly || isLastLoginStale(user.lastLoginAt)
+
+    return matchesEmail && matchesRole && matchesStale
+  })
 
   useEffect(() => {
     const loadUsers = async () => {
@@ -86,7 +98,11 @@ export function UserListPage() {
 
       try {
         setIsLoading(true)
-        const data = await fetchAdminUsers(token)
+        const data = await fetchAdminUsers(token, {
+          search: deferredSearch,
+          onlyAdmins,
+          staleOnly,
+        })
         setUsers(data)
         setError(null)
       } catch (loadError) {
@@ -97,7 +113,7 @@ export function UserListPage() {
     }
 
     void loadUsers()
-  }, [token])
+  }, [token, deferredSearch, onlyAdmins, staleOnly])
 
   const columns: ColumnsType<AdminUserListItem> = [
     {
@@ -143,7 +159,7 @@ export function UserListPage() {
 
         <div className={styles.summaryBadge}>
           <span className={styles.summaryLabel}>Users</span>
-          <span className={styles.summaryValue}>{users.length}</span>
+          <span className={styles.summaryValue}>{filteredUsers.length}</span>
         </div>
       </div>
 
@@ -158,19 +174,68 @@ export function UserListPage() {
         <Alert type="error" showIcon message="Could not load users" description={error} />
       ) : null}
 
-      {!isLoading ? (
-        <Table
-          rowKey="id"
-          columns={columns}
-          dataSource={users}
-          pagination={{
-            pageSize: 10,
-            showSizeChanger: false,
-            hideOnSinglePage: true,
-          }}
-          locale={{ emptyText: 'No active users.' }}
-        />
-      ) : null}
+      <div className={styles.contentLayout}>
+        <div className={styles.tableSection}>
+          {!isLoading ? (
+            <Table
+              rowKey="id"
+              columns={columns}
+              dataSource={filteredUsers}
+              pagination={{
+                pageSize: 10,
+                showSizeChanger: false,
+                hideOnSinglePage: true,
+              }}
+              locale={{ emptyText: 'No active users.' }}
+            />
+          ) : null}
+        </div>
+
+        <aside className={styles.sidebar}>
+          <div className={styles.sidebarCard}>
+            <div className={styles.sidebarHeader}>
+              <h3 className={styles.sidebarTitle}>Filters</h3>
+              <Button
+                type="text"
+                className={styles.clearButton}
+                icon={<FontAwesomeIcon icon={faRotateLeft} />}
+                title="Clear filters"
+                aria-label="Clear filters"
+                onClick={() => {
+                  setSearch('')
+                  setOnlyAdmins(false)
+                  setStaleOnly(false)
+                }}
+              />
+            </div>
+
+            <div className={styles.sidebarDivider} />
+
+            <label className={styles.filterField}>
+              <span className={styles.filterLabel}>Email</span>
+              <Input
+                allowClear
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search by email"
+                className={styles.searchInput}
+              />
+            </label>
+
+            <label className={styles.checkboxField}>
+              <Checkbox checked={onlyAdmins} onChange={(event) => setOnlyAdmins(event.target.checked)}>
+                Only admins
+              </Checkbox>
+            </label>
+
+            <label className={styles.checkboxField}>
+              <Checkbox checked={staleOnly} onChange={(event) => setStaleOnly(event.target.checked)}>
+                Inactive for over 1 year
+              </Checkbox>
+            </label>
+          </div>
+        </aside>
+      </div>
     </Card>
   )
 }

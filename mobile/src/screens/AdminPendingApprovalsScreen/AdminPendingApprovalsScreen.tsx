@@ -1,3 +1,4 @@
+import { FontAwesome6 } from '@expo/vector-icons'
 import { useEffect, useMemo, useState } from 'react'
 import {
   ActivityIndicator,
@@ -7,11 +8,12 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native'
 import {
   approvePendingApproval,
-  fetchPendingApprovals,
+  fetchPendingApprovalsWithFilters,
   rejectPendingApproval,
 } from '../../features/admin/pendingApprovals/services/pendingApprovalService'
 import type { PendingApproval } from '../../features/admin/pendingApprovals/types/pendingApproval'
@@ -63,6 +65,19 @@ function formatRequestedAt(value: string) {
   return `${years} year${years === 1 ? '' : 's'} ago`
 }
 
+function isRequestStale(value: string) {
+  const requestedAt = new Date(value)
+  const now = new Date()
+  const diffMs = now.getTime() - requestedAt.getTime()
+  const threeDaysMs = 3 * 24 * 60 * 60 * 1000
+
+  if (Number.isNaN(requestedAt.getTime()) || diffMs < 0) {
+    return false
+  }
+
+  return diffMs >= threeDaysMs
+}
+
 export function AdminPendingApprovalsScreen({ token }: AdminPendingApprovalsScreenProps) {
   const [approvals, setApprovals] = useState<PendingApproval[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -70,23 +85,40 @@ export function AdminPendingApprovalsScreen({ token }: AdminPendingApprovalsScre
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [processingId, setProcessingId] = useState<string | null>(null)
   const [page, setPage] = useState(1)
+  const [search, setSearch] = useState('')
+  const [olderThanThreeDays, setOlderThanThreeDays] = useState(false)
+  const [areFiltersVisible, setAreFiltersVisible] = useState(false)
 
-  const totalPages = Math.max(1, Math.ceil(approvals.length / PAGE_SIZE))
+  const normalizedSearch = search.trim().toLowerCase()
+  const filteredApprovals = useMemo(
+    () =>
+      approvals.filter((approval) => {
+        const matchesEmail = !normalizedSearch || approval.email.toLowerCase().includes(normalizedSearch)
+        const matchesAge = !olderThanThreeDays || isRequestStale(approval.requestedAt)
+
+        return matchesEmail && matchesAge
+      }),
+    [approvals, normalizedSearch, olderThanThreeDays],
+  )
+
+  const totalPages = Math.max(1, Math.ceil(filteredApprovals.length / PAGE_SIZE))
   const currentPage = Math.min(page, totalPages)
   const visibleApprovals = useMemo(
-    () => approvals.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
-    [approvals, currentPage],
+    () => filteredApprovals.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [filteredApprovals, currentPage],
   )
 
   useEffect(() => {
-    setPage((currentValue) => Math.min(currentValue, Math.max(1, Math.ceil(approvals.length / PAGE_SIZE))))
-  }, [approvals.length])
+    setPage(
+      (currentValue) => Math.min(currentValue, Math.max(1, Math.ceil(filteredApprovals.length / PAGE_SIZE))),
+    )
+  }, [filteredApprovals.length])
 
   useEffect(() => {
     async function loadPendingApprovals() {
       try {
         setIsLoading(true)
-        const data = await fetchPendingApprovals(token)
+        const data = await fetchPendingApprovalsWithFilters(token, search, olderThanThreeDays)
         setApprovals(data)
         setError(null)
       } catch (loadError) {
@@ -97,12 +129,12 @@ export function AdminPendingApprovalsScreen({ token }: AdminPendingApprovalsScre
     }
 
     void loadPendingApprovals()
-  }, [token])
+  }, [token, search, olderThanThreeDays])
 
   const refreshPendingApprovals = async () => {
     try {
       setIsRefreshing(true)
-      const data = await fetchPendingApprovals(token)
+      const data = await fetchPendingApprovalsWithFilters(token, search, olderThanThreeDays)
       setApprovals(data)
       setError(null)
     } catch (refreshError) {
@@ -162,9 +194,67 @@ export function AdminPendingApprovalsScreen({ token }: AdminPendingApprovalsScre
           <Text style={styles.title}>Pending Approvals</Text>
           <View style={styles.summaryBadge}>
             <Text style={styles.summaryLabel}>PENDING</Text>
-            <Text style={styles.summaryValue}>{approvals.length}</Text>
+            <Text style={styles.summaryValue}>{filteredApprovals.length}</Text>
           </View>
         </View>
+
+        <View style={styles.toolbar}>
+          <Pressable
+            style={[styles.filterToggle, areFiltersVisible ? styles.filterToggleActive : null]}
+            onPress={() => setAreFiltersVisible((currentValue) => !currentValue)}
+          >
+            <FontAwesome6
+              name="sliders"
+              size={14}
+              color={areFiltersVisible ? colors.primaryButtonText : colors.textSecondary}
+            />
+            <Text style={[styles.filterToggleText, areFiltersVisible ? styles.filterToggleTextActive : null]}>
+              Filters
+            </Text>
+          </Pressable>
+
+          {(search.trim() || olderThanThreeDays) ? (
+            <Pressable
+              style={styles.clearFiltersButton}
+              onPress={() => {
+                setSearch('')
+                setOlderThanThreeDays(false)
+              }}
+            >
+              <FontAwesome6 name="rotate-left" size={14} color={colors.textSecondary} />
+              <Text style={styles.clearFiltersText}>Reset</Text>
+            </Pressable>
+          ) : null}
+        </View>
+
+        {areFiltersVisible ? (
+          <View style={styles.filtersPanel}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Email</Text>
+              <TextInput
+                value={search}
+                onChangeText={setSearch}
+                placeholder="Search by email"
+                placeholderTextColor="#98a2b3"
+                autoCapitalize="none"
+                keyboardType="email-address"
+                style={styles.input}
+              />
+            </View>
+
+            <Pressable
+              style={styles.checkboxRow}
+              onPress={() => setOlderThanThreeDays((currentValue) => !currentValue)}
+            >
+              <FontAwesome6
+                name={olderThanThreeDays ? 'square-check' : 'square'}
+                size={18}
+                color={olderThanThreeDays ? colors.warning : '#98a2b3'}
+              />
+              <Text style={styles.checkboxText}>Waiting for over 3 days</Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         {isLoading ? (
           <View style={styles.loadingRow}>
@@ -200,7 +290,12 @@ export function AdminPendingApprovalsScreen({ token }: AdminPendingApprovalsScre
 
                   <View style={styles.metaRow}>
                     <Text style={styles.metaLabel}>Requested at</Text>
-                    <Text style={styles.metaValue}>{formatRequestedAt(approval.requestedAt)}</Text>
+                    <View style={styles.requestedAtRow}>
+                      <Text style={styles.metaValue}>{formatRequestedAt(approval.requestedAt)}</Text>
+                      {isRequestStale(approval.requestedAt) ? (
+                        <FontAwesome6 name="triangle-exclamation" size={14} color="#d97706" />
+                      ) : null}
+                    </View>
                   </View>
 
                   <View style={styles.actions}>
@@ -226,7 +321,7 @@ export function AdminPendingApprovalsScreen({ token }: AdminPendingApprovalsScre
           </View>
         ) : null}
 
-        {!isLoading && approvals.length > PAGE_SIZE ? (
+        {!isLoading && filteredApprovals.length > PAGE_SIZE ? (
           <View style={styles.pagination}>
             <Pressable
               style={[styles.pageButton, currentPage === 1 ? styles.pageButtonDisabled : null]}
@@ -319,6 +414,85 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 30,
   },
+  toolbar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 16,
+  },
+  filterToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 24, 40, 0.08)',
+    borderRadius: 999,
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  filterToggleActive: {
+    backgroundColor: colors.primaryButton,
+    borderColor: colors.primaryButton,
+  },
+  filterToggleText: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  filterToggleTextActive: {
+    color: colors.primaryButtonText,
+  },
+  clearFiltersButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  clearFiltersText: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  filtersPanel: {
+    gap: 14,
+    marginBottom: 18,
+    borderRadius: 20,
+    backgroundColor: '#ffffff',
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 24, 40, 0.08)',
+  },
+  inputGroup: {
+    gap: 8,
+  },
+  inputLabel: {
+    color: colors.textPrimary,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.inputBorder,
+    borderRadius: 14,
+    backgroundColor: '#ffffff',
+    color: colors.textPrimary,
+    fontSize: 15,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  checkboxText: {
+    flex: 1,
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 20,
+  },
   loadingRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -385,6 +559,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     lineHeight: 21,
+  },
+  requestedAtRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   actions: {
     flexDirection: 'row',

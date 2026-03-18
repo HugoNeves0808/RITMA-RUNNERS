@@ -3,6 +3,7 @@ package com.ritma.runners.auth.repository;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.List;
+import java.util.ArrayList;
 import java.time.OffsetDateTime;
 
 import org.springframework.beans.factory.ObjectProvider;
@@ -156,8 +157,8 @@ public class AppUserRepository {
         );
     }
 
-    public List<PendingAccountResponse> findPendingAccounts() {
-        return findPendingApprovals().stream()
+    public List<PendingAccountResponse> findPendingAccounts(String search, boolean olderThanThreeDays) {
+        return findPendingApprovals(search, olderThanThreeDays).stream()
                 .map(approval -> new PendingAccountResponse(
                         approval.id(),
                         approval.email(),
@@ -167,37 +168,93 @@ public class AppUserRepository {
                 .toList();
     }
 
-    public List<PendingApprovalResponse> findPendingApprovals() {
+    public List<PendingApprovalResponse> findPendingApprovals(String search, boolean olderThanThreeDays) {
         JdbcTemplate jdbcTemplate = jdbcTemplate();
-        return jdbcTemplate.query("""
+        List<Object> params = new ArrayList<>();
+        StringBuilder sql = new StringBuilder("""
                 SELECT id, email, account_status::text AS account_status, created_at
                 FROM users
                 WHERE account_status::text = 'PENDING'
+                """);
+
+        if (hasText(search)) {
+            sql.append("""
+                    
+                    AND lower(email) LIKE ?
+                    """);
+            params.add(toEmailSearchValue(search));
+        }
+
+        if (olderThanThreeDays) {
+            sql.append("""
+                    
+                    AND created_at <= CURRENT_TIMESTAMP - INTERVAL '3 days'
+                    """);
+        }
+
+        sql.append("""
+                
                 ORDER BY created_at ASC
-                """,
+                """);
+
+        return jdbcTemplate.query(sql.toString(),
                 (rs, rowNum) -> new PendingApprovalResponse(
                         rs.getObject("id", UUID.class),
                         rs.getString("email"),
                         rs.getString("account_status"),
                         rs.getObject("created_at", OffsetDateTime.class)
-                )
+                ),
+                params.toArray()
         );
     }
 
-    public List<AdminUserListItemResponse> findActiveUsersForAdminList() {
+    public List<AdminUserListItemResponse> findActiveUsersForAdminList(String search,
+                                                                       boolean onlyAdmins,
+                                                                       boolean staleOnly) {
         JdbcTemplate jdbcTemplate = jdbcTemplate();
-        return jdbcTemplate.query("""
+        List<Object> params = new ArrayList<>();
+        StringBuilder sql = new StringBuilder("""
                 SELECT id, email, role::text AS role, last_login_at
                 FROM users
                 WHERE account_status::text = 'ACTIVE'
+                """);
+
+        if (hasText(search)) {
+            sql.append("""
+                    
+                    AND lower(email) LIKE ?
+                    """);
+            params.add(toEmailSearchValue(search));
+        }
+
+        if (onlyAdmins) {
+            sql.append("""
+                    
+                    AND role::text = 'ADMIN'
+                    """);
+        }
+
+        if (staleOnly) {
+            sql.append("""
+                    
+                    AND last_login_at IS NOT NULL
+                    AND last_login_at <= CURRENT_TIMESTAMP - INTERVAL '1 year'
+                    """);
+        }
+
+        sql.append("""
+                
                 ORDER BY lower(email) ASC
-                """,
+                """);
+
+        return jdbcTemplate.query(sql.toString(),
                 (rs, rowNum) -> new AdminUserListItemResponse(
                         rs.getObject("id", UUID.class),
                         rs.getString("email"),
                         rs.getString("role"),
                         rs.getObject("last_login_at", OffsetDateTime.class)
-                )
+                ),
+                params.toArray()
         );
     }
 
@@ -223,5 +280,13 @@ public class AppUserRepository {
                 rs.getBoolean("force_password_change"),
                 rs.getString("account_status")
         );
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    private String toEmailSearchValue(String value) {
+        return "%" + value.trim().toLowerCase() + "%";
     }
 }

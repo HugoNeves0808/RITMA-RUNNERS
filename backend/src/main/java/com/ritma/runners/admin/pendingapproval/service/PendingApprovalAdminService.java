@@ -37,8 +37,8 @@ public class PendingApprovalAdminService {
         this.accountMailService = accountMailService;
     }
 
-    public List<PendingApprovalResponse> listPendingApprovals() {
-        return appUserRepository.findPendingApprovals();
+    public List<PendingApprovalResponse> listPendingApprovals(String search, boolean olderThanThreeDays) {
+        return appUserRepository.findPendingApprovals(search, olderThanThreeDays);
     }
 
     @Transactional

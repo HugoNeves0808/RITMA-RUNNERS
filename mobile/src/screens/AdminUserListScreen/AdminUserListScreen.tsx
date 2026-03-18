@@ -7,6 +7,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native'
 import { fetchAdminUsers } from '../../features/admin/userList/services/adminUserListService'
@@ -86,23 +87,44 @@ export function AdminUserListScreen({ token }: AdminUserListScreenProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [page, setPage] = useState(1)
+  const [search, setSearch] = useState('')
+  const [onlyAdmins, setOnlyAdmins] = useState(false)
+  const [staleOnly, setStaleOnly] = useState(false)
+  const [areFiltersVisible, setAreFiltersVisible] = useState(false)
 
-  const totalPages = Math.max(1, Math.ceil(users.length / PAGE_SIZE))
+  const normalizedSearch = search.trim().toLowerCase()
+  const filteredUsers = useMemo(
+    () =>
+      users.filter((user) => {
+        const matchesEmail = !normalizedSearch || user.email.toLowerCase().includes(normalizedSearch)
+        const matchesRole = !onlyAdmins || user.role === 'ADMIN'
+        const matchesStale = !staleOnly || isLastLoginStale(user.lastLoginAt)
+
+        return matchesEmail && matchesRole && matchesStale
+      }),
+    [users, normalizedSearch, onlyAdmins, staleOnly],
+  )
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE))
   const currentPage = Math.min(page, totalPages)
   const visibleUsers = useMemo(
-    () => users.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
-    [users, currentPage],
+    () => filteredUsers.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [filteredUsers, currentPage],
   )
 
   useEffect(() => {
-    setPage((currentValue) => Math.min(currentValue, Math.max(1, Math.ceil(users.length / PAGE_SIZE))))
-  }, [users.length])
+    setPage((currentValue) => Math.min(currentValue, Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE))))
+  }, [filteredUsers.length])
 
   useEffect(() => {
     async function loadUsers() {
       try {
         setIsLoading(true)
-        const data = await fetchAdminUsers(token)
+        const data = await fetchAdminUsers(token, {
+          search,
+          onlyAdmins,
+          staleOnly,
+        })
         setUsers(data)
         setError(null)
       } catch (loadError) {
@@ -113,12 +135,16 @@ export function AdminUserListScreen({ token }: AdminUserListScreenProps) {
     }
 
     void loadUsers()
-  }, [token])
+  }, [token, search, onlyAdmins, staleOnly])
 
   const refreshUsers = async () => {
     try {
       setIsRefreshing(true)
-      const data = await fetchAdminUsers(token)
+      const data = await fetchAdminUsers(token, {
+        search,
+        onlyAdmins,
+        staleOnly,
+      })
       setUsers(data)
       setError(null)
     } catch (refreshError) {
@@ -139,9 +165,74 @@ export function AdminUserListScreen({ token }: AdminUserListScreenProps) {
           <Text style={styles.title}>Users</Text>
           <View style={styles.summaryBadge}>
             <Text style={styles.summaryLabel}>USERS</Text>
-            <Text style={styles.summaryValue}>{users.length}</Text>
+            <Text style={styles.summaryValue}>{filteredUsers.length}</Text>
           </View>
         </View>
+
+        <View style={styles.toolbar}>
+          <Pressable
+            style={[styles.filterToggle, areFiltersVisible ? styles.filterToggleActive : null]}
+            onPress={() => setAreFiltersVisible((currentValue) => !currentValue)}
+          >
+            <FontAwesome6
+              name="sliders"
+              size={14}
+              color={areFiltersVisible ? colors.primaryButtonText : colors.textSecondary}
+            />
+            <Text style={[styles.filterToggleText, areFiltersVisible ? styles.filterToggleTextActive : null]}>
+              Filters
+            </Text>
+          </Pressable>
+
+          {(search.trim() || onlyAdmins || staleOnly) ? (
+            <Pressable
+              style={styles.clearFiltersButton}
+              onPress={() => {
+                setSearch('')
+                setOnlyAdmins(false)
+                setStaleOnly(false)
+              }}
+            >
+              <FontAwesome6 name="rotate-left" size={14} color={colors.textSecondary} />
+              <Text style={styles.clearFiltersText}>Reset</Text>
+            </Pressable>
+          ) : null}
+        </View>
+
+        {areFiltersVisible ? (
+          <View style={styles.filtersPanel}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Email</Text>
+              <TextInput
+                value={search}
+                onChangeText={setSearch}
+                placeholder="Search by email"
+                placeholderTextColor="#98a2b3"
+                autoCapitalize="none"
+                keyboardType="email-address"
+                style={styles.input}
+              />
+            </View>
+
+            <Pressable style={styles.checkboxRow} onPress={() => setOnlyAdmins((currentValue) => !currentValue)}>
+              <FontAwesome6
+                name={onlyAdmins ? 'square-check' : 'square'}
+                size={18}
+                color={onlyAdmins ? colors.teal : '#98a2b3'}
+              />
+              <Text style={styles.checkboxText}>Only admins</Text>
+            </Pressable>
+
+            <Pressable style={styles.checkboxRow} onPress={() => setStaleOnly((currentValue) => !currentValue)}>
+              <FontAwesome6
+                name={staleOnly ? 'square-check' : 'square'}
+                size={18}
+                color={staleOnly ? colors.teal : '#98a2b3'}
+              />
+              <Text style={styles.checkboxText}>Inactive for over 1 year</Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         {isLoading ? (
           <View style={styles.loadingRow}>
@@ -195,7 +286,7 @@ export function AdminUserListScreen({ token }: AdminUserListScreenProps) {
           </View>
         ) : null}
 
-        {!isLoading && users.length > PAGE_SIZE ? (
+        {!isLoading && filteredUsers.length > PAGE_SIZE ? (
           <View style={styles.pagination}>
             <Pressable
               style={[styles.pageButton, currentPage === 1 ? styles.pageButtonDisabled : null]}
@@ -287,6 +378,85 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     textAlign: 'center',
     lineHeight: 30,
+  },
+  toolbar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 16,
+  },
+  filterToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 24, 40, 0.08)',
+    borderRadius: 999,
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  filterToggleActive: {
+    backgroundColor: colors.primaryButton,
+    borderColor: colors.primaryButton,
+  },
+  filterToggleText: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  filterToggleTextActive: {
+    color: colors.primaryButtonText,
+  },
+  clearFiltersButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  clearFiltersText: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  filtersPanel: {
+    gap: 14,
+    marginBottom: 18,
+    borderRadius: 20,
+    backgroundColor: '#ffffff',
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 24, 40, 0.08)',
+  },
+  inputGroup: {
+    gap: 8,
+  },
+  inputLabel: {
+    color: colors.textPrimary,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.inputBorder,
+    borderRadius: 14,
+    backgroundColor: '#ffffff',
+    color: colors.textPrimary,
+    fontSize: 15,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  checkboxText: {
+    flex: 1,
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 20,
   },
   loadingRow: {
     flexDirection: 'row',

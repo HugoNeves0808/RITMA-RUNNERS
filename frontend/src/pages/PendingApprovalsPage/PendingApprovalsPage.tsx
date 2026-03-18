@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react'
-import { Alert, Button, Card, Popconfirm, Space, Spin, Table, Typography } from 'antd'
+import { faRotateLeft, faTriangleExclamation } from '@fortawesome/free-solid-svg-icons'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { useDeferredValue, useEffect, useState } from 'react'
+import { Alert, Button, Card, Checkbox, Input, Popconfirm, Space, Spin, Table, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useAuth } from '../../features/auth'
 import {
@@ -52,12 +54,39 @@ function formatRequestedAt(value: string) {
   return `${years} year${years === 1 ? '' : 's'} ago`
 }
 
+function isRequestStale(value: string) {
+  const requestedAt = new Date(value)
+  const now = new Date()
+  const diffMs = now.getTime() - requestedAt.getTime()
+  const threeDaysMs = 3 * 24 * 60 * 60 * 1000
+
+  if (Number.isNaN(requestedAt.getTime()) || diffMs < 0) {
+    return false
+  }
+
+  return diffMs >= threeDaysMs
+}
+
 export function PendingApprovalsPage() {
   const { token } = useAuth()
   const [approvals, setApprovals] = useState<PendingApproval[]>([])
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [processingId, setProcessingId] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const [olderThanThreeDays, setOlderThanThreeDays] = useState(false)
+  const deferredSearch = useDeferredValue(search)
+  const normalizedSearch = search.trim().toLowerCase()
+  const filteredApprovals = approvals.filter((approval) => {
+    const matchesEmail = !normalizedSearch || approval.email.toLowerCase().includes(normalizedSearch)
+    const requestedAt = new Date(approval.requestedAt)
+    const threeDaysMs = 3 * 24 * 60 * 60 * 1000
+    const matchesAge =
+      !olderThanThreeDays ||
+      (!Number.isNaN(requestedAt.getTime()) && Date.now() - requestedAt.getTime() >= threeDaysMs)
+
+    return matchesEmail && matchesAge
+  })
 
   useEffect(() => {
     const loadPendingApprovals = async () => {
@@ -69,7 +98,7 @@ export function PendingApprovalsPage() {
 
       try {
         setIsLoading(true)
-        const data = await fetchPendingApprovals(token)
+        const data = await fetchPendingApprovals(token, deferredSearch, olderThanThreeDays)
         setApprovals(data)
         setError(null)
       } catch (loadError) {
@@ -80,7 +109,7 @@ export function PendingApprovalsPage() {
     }
 
     void loadPendingApprovals()
-  }, [token])
+  }, [token, deferredSearch, olderThanThreeDays])
 
   const handleApprove = async (userId: string) => {
     if (!token) {
@@ -128,7 +157,18 @@ export function PendingApprovalsPage() {
       title: 'Requested at',
       dataIndex: 'requestedAt',
       key: 'requestedAt',
-      render: (value: string) => formatRequestedAt(value),
+      render: (value: string) => (
+        <span className={styles.requestedAtCell}>
+          {formatRequestedAt(value)}
+          {isRequestStale(value) ? (
+            <FontAwesomeIcon
+              icon={faTriangleExclamation}
+              className={styles.requestWarning}
+              title="Request is older than 3 days"
+            />
+          ) : null}
+        </span>
+      ),
     },
     {
       title: 'Actions',
@@ -168,7 +208,7 @@ export function PendingApprovalsPage() {
 
         <div className={styles.summaryBadge}>
           <span className={styles.summaryLabel}>Pending</span>
-          <span className={styles.summaryValue}>{approvals.length}</span>
+          <span className={styles.summaryValue}>{filteredApprovals.length}</span>
         </div>
       </div>
 
@@ -183,19 +223,64 @@ export function PendingApprovalsPage() {
         <Alert type="error" showIcon message="Could not process pending approvals" description={error} />
       ) : null}
 
-      {!isLoading ? (
-        <Table
-          rowKey="id"
-          columns={columns}
-          dataSource={approvals}
-          pagination={{
-            pageSize: 10,
-            showSizeChanger: false,
-            hideOnSinglePage: true,
-          }}
-          locale={{ emptyText: 'No pending approvals.' }}
-        />
-      ) : null}
+      <div className={styles.contentLayout}>
+        <div className={styles.tableSection}>
+          {!isLoading ? (
+            <Table
+              rowKey="id"
+              columns={columns}
+              dataSource={filteredApprovals}
+              pagination={{
+                pageSize: 10,
+                showSizeChanger: false,
+                hideOnSinglePage: true,
+              }}
+              locale={{ emptyText: 'No pending approvals.' }}
+            />
+          ) : null}
+        </div>
+
+        <aside className={styles.sidebar}>
+          <div className={styles.sidebarCard}>
+            <div className={styles.sidebarHeader}>
+              <h3 className={styles.sidebarTitle}>Filters</h3>
+              <Button
+                type="text"
+                className={styles.clearButton}
+                icon={<FontAwesomeIcon icon={faRotateLeft} />}
+                title="Clear filters"
+                aria-label="Clear filters"
+                onClick={() => {
+                  setSearch('')
+                  setOlderThanThreeDays(false)
+                }}
+              />
+            </div>
+
+            <div className={styles.sidebarDivider} />
+
+            <label className={styles.filterField}>
+              <span className={styles.filterLabel}>Email</span>
+              <Input
+                allowClear
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search by email"
+                className={styles.searchInput}
+              />
+            </label>
+
+            <label className={styles.checkboxField}>
+              <Checkbox
+                checked={olderThanThreeDays}
+                onChange={(event) => setOlderThanThreeDays(event.target.checked)}
+              >
+                Waiting for over 3 days
+              </Checkbox>
+            </label>
+          </div>
+        </aside>
+      </div>
     </Card>
   )
 }

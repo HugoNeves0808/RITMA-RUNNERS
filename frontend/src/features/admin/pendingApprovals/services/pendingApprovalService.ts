@@ -7,8 +7,20 @@ type PendingAccountApiResponse = {
   createdAt: string
 }
 
-export function fetchPendingApprovals(token: string) {
-  return apiGet<PendingAccountApiResponse[]>('/api/admin/account-requests', token)
+export function fetchPendingApprovals(token: string, search?: string, olderThanThreeDays?: boolean) {
+  const searchParams = new URLSearchParams()
+
+  if (search?.trim()) {
+    searchParams.set('search', search.trim())
+  }
+
+  if (olderThanThreeDays) {
+    searchParams.set('olderThanThreeDays', 'true')
+  }
+
+  const query = searchParams.toString()
+
+  return apiGet<PendingAccountApiResponse[]>(`/api/admin/account-requests${query ? `?${query}` : ''}`, token)
     .then((rows) =>
       rows.map((row) => ({
         id: row.id,

@@ -16,7 +16,7 @@ public class AdminUserListService {
         this.appUserRepository = appUserRepository;
     }
 
-    public List<AdminUserListItemResponse> listUsers() {
-        return appUserRepository.findActiveUsersForAdminList();
+    public List<AdminUserListItemResponse> listUsers(String search, boolean onlyAdmins, boolean staleOnly) {
+        return appUserRepository.findActiveUsersForAdminList(search, onlyAdmins, staleOnly);
     }
 }

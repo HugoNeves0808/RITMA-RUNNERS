@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -30,8 +31,9 @@ public class PendingApprovalAdminController {
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public List<PendingApprovalResponse> listPendingApprovals() {
-        return pendingApprovalAdminService.listPendingApprovals();
+    public List<PendingApprovalResponse> listPendingApprovals(@RequestParam(required = false) String search,
+                                                              @RequestParam(defaultValue = "false") boolean olderThanThreeDays) {
+        return pendingApprovalAdminService.listPendingApprovals(search, olderThanThreeDays);
     }
 
     @PostMapping("/{userId}/approve")

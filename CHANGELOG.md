@@ -11,6 +11,12 @@ This file keeps a short, slightly more detailed record of what was done in each 
 
 ## Entries
 
+### `Unreleased` - Add admin filters across web and mobile
+
+- Added backend filtering support for admin `Users` and `Pending Approvals`, including email search, `onlyAdmins`, stale-login filtering for users inactive for more than one year, and pending-request filtering for requests older than three days.
+- Reworked the web `Users` and `Pending Approvals` pages to use a dedicated filters panel, backend-backed filter params, local fallback filtering, and warning indicators for stale rows directly in the tables.
+- Added mobile-first filter panels to the `Users` and `Pending Approvals` screens with compact toggles, reset actions, search by email, role and stale-login filters for users, and older-than-three-days filtering for pending approvals.
+
 ### `c1d89e5` - Add admin users list across backend web and mobile
 
 - Added backend tracking for `last_login_at`, updated successful login to persist the latest login time, and introduced an admin-only `/api/admin/users` endpoint that lists active users with email, role, and last login.

@@ -361,12 +361,25 @@ Legacy-compatible endpoint for the temporary admin page.
 
 Lists all users currently waiting for admin approval.
 
+Optional query params:
+
+- `search`
+  filters pending rows by partial email match, case-insensitive
+- `olderThanThreeDays`
+  when `true`, only returns pending requests whose `created_at` is older than 3 days
+
 Postman:
 
 - Method: `GET`
 - URL: `{{baseUrl}}/api/admin/pending-approvals`
 - Auth: `Bearer Token`
 - Token: admin token
+
+Example with filters:
+
+```text
+{{baseUrl}}/api/admin/pending-approvals?search=pending11&olderThanThreeDays=true
+```
 
 Expected response example for `/api/admin/pending-approvals`:
 
@@ -385,12 +398,14 @@ Compatibility note:
 
 - `GET /api/admin/account-requests` returns the same pending rows using the existing `createdAt` field name
 - `GET /api/admin/pending-approvals` returns the same pending rows using the page-oriented `requestedAt` field name
+- both `GET /api/admin/account-requests` and `GET /api/admin/pending-approvals` now accept the same `search` and `olderThanThreeDays` filters
 
 Current client usage:
 
-- web `Pending Approvals` currently consumes the stable `/api/admin/account-requests` endpoint and formats `createdAt` into a relative time label such as `15h 4min ago`
-- mobile `Pending Approvals` currently consumes the same stable `/api/admin/account-requests` endpoint and applies the same relative-time formatting
+- web `Pending Approvals` currently consumes the stable `/api/admin/account-requests` endpoint, formats `createdAt` into a relative time label such as `15h 4min ago`, and exposes a filters panel with email search and an `older than 3 days` toggle
+- mobile `Pending Approvals` consumes the same stable `/api/admin/account-requests` endpoint, applies the same relative-time formatting, and exposes a compact filter panel with email search and an `older than 3 days` toggle
 - both clients paginate the rendered list locally with a maximum of 10 pending users per page
+- both clients show a warning indicator when the pending request is older than three days
 
 ### `GET /api/admin/users`
 
@@ -408,12 +423,27 @@ Backend note:
 
 - successful `POST /api/auth/login` now updates `last_login_at` for the authenticated user
 
+Optional query params:
+
+- `search`
+  filters active users by partial email match, case-insensitive
+- `onlyAdmins`
+  when `true`, only returns rows whose role is `ADMIN`
+- `staleOnly`
+  when `true`, only returns rows whose `last_login_at` is older than 1 year
+
 Postman:
 
 - Method: `GET`
 - URL: `{{baseUrl}}/api/admin/users`
 - Auth: `Bearer Token`
 - Token: admin token
+
+Example with filters:
+
+```text
+{{baseUrl}}/api/admin/users?search=admin&onlyAdmins=true&staleOnly=true
+```
 
 Expected response example:
 
@@ -436,8 +466,8 @@ Expected response example:
 
 Current client usage:
 
-- web `Users` consumes `/api/admin/users` and formats `lastLoginAt` into relative labels such as `2 days ago`
-- mobile `Users` consumes `/api/admin/users` and applies the same relative-time formatting
+- web `Users` consumes `/api/admin/users`, formats `lastLoginAt` into relative labels such as `2 days ago`, and exposes a filters panel with email search, `Only admins`, and `Inactive for over 1 year`
+- mobile `Users` consumes `/api/admin/users`, applies the same relative-time formatting, and exposes a compact filter panel with email search, `Only admins`, and `Inactive for over 1 year`
 - both clients paginate the rendered list locally with a maximum of 10 active users per page
 - both clients show a warning indicator when the last login is older than one year
 

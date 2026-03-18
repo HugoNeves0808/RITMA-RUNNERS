@@ -46,11 +46,11 @@ class AdminUserListServiceTest {
                         null
                 )
         );
-        when(appUserRepository.findActiveUsersForAdminList()).thenReturn(expected);
+        when(appUserRepository.findActiveUsersForAdminList("admin", true, true)).thenReturn(expected);
 
-        List<AdminUserListItemResponse> result = adminUserListService.listUsers();
+        List<AdminUserListItemResponse> result = adminUserListService.listUsers("admin", true, true);
 
         assertEquals(expected, result);
-        verify(appUserRepository).findActiveUsersForAdminList();
+        verify(appUserRepository).findActiveUsersForAdminList("admin", true, true);
     }
 }
