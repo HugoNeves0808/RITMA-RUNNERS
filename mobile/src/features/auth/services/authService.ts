@@ -35,3 +35,11 @@ export function changePassword(payload: ChangePasswordPayload, token: string) {
     body: payload,
   })
 }
+
+export function logoutRequest(token: string) {
+  return apiRequest<void>('/api/auth/logout', {
+    method: 'POST',
+    token,
+    body: {},
+  })
+}

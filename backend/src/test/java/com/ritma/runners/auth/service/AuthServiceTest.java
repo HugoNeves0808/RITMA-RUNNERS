@@ -71,9 +71,10 @@ class AuthServiceTest {
         when(jwtService.generateToken(eq(userId), eq("admin@ritma.com"), eq("ADMIN"), anyMap())).thenReturn("jwt-token");
         when(jwtService.getExpirationMinutes()).thenReturn(120L);
 
-        AuthResponse response = authService.login(new LoginRequest("admin@ritma.com", "pass1234"));
+        AuthResponse response = authService.login(new LoginRequest("admin@ritma.com", "pass1234"), "web");
 
         assertEquals("jwt-token", response.token());
         verify(appUserRepository).updateLastLogin(userId);
+        verify(appUserRepository).recordUserAccess(userId, "WEB");
     }
 }

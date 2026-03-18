@@ -2,7 +2,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native'
 import { useEffect, useState } from 'react'
 import { AuthenticatedShell } from '../components/AuthenticatedShell'
 import { ForcePasswordChangeModal } from '../features/auth/components/ForcePasswordChangeModal'
-import { changePassword, getCurrentUser } from '../features/auth/services/authService'
+import { changePassword, getCurrentUser, logoutRequest } from '../features/auth/services/authService'
 import { clearAuthSession, loadAuthSession, saveAuthSession } from '../features/auth/services/authStorage'
 import type { AuthSession } from '../features/auth/types/auth'
 import { routes, type MobileRoute } from '../constants/routes'
@@ -54,6 +54,14 @@ export function AppNavigator() {
   }
 
   const handleLogout = async () => {
+    if (authSession) {
+      try {
+        await logoutRequest(authSession.token)
+      } catch {
+        // Keep logout local even if the backend request fails.
+      }
+    }
+
     setAuthSession(null)
     setCurrentRoute(routes.login)
     await clearAuthSession()
@@ -107,7 +115,12 @@ export function AppNavigator() {
           onNavigate={setCurrentRoute}
           onLogout={handleLogout}
         >
-          {currentRoute === routes.adminRitmaOverview ? <AdminRitmaOverviewScreen /> : null}
+          {currentRoute === routes.adminRitmaOverview ? (
+            <AdminRitmaOverviewScreen
+              token={authSession.token}
+              onOpenPendingApprovals={() => setCurrentRoute(routes.adminPendingApprovals)}
+            />
+          ) : null}
           {currentRoute === routes.adminUserList ? <AdminUserListScreen token={authSession.token} /> : null}
           {currentRoute === routes.adminPendingApprovals ? <AdminPendingApprovalsScreen token={authSession.token} /> : null}
           {currentRoute === routes.bestEfforts ? <BestEffortsScreen /> : null}

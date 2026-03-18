@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.ritma.runners.auth.dto.PendingAccountResponse;
+import com.ritma.runners.auth.dto.JwtAuthenticatedUser;
 import com.ritma.runners.auth.service.AdminAccountRequestService;
 
 @RestController
@@ -39,14 +41,16 @@ public class AdminAccountRequestController {
     @PostMapping("/{userId}/approve")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasRole('ADMIN')")
-    public void approveAccount(@PathVariable UUID userId) {
-        adminAccountRequestService.approveAccount(userId);
+    public void approveAccount(@PathVariable UUID userId,
+                               @AuthenticationPrincipal JwtAuthenticatedUser user) {
+        adminAccountRequestService.approveAccount(userId, user);
     }
 
     @DeleteMapping("/{userId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasRole('ADMIN')")
-    public void rejectAccount(@PathVariable UUID userId) {
-        adminAccountRequestService.rejectAccount(userId);
+    public void rejectAccount(@PathVariable UUID userId,
+                              @AuthenticationPrincipal JwtAuthenticatedUser user) {
+        adminAccountRequestService.rejectAccount(userId, user);
     }
 }

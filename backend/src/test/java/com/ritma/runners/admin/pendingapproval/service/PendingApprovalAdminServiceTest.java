@@ -23,6 +23,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.ritma.runners.admin.pendingapproval.dto.PendingApprovalResponse;
+import com.ritma.runners.auth.dto.JwtAuthenticatedUser;
 import com.ritma.runners.auth.entity.AppUser;
 import com.ritma.runners.auth.repository.AppUserRepository;
 import com.ritma.runners.mail.service.AccountMailService;
@@ -40,6 +41,7 @@ class PendingApprovalAdminServiceTest {
     private AccountMailService accountMailService;
 
     private PendingApprovalAdminService pendingApprovalAdminService;
+    private JwtAuthenticatedUser adminUser;
 
     @BeforeEach
     void setUp() {
@@ -48,6 +50,7 @@ class PendingApprovalAdminServiceTest {
                 passwordEncoder,
                 accountMailService
         );
+        adminUser = new JwtAuthenticatedUser(UUID.randomUUID(), "admin@ritma.com", "ADMIN", false);
     }
 
     @Test
@@ -80,7 +83,7 @@ class PendingApprovalAdminServiceTest {
         when(appUserRepository.findById(userId)).thenReturn(Optional.of(user));
         when(passwordEncoder.encode(anyString())).thenReturn("encoded-password");
 
-        pendingApprovalAdminService.approvePendingApproval(userId);
+        pendingApprovalAdminService.approvePendingApproval(userId, adminUser);
 
         verify(accountMailService).sendTemporaryPassword(eq("pending@ritma.com"), anyString());
         verify(passwordEncoder).encode(anyString());
@@ -100,7 +103,7 @@ class PendingApprovalAdminServiceTest {
         );
         when(appUserRepository.findById(userId)).thenReturn(Optional.of(user));
 
-        pendingApprovalAdminService.rejectPendingApproval(userId);
+        pendingApprovalAdminService.rejectPendingApproval(userId, adminUser);
 
         verify(appUserRepository).deleteUser(userId);
     }
@@ -120,7 +123,7 @@ class PendingApprovalAdminServiceTest {
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> pendingApprovalAdminService.approvePendingApproval(userId)
+                () -> pendingApprovalAdminService.approvePendingApproval(userId, adminUser)
         );
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
@@ -135,7 +138,7 @@ class PendingApprovalAdminServiceTest {
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> pendingApprovalAdminService.rejectPendingApproval(userId)
+                () -> pendingApprovalAdminService.rejectPendingApproval(userId, adminUser)
         );
 
         assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());

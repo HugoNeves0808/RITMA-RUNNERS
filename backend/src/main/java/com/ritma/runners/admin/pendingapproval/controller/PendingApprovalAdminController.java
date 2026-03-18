@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.ritma.runners.admin.pendingapproval.dto.PendingApprovalResponse;
 import com.ritma.runners.admin.pendingapproval.service.PendingApprovalAdminService;
+import com.ritma.runners.auth.dto.JwtAuthenticatedUser;
 
 @RestController
 @RequestMapping("/api/admin/pending-approvals")
@@ -39,14 +41,16 @@ public class PendingApprovalAdminController {
     @PostMapping("/{userId}/approve")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasRole('ADMIN')")
-    public void approvePendingApproval(@PathVariable UUID userId) {
-        pendingApprovalAdminService.approvePendingApproval(userId);
+    public void approvePendingApproval(@PathVariable UUID userId,
+                                       @AuthenticationPrincipal JwtAuthenticatedUser user) {
+        pendingApprovalAdminService.approvePendingApproval(userId, user);
     }
 
     @DeleteMapping("/{userId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasRole('ADMIN')")
-    public void rejectPendingApproval(@PathVariable UUID userId) {
-        pendingApprovalAdminService.rejectPendingApproval(userId);
+    public void rejectPendingApproval(@PathVariable UUID userId,
+                                      @AuthenticationPrincipal JwtAuthenticatedUser user) {
+        pendingApprovalAdminService.rejectPendingApproval(userId, user);
     }
 }

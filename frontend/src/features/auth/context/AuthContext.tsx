@@ -1,5 +1,5 @@
 import { createContext, useEffect, useState } from 'react'
-import { changePassword, getCurrentUser, loginRequest } from '../services/authService'
+import { changePassword, getCurrentUser, loginRequest, logoutRequest } from '../services/authService'
 import { clearStoredToken, getStoredToken, setStoredToken } from '../../../utils/tokenStorage'
 import type { AuthenticatedUser, ChangePasswordPayload, LoginPayload } from '../types/auth'
 
@@ -20,6 +20,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(() => getStoredToken())
   const [user, setUser] = useState<AuthenticatedUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const handleUnauthorized = (event: Event) => {
+      const unauthorizedEvent = event as CustomEvent<{ token?: string }>
+      const activeToken = getStoredToken()
+      if (!unauthorizedEvent.detail?.token || unauthorizedEvent.detail.token !== activeToken) {
+        return
+      }
+
+      clearStoredToken()
+      setToken(null)
+      setUser(null)
+      setIsLoading(false)
+    }
+
+    window.addEventListener('ritma:unauthorized', handleUnauthorized)
+
+    return () => {
+      window.removeEventListener('ritma:unauthorized', handleUnauthorized)
+    }
+  }, [])
 
   useEffect(() => {
     const loadCurrentUser = async () => {
@@ -64,6 +85,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const logout = () => {
+    if (token) {
+      void logoutRequest(token).catch(() => undefined)
+    }
+
     clearStoredToken()
     setToken(null)
     setUser(null)

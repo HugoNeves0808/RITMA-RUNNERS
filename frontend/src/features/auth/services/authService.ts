@@ -23,3 +23,7 @@ export function requestAccount(payload: RequestAccountPayload) {
 export function changePassword(payload: ChangePasswordPayload, token: string) {
   return apiPostWithToken<void>('/api/auth/change-password', payload, token)
 }
+
+export function logoutRequest(token: string) {
+  return apiPostWithToken<void>('/api/auth/logout', {}, token)
+}

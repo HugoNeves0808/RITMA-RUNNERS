@@ -5,6 +5,7 @@ import { Alert, Button, Form, Input, Modal } from 'antd'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { ROUTES } from '../../../constants/routes'
+import { isApiError } from '../../../services/apiClient'
 import styles from './ForcePasswordChangeModal.module.css'
 
 type ChangePasswordFormValues = {
@@ -50,7 +51,7 @@ export function ForcePasswordChangeModal() {
       }
 
       if (submitError instanceof Error) {
-        if (submitError.message === 'Invalid user' || submitError.message === 'HTTP 401') {
+        if (submitError.message === 'Invalid user' || (isApiError(submitError) && submitError.status === 401)) {
           logout()
           navigate(ROUTES.login, { replace: true })
           return

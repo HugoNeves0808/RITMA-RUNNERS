@@ -73,7 +73,7 @@ These are not backend API endpoints, but they are relevant to the current user f
 - `/future-goals`
   Public product/roadmap page linked from the login screen.
 - `/admin-area/ritma-overview`
-  Admin-only web placeholder for the RITMA overview area.
+  Admin-only web overview dashboard with admin metrics and a pending-approvals preview.
 - `/admin-area/user-list`
   Admin-only web area for reviewing the active user list.
 - `/admin-area/pending-approvals`
@@ -87,7 +87,7 @@ Authenticated client shell status:
 - mobile now uses a fixed top bar, fixed bottom navigation, and a fullscreen menu page opened from the hamburger button, including the same admin-only dropdown group and account actions near the end of the menu
 - `Admin Area` is currently a grouped navigation label in both clients, not a standalone page or backend endpoint
 - web `Pending Approvals` and `Users` now show real admin data with actions and pagination, while the admin overview section is still a placeholder
-- mobile `Pending Approvals` and `Users` now also show real admin data with actions and pagination, while the admin overview section is still a placeholder
+- mobile `Pending Approvals`, `Users`, and `Overview` now also show real admin data with actions and pagination
 
 ## System
 
@@ -287,6 +287,32 @@ Expected response:
 
 - `204 No Content`
 
+### `POST /api/auth/logout`
+
+Ends the current authenticated session from the client point of view.
+
+Current note:
+
+- the backend keeps this endpoint available so web and mobile can close the session consistently
+- it does not currently persist any extra logout activity or audit history
+
+Postman:
+
+- Method: `POST`
+- URL: `{{baseUrl}}/api/auth/logout`
+- Header: `Content-Type: application/json`
+- Auth: `Bearer Token`
+- Token: `{{token}}`
+- Body:
+
+```json
+{}
+```
+
+Expected response:
+
+- `204 No Content`
+
 ## Race
 
 ### `GET /api/races`
@@ -352,6 +378,52 @@ Expected response example:
   }
 }
 ```
+
+Current note:
+
+- this endpoint still exists as a standalone technical admin endpoint
+- it is no longer embedded in the `Overview` dashboard
+
+### `GET /api/admin/overview`
+
+Returns the current admin overview metrics used by the web and mobile admin dashboards.
+
+This endpoint currently returns:
+
+- total active users
+- total active admins
+- total active non-admin users
+- distinct website accesses for the current day
+- active users today
+- weekly average of distinct website accesses
+- new registrations created in the last 7 days
+
+Postman:
+
+- Method: `GET`
+- URL: `{{baseUrl}}/api/admin/overview`
+- Auth: `Bearer Token`
+- Token: admin token
+
+Expected response example:
+
+```json
+{
+  "totalUsers": 16,
+  "totalAdmins": 2,
+  "totalNonAdmins": 14,
+  "dailyWebsiteAccesses": 1,
+  "activeUsersToday": 1,
+  "weeklyAverageWebsiteAccesses": 0.14285714285714285,
+  "newRegistrationsLast7Days": 16
+}
+```
+
+Current client usage:
+
+- web `Overview` consumes `/api/admin/overview`, highlights `Pending approvals`, shows the top-level admin metrics, and renders a preview of up to 5 pending approvals with inline approve/reject actions
+- mobile `Overview` consumes `/api/admin/overview`, shows the same top metrics, and renders a compact preview of up to 5 pending approvals with inline approve/reject actions
+- both clients refresh the dashboard after approve/reject actions so the counters and pending preview stay aligned
 
 ### `GET /api/admin/account-requests`
 
@@ -553,5 +625,6 @@ Expected response:
 - Request-account submissions also trigger an internal notification email to the configured RITMA mailbox.
 - Forced password change is part of the first-login security flow.
 - `last_login_at` is now updated on successful login and is used by the admin `Users` screens in both clients.
+- the admin `Overview` is now focused on metrics and pending approvals only; it no longer includes embedded system diagnostics or recent-activity tracking
 - `/api/races` is still a technical preview endpoint and should later be restricted by authenticated user context.
 - The login and account-request frontend now use more user-friendly validation and error messages than the raw HTTP responses.

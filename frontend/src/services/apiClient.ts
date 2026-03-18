@@ -2,13 +2,34 @@ export const API_BASE_URL = 'http://localhost:8081'
 
 export const buildApiUrl = (path: string) => `${API_BASE_URL}${path}`
 
+export class ApiError extends Error {
+  status: number
+
+  constructor(status: number, message: string) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+  }
+}
+
+export function isApiError(error: unknown): error is ApiError {
+  return error instanceof ApiError
+}
+
+function notifyUnauthorized(token: string) {
+  window.dispatchEvent(new CustomEvent('ritma:unauthorized', { detail: { token } }))
+}
+
 export async function apiGet<T>(path: string, token?: string): Promise<T> {
   const response = await fetch(buildApiUrl(path), {
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    headers: {
+      'X-Client-Platform': 'web',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
   })
 
   if (!response.ok) {
-    throw await buildApiError(response)
+    throw await buildApiError(response, token)
   }
 
   return response.json() as Promise<T>
@@ -45,13 +66,14 @@ async function apiRequest<T>(
     method: options.method,
     headers: {
       'Content-Type': 'application/json',
+      'X-Client-Platform': 'web',
       ...(options.token ? { Authorization: `Bearer ${options.token}` } : {}),
     },
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
   })
 
   if (!response.ok) {
-    throw await buildApiError(response)
+    throw await buildApiError(response, options.token)
   }
 
   if (response.status === 204) {
@@ -67,15 +89,39 @@ async function apiRequest<T>(
   return response.json() as Promise<T>
 }
 
-async function buildApiError(response: Response) {
+async function buildApiError(response: Response, token?: string) {
+  if (token && response.status === 401) {
+    notifyUnauthorized(token)
+  }
+
   try {
     const payload = await response.json() as { message?: string }
     if (payload.message) {
-      return new Error(payload.message)
+      return new ApiError(response.status, payload.message)
     }
   } catch {
     // Ignore parsing errors and fall back to HTTP status text.
   }
 
-  return new Error(`HTTP ${response.status}`)
+  return new ApiError(response.status, getFriendlyErrorMessage(response.status))
+}
+
+function getFriendlyErrorMessage(status: number) {
+  if (status === 401) {
+    return 'Your session has expired. Please sign in again.'
+  }
+
+  if (status === 403) {
+    return 'You do not have permission to access this area.'
+  }
+
+  if (status === 404) {
+    return 'We could not find what you were looking for.'
+  }
+
+  if (status >= 500) {
+    return 'Something went wrong on our side. Please try again.'
+  }
+
+  return 'Unable to complete the request right now. Please try again.'
 }

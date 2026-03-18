@@ -6,6 +6,7 @@ import { Alert, Button, Card, Checkbox, Form, Input, Space, Typography } from 'a
 import { Link as RouterLink, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { ROUTES } from '../../constants/routes'
 import { RequestAccountModal, useAuth } from '../../features/auth'
+import { isApiError } from '../../services/apiClient'
 import styles from './LoginPage.module.css'
 
 const { Link, Paragraph, Title } = Typography
@@ -157,7 +158,7 @@ function getLoginErrorMessage(error: unknown) {
     return 'Unable to sign in right now. Please try again.'
   }
 
-  if (error.message === 'HTTP 401') {
+  if (isApiError(error) && error.status === 401) {
     return 'Invalid email or password.'
   }
 

@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -35,8 +36,9 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public AuthResponse login(@Valid @RequestBody LoginRequest request) {
-        return authService.login(request);
+    public AuthResponse login(@Valid @RequestBody LoginRequest request,
+                              @RequestHeader(value = "X-Client-Platform", required = false) String clientPlatform) {
+        return authService.login(request, clientPlatform);
     }
 
     @PostMapping("/request-account")
@@ -47,6 +49,12 @@ public class AuthController {
     @GetMapping("/me")
     public UserProfileResponse me(@AuthenticationPrincipal JwtAuthenticatedUser user) {
         return authService.me(user);
+    }
+
+    @PostMapping("/logout")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void logout(@AuthenticationPrincipal JwtAuthenticatedUser user) {
+        authService.logout(user);
     }
 
     @PostMapping("/change-password")

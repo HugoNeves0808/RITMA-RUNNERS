@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.ritma.runners.admin.pendingapproval.dto.PendingApprovalResponse;
+import com.ritma.runners.auth.dto.JwtAuthenticatedUser;
 import com.ritma.runners.auth.entity.AppUser;
 import com.ritma.runners.auth.repository.AppUserRepository;
 import com.ritma.runners.mail.service.AccountMailService;
@@ -42,7 +43,7 @@ public class PendingApprovalAdminService {
     }
 
     @Transactional
-    public void approvePendingApproval(UUID userId) {
+    public void approvePendingApproval(UUID userId, JwtAuthenticatedUser actor) {
         AppUser user = validatePendingAccount(userId);
         String temporaryPassword = generateTemporaryPassword();
 
@@ -56,7 +57,7 @@ public class PendingApprovalAdminService {
     }
 
     @Transactional
-    public void rejectPendingApproval(UUID userId) {
+    public void rejectPendingApproval(UUID userId, JwtAuthenticatedUser actor) {
         validatePendingAccount(userId);
         appUserRepository.deleteUser(userId);
     }

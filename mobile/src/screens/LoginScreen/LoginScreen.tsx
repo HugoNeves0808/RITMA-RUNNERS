@@ -7,6 +7,7 @@ import { colors } from '../../theme/colors'
 import { loginRequest } from '../../features/auth/services/authService'
 import { RequestAccountModal } from '../../features/auth/components/RequestAccountModal'
 import type { AuthSession } from '../../features/auth/types/auth'
+import { isApiError } from '../../services/apiClient'
 
 type LoginScreenProps = {
   onOpenFutureGoals: () => void
@@ -71,7 +72,7 @@ export function LoginScreen({ onOpenFutureGoals, onLoginSuccess }: LoginScreenPr
       })
     } catch (loginError) {
       const message =
-        loginError instanceof Error && loginError.message === 'HTTP 401'
+        isApiError(loginError) && loginError.status === 401
           ? 'Invalid email or password.'
           : loginError instanceof Error
             ? loginError.message

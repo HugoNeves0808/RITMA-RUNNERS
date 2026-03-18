@@ -38,6 +38,9 @@ public class AuthService {
     private static final String STRONG_PASSWORD_MESSAGE = "Choose a stronger password.";
     private static final String ACCOUNT_ACTIVE = "ACTIVE";
     private static final String ACCOUNT_PENDING = "PENDING";
+    private static final String PLATFORM_WEB = "WEB";
+    private static final String PLATFORM_MOBILE = "MOBILE";
+    private static final String PLATFORM_UNKNOWN = "UNKNOWN";
 
     private final AppUserRepository appUserRepository;
     private final PasswordEncoder passwordEncoder;
@@ -57,7 +60,7 @@ public class AuthService {
         this.accountMailService = accountMailService;
     }
 
-    public AuthResponse login(LoginRequest request) {
+    public AuthResponse login(LoginRequest request, String clientPlatform) {
         AppUser user = appUserRepository.findByEmail(request.email())
                 .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
 
@@ -70,6 +73,7 @@ public class AuthService {
         }
 
         appUserRepository.updateLastLogin(user.id());
+        appUserRepository.recordUserAccess(user.id(), normalizePlatform(clientPlatform));
 
         String token = jwtService.generateToken(
                 user.id(),
@@ -127,6 +131,10 @@ public class AuthService {
         return new RequestAccountResponse(REQUEST_ACCOUNT_SUCCESS_MESSAGE);
     }
 
+    public void logout(JwtAuthenticatedUser user) {
+        // Keep the endpoint available without persisting logout events.
+    }
+
     @Transactional
     public void changePassword(JwtAuthenticatedUser authenticatedUser, ChangePasswordRequest request) {
         AppUser user = appUserRepository.findById(authenticatedUser.id())
@@ -179,6 +187,23 @@ public class AuthService {
         boolean hasSpecial = password.chars().anyMatch(character -> !Character.isLetterOrDigit(character));
 
         return password.length() >= 8 && hasLowercase && hasUppercase && hasDigit && hasSpecial;
+    }
+
+    private String normalizePlatform(String clientPlatform) {
+        if (clientPlatform == null || clientPlatform.isBlank()) {
+            return PLATFORM_UNKNOWN;
+        }
+
+        String normalized = clientPlatform.trim().toUpperCase();
+        if (PLATFORM_WEB.equals(normalized)) {
+            return PLATFORM_WEB;
+        }
+
+        if (PLATFORM_MOBILE.equals(normalized)) {
+            return PLATFORM_MOBILE;
+        }
+
+        return PLATFORM_UNKNOWN;
     }
 
     private static final class SecureRandomHolder {

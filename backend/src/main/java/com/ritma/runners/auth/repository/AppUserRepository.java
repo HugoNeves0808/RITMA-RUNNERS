@@ -17,7 +17,6 @@ import com.ritma.runners.auth.dto.PendingAccountResponse;
 
 @Repository
 public class AppUserRepository {
-
     private final ObjectProvider<JdbcTemplate> jdbcTemplateProvider;
 
     public AppUserRepository(ObjectProvider<JdbcTemplate> jdbcTemplateProvider) {
@@ -125,6 +124,17 @@ public class AppUserRepository {
                 WHERE id = ?
                 """,
                 userId
+        );
+    }
+
+    public void recordUserAccess(UUID userId, String platform) {
+        JdbcTemplate jdbcTemplate = jdbcTemplate();
+        jdbcTemplate.update("""
+                INSERT INTO user_access_events (user_id, platform, accessed_at)
+                VALUES (?, ?, CURRENT_TIMESTAMP)
+                """,
+                userId,
+                platform
         );
     }
 
@@ -261,6 +271,97 @@ public class AppUserRepository {
     public void deleteUser(UUID userId) {
         JdbcTemplate jdbcTemplate = jdbcTemplate();
         jdbcTemplate.update("DELETE FROM users WHERE id = ?", userId);
+    }
+
+    public long countActiveUsers() {
+        JdbcTemplate jdbcTemplate = jdbcTemplate();
+        Long count = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM users
+                WHERE account_status::text = 'ACTIVE'
+                """, Long.class);
+        return count != null ? count : 0L;
+    }
+
+    public long countActiveAdmins() {
+        JdbcTemplate jdbcTemplate = jdbcTemplate();
+        Long count = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM users
+                WHERE account_status::text = 'ACTIVE'
+                  AND role::text = 'ADMIN'
+                """, Long.class);
+        return count != null ? count : 0L;
+    }
+
+    public long countActiveNonAdmins() {
+        JdbcTemplate jdbcTemplate = jdbcTemplate();
+        Long count = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM users
+                WHERE account_status::text = 'ACTIVE'
+                  AND role::text <> 'ADMIN'
+                """, Long.class);
+        return count != null ? count : 0L;
+    }
+
+    public long countDistinctDailyAccesses(String platform) {
+        JdbcTemplate jdbcTemplate = jdbcTemplate();
+        Long count = jdbcTemplate.queryForObject("""
+                SELECT COUNT(DISTINCT user_id)
+                FROM user_access_events
+                WHERE platform = ?
+                  AND accessed_at >= date_trunc('day', CURRENT_TIMESTAMP)
+                  AND accessed_at < date_trunc('day', CURRENT_TIMESTAMP) + INTERVAL '1 day'
+                """,
+                Long.class,
+                platform
+        );
+        return count != null ? count : 0L;
+    }
+
+    public double averageDistinctDailyAccesses(String platform, int days) {
+        JdbcTemplate jdbcTemplate = jdbcTemplate();
+        Double average = jdbcTemplate.queryForObject("""
+                WITH days AS (
+                    SELECT generate_series(
+                        current_date - (? - 1) * INTERVAL '1 day',
+                        current_date,
+                        INTERVAL '1 day'
+                    )::date AS day
+                ),
+                daily_accesses AS (
+                    SELECT
+                        d.day,
+                        COUNT(DISTINCT e.user_id) AS access_count
+                    FROM days d
+                    LEFT JOIN user_access_events e
+                        ON e.platform = ?
+                       AND e.accessed_at >= d.day::timestamp
+                       AND e.accessed_at < d.day::timestamp + INTERVAL '1 day'
+                    GROUP BY d.day
+                )
+                SELECT COALESCE(AVG(access_count), 0)
+                FROM daily_accesses
+                """,
+                Double.class,
+                days,
+                platform
+        );
+        return average != null ? average : 0D;
+    }
+
+    public long countNewRegistrationsLastDays(int days) {
+        JdbcTemplate jdbcTemplate = jdbcTemplate();
+        Long count = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM users
+                WHERE created_at >= CURRENT_TIMESTAMP - (? * INTERVAL '1 day')
+                """,
+                Long.class,
+                days
+        );
+        return count != null ? count : 0L;
     }
 
     private JdbcTemplate jdbcTemplate() {

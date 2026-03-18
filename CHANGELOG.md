@@ -11,6 +11,13 @@ This file keeps a short, slightly more detailed record of what was done in each 
 
 ## Entries
 
+### `Unreleased` - Refine admin overview and simplify admin dashboard scope
+
+- Reworked the admin `Overview` in the web client into a real dashboard with key account metrics, a pending-approvals preview, inline approve/reject actions, a compact icon-only refresh control, and direct navigation to the full pending-approvals page.
+- Brought the mobile admin `Overview` in line with the web version by showing the same top metrics, a pending-approvals preview, inline approve/reject actions, and a shortcut into the full mobile pending-approvals screen.
+- Simplified the admin dashboard scope by removing the temporary `Recent activity` and `System status` sections from the overview experience in both clients and by cleaning up the temporary backend activity-tracking table with a follow-up database migration.
+- Kept the authenticated logout flow available in both clients through a backend `POST /api/auth/logout` endpoint so session handling remains consistent without exposing technical behavior in the UI.
+
 ### `Unreleased` - Add admin filters across web and mobile
 
 - Added backend filtering support for admin `Users` and `Pending Approvals`, including email search, `onlyAdmins`, stale-login filtering for users inactive for more than one year, and pending-request filtering for requests older than three days.
