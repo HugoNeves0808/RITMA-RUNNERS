@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
   },
   pageContent: {
     paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingTop: 20,
     paddingBottom: 28,
   },
   card: {
@@ -353,10 +353,10 @@ const styles = StyleSheet.create({
     lineHeight: 28,
   },
   summaryBadge: {
-    minWidth: 82,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 18,
+    minWidth: 68,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 16,
     backgroundColor: '#166534',
     shadowColor: '#15803d',
     shadowOpacity: 0.18,
@@ -366,18 +366,18 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     color: '#f0fdf4',
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '800',
     textAlign: 'center',
-    letterSpacing: 0.8,
+    letterSpacing: 0.6,
   },
   summaryValue: {
     marginTop: 2,
     color: '#ffffff',
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: '800',
     textAlign: 'center',
-    lineHeight: 30,
+    lineHeight: 24,
   },
   toolbar: {
     flexDirection: 'row',

@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
   },
   pageContent: {
     paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingTop: 20,
     paddingBottom: 28,
     gap: 18,
   },

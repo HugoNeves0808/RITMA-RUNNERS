@@ -64,6 +64,7 @@ These are not backend API endpoints, but they are relevant to the current user f
   Authenticated `Races` entry route in the web app.
 - `/races`
   Alias route that opens the same authenticated `Races` page in the web app.
+  The page now includes a top view switcher that toggles between placeholder `Calendar` and `Table` layouts while the real race browsing flows are still being built.
 - `/best-efforts`
   Authenticated web section for best efforts.
 - `/profile`
@@ -86,6 +87,8 @@ Authenticated client shell status:
 - web now uses a fixed left sidebar with admin-aware menu rendering, an `Admin Area` dropdown group for admins, `Races`, `Best Efforts`, account actions, and active route highlighting
 - mobile now uses a fixed top bar, fixed bottom navigation, and a fullscreen menu page opened from the hamburger button, including the same admin-only dropdown group and account actions near the end of the menu
 - `Admin Area` is currently a grouped navigation label in both clients, not a standalone page or backend endpoint
+- web `Races` now has an icon-only switcher that swaps between separate placeholder `Calendar` and `Table` view components
+- mobile `Races` now mirrors that same icon-only switcher pattern, aligned to the right of the page title
 - web `Pending Approvals` and `Users` now show real admin data with actions and pagination, while the admin overview section is still a placeholder
 - mobile `Pending Approvals`, `Users`, and `Overview` now also show real admin data with actions and pagination
 

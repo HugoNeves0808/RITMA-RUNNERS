@@ -13,7 +13,7 @@ const styles = StyleSheet.create({
   page: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingTop: 8,
+    paddingTop: 20,
     backgroundColor: colors.pageBackground,
   },
   title: {

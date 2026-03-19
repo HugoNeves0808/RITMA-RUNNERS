@@ -11,6 +11,12 @@ This file keeps a short, slightly more detailed record of what was done in each 
 
 ## Entries
 
+### `Unreleased` - Prepare races view switching on web and mobile
+
+- Reworked the web `Races` page into a structured base with a page-level view state, an icon-only top switcher, and separate `Calendar` and `Table` view components so the feature can evolve without concentrating everything in one file.
+- Added the same base `Races` view-switching structure to mobile, including an icon-only switcher aligned to the page title and separate placeholder components for the future calendar and table experiences.
+- Refined mobile page spacing by giving the main screen titles more top breathing room and by reducing the visual weight of the `Users` and `Pending Approvals` counters.
+
 ### `Unreleased` - Refine admin overview and simplify admin dashboard scope
 
 - Reworked the admin `Overview` in the web client into a real dashboard with key account metrics, a pending-approvals preview, inline approve/reject actions, a compact icon-only refresh control, and direct navigation to the full pending-approvals page.

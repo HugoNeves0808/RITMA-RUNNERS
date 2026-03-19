@@ -81,6 +81,7 @@ The first backend run downloads Maven locally through the wrapper.
 - Domain, modules, endpoints, and detailed internal structure have not been defined yet.
 - PostgreSQL is now wired in the backend through environment-based datasource configuration.
 - Flyway applies the initial database schema automatically on backend startup.
+- The authenticated `Races` area in web and mobile now has a structural base for switching between `Calendar` and `Table` views, ready for future feature work.
 
 ## Database configuration
 
