@@ -88,7 +88,7 @@ Authenticated client shell status:
 - mobile now uses a fixed top bar, fixed bottom navigation, and a fullscreen menu page opened from the hamburger button, including the same admin-only dropdown group and account actions near the end of the menu
 - `Admin Area` is currently a grouped navigation label in both clients, not a standalone page or backend endpoint
 - web `Races` now has an icon-only switcher that swaps between separate placeholder `Calendar` and `Table` view components
-- web `Races` now renders a real monthly calendar grid backed by authenticated race data, with compact day cards that summarize the day's races and use race-status color cues, while the `Yearly` calendar mode remains structurally prepared as a future step
+- web `Races` now renders real monthly and yearly calendar views backed by authenticated race data, with compact monthly day cards and a yearly 12-month overview that uses race-status color cues on the day numbers
 - mobile `Races` now mirrors the same top-level switcher pattern and also renders a real monthly calendar backed by the same authenticated race data, with a compact per-day race-count summary and a prepared yearly placeholder
 - web `Pending Approvals` and `Users` now show real admin data with actions and pagination, while the admin overview section is still a placeholder
 - mobile `Pending Approvals`, `Users`, and `Overview` now also show real admin data with actions and pagination
@@ -404,6 +404,59 @@ Current client usage:
 - web `Races` monthly calendar consumes `/api/races/calendar`, requests the visible month from the top controls, and renders the returned races inside the correct day cells
 - the response now includes `raceTypeName` so the compact day cards can show race type instead of race status
 - mobile `Races` monthly calendar also consumes `/api/races/calendar`, requests the visible month from its centered month controls, and uses the returned races to derive each day's compact race-count and status-priority summary
+
+### `GET /api/races/calendar/yearly`
+
+Returns the authenticated user's races for a selected year, grouped by month and day for the web yearly calendar experience.
+
+Optional query params:
+
+- `year`
+  target year for the calendar; defaults to the current year when omitted
+
+Postman:
+
+- Method: `GET`
+- URL: `{{baseUrl}}/api/races/calendar/yearly?year=2026`
+- Auth: `Bearer Token`
+- Token: `{{token}}`
+
+Expected response example:
+
+```json
+{
+  "year": 2026,
+  "months": [
+    {
+      "month": 3,
+      "days": [
+        {
+          "date": "2026-03-08",
+          "races": [
+            {
+              "id": "uuid",
+              "name": "Lisbon Spring 10K",
+              "raceTypeName": "Road Race",
+              "raceStatus": "COMPLETED",
+              "raceDate": "2026-03-08",
+              "raceTime": "09:00:00",
+              "realKm": 10.0,
+              "elevation": 90,
+              "archived": false,
+              "isValidForCategoryRanking": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+Current client usage:
+
+- web `Races` yearly calendar consumes `/api/races/calendar/yearly`, requests the visible year from the top controls, and renders a 12-month overview
+- each day with races is marked by a circular number badge whose fill color comes from the prioritized race status for that day
 
 ## Admin
 

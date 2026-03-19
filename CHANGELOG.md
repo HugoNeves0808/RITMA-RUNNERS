@@ -11,6 +11,12 @@ This file keeps a short, slightly more detailed record of what was done in each 
 
 ## Entries
 
+### `Unreleased` - Add yearly races calendar on the web client
+
+- Added an authenticated `GET /api/races/calendar/yearly` endpoint that returns the logged-in user's races for a selected year, grouped by month and day so the web client can render a full-year calendar without extra client-side reshaping.
+- Implemented a separate web `Yearly` calendar mode with its own components, year navigation, a 12-month overview grid, and per-day circular markers that use the prioritized race status color when that day has races.
+- Aligned yearly calendar behavior with the monthly mode by reusing shared race-priority rules, keeping the current month highlighted, and marking the current day inside the yearly overview with the same orange accent treatment.
+
 ### `Unreleased` - Refine races calendar across web and mobile
 
 - Refined the web monthly `Races` calendar into a tighter, cleaner layout with smaller month navigation controls, a top-row calendar-mode dropdown, fixed-height day cells, single-race summarization, status-colored cards, race-type display, and overflow handling for crowded days.

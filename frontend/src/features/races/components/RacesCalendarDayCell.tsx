@@ -1,5 +1,6 @@
 import styles from './RacesCalendarDayCell.module.css'
 import type { RaceCalendarItem } from '../types/racesCalendar'
+import { getPrimaryRaceForDay } from '../utils/racesCalendarRacePriority'
 
 type RacesCalendarDayCellProps = {
   dayNumber: number
@@ -46,7 +47,8 @@ export function RacesCalendarDayCell({
   isToday,
   races,
 }: RacesCalendarDayCellProps) {
-  const visibleRaces = races.slice(0, 1)
+  const primaryRace = getPrimaryRaceForDay(races)
+  const visibleRaces = primaryRace ? [primaryRace] : []
   const remainingRaces = races.length - visibleRaces.length
 
   return (

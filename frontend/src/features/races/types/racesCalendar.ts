@@ -21,3 +21,13 @@ export type RaceCalendarMonthPayload = {
   month: number
   days: RaceCalendarDay[]
 }
+
+export type RaceCalendarYearMonth = {
+  month: number
+  days: RaceCalendarDay[]
+}
+
+export type RaceCalendarYearPayload = {
+  year: number
+  months: RaceCalendarYearMonth[]
+}

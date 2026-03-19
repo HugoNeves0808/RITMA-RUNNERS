@@ -1,6 +1,7 @@
 package com.ritma.runners.race.controller;
 
 import java.time.YearMonth;
+import java.time.Year;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -12,6 +13,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.ritma.runners.common.util.SecurityUtils;
 import com.ritma.runners.race.dto.RaceCalendarMonthResponse;
+import com.ritma.runners.race.dto.RaceCalendarYearResponse;
 import com.ritma.runners.race.service.RaceService;
 
 @RestController
@@ -32,6 +34,11 @@ public class RaceCalendarController {
         return raceService.getMonthlyCalendar(requireAuthenticatedUserId(), selectedMonth);
     }
 
+    @GetMapping("/yearly")
+    public RaceCalendarYearResponse getYearlyCalendar(@RequestParam(required = false) Integer year) {
+        return raceService.getYearlyCalendar(requireAuthenticatedUserId(), resolveYear(year));
+    }
+
     private YearMonth resolveYearMonth(Integer year, Integer month) {
         YearMonth currentMonth = YearMonth.now();
         int resolvedYear = year != null ? year : currentMonth.getYear();
@@ -40,6 +47,15 @@ public class RaceCalendarController {
             return YearMonth.of(resolvedYear, resolvedMonth);
         } catch (RuntimeException exception) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid year or month.");
+        }
+    }
+
+    private int resolveYear(Integer year) {
+        int resolvedYear = year != null ? year : Year.now().getValue();
+        try {
+            return Year.of(resolvedYear).getValue();
+        } catch (RuntimeException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid year.");
         }
     }
 

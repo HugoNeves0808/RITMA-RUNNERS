@@ -22,6 +22,10 @@ public class RaceRepository {
     }
 
     public List<RaceCalendarItemResponse> findCalendarRacesForMonth(UUID userId, LocalDate startDate, LocalDate endDate) {
+        return findCalendarRacesForRange(userId, startDate, endDate);
+    }
+
+    public List<RaceCalendarItemResponse> findCalendarRacesForRange(UUID userId, LocalDate startDate, LocalDate endDate) {
         String sql = """
                 SELECT
                     ur.id,
