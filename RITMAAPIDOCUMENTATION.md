@@ -64,7 +64,7 @@ These are not backend API endpoints, but they are relevant to the current user f
   Authenticated `Races` entry route in the web app.
 - `/races`
   Alias route that opens the same authenticated `Races` page in the web app.
-  The page now includes a top view switcher that toggles between placeholder `Calendar` and `Table` layouts while the real race browsing flows are still being built.
+  The page now includes a top view switcher for `Calendar` and `Table`, plus a calendar-mode dropdown prepared for `Monthly` and `Yearly` layouts.
 - `/best-efforts`
   Authenticated web section for best efforts.
 - `/profile`
@@ -88,6 +88,7 @@ Authenticated client shell status:
 - mobile now uses a fixed top bar, fixed bottom navigation, and a fullscreen menu page opened from the hamburger button, including the same admin-only dropdown group and account actions near the end of the menu
 - `Admin Area` is currently a grouped navigation label in both clients, not a standalone page or backend endpoint
 - web `Races` now has an icon-only switcher that swaps between separate placeholder `Calendar` and `Table` view components
+- web `Races` now renders a real monthly calendar grid backed by authenticated race data, while the `Yearly` calendar mode remains structurally prepared as a future step
 - mobile `Races` now mirrors that same icon-only switcher pattern, aligned to the right of the page title
 - web `Pending Approvals` and `Users` now show real admin data with actions and pagination, while the admin overview section is still a placeholder
 - mobile `Pending Approvals`, `Users`, and `Overview` now also show real admin data with actions and pagination
@@ -351,6 +352,57 @@ Expected response example:
   }
 ]
 ```
+
+### `GET /api/races/calendar`
+
+Returns the authenticated user's races for a selected month, grouped by day for the web calendar experience.
+
+Optional query params:
+
+- `year`
+  target year for the calendar month; defaults to the current year when omitted
+- `month`
+  target month from `1` to `12`; defaults to the current month when omitted
+
+Postman:
+
+- Method: `GET`
+- URL: `{{baseUrl}}/api/races/calendar?year=2026&month=3`
+- Auth: `Bearer Token`
+- Token: `{{token}}`
+
+Expected response example:
+
+```json
+{
+  "year": 2026,
+  "month": 3,
+  "days": [
+    {
+      "date": "2026-03-08",
+      "races": [
+        {
+          "id": "uuid",
+          "name": "Lisbon Spring 10K",
+          "raceTypeName": "Road Race",
+          "raceStatus": "COMPLETED",
+          "raceDate": "2026-03-08",
+          "raceTime": "09:00:00",
+          "realKm": 10.0,
+          "elevation": 90,
+          "archived": false,
+          "isValidForCategoryRanking": true
+        }
+      ]
+    }
+  ]
+}
+```
+
+Current client usage:
+
+- web `Races` monthly calendar consumes `/api/races/calendar`, requests the visible month from the top controls, and renders the returned races inside the correct day cells
+- the response now includes `raceTypeName` so the compact day cards can show race type instead of race status
 
 ## Admin
 

@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.ritma.runners.auth.dto.AuthResponse;
 import com.ritma.runners.auth.dto.ChangePasswordRequest;
@@ -48,19 +49,27 @@ public class AuthController {
 
     @GetMapping("/me")
     public UserProfileResponse me(@AuthenticationPrincipal JwtAuthenticatedUser user) {
-        return authService.me(user);
+        return authService.me(requireAuthenticatedUser(user));
     }
 
     @PostMapping("/logout")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void logout(@AuthenticationPrincipal JwtAuthenticatedUser user) {
-        authService.logout(user);
+        authService.logout(requireAuthenticatedUser(user));
     }
 
     @PostMapping("/change-password")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void changePassword(@AuthenticationPrincipal JwtAuthenticatedUser user,
                                @Valid @RequestBody ChangePasswordRequest request) {
-        authService.changePassword(user, request);
+        authService.changePassword(requireAuthenticatedUser(user), request);
+    }
+
+    private JwtAuthenticatedUser requireAuthenticatedUser(JwtAuthenticatedUser user) {
+        if (user == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication is required.");
+        }
+
+        return user;
     }
 }

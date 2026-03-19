@@ -20,8 +20,20 @@
   margin: 0 !important;
 }
 
+.headerControls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
 @media (max-width: 768px) {
   .pageHeader {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .headerControls {
     flex-direction: column;
     align-items: stretch;
   }

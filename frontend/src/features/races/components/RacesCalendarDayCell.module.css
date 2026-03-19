@@ -1,0 +1,108 @@
+.cell {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 112px;
+  height: 112px;
+  padding: 10px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(16, 24, 40, 0.08);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.cellMuted {
+  background: rgba(248, 250, 252, 0.84);
+}
+
+.cellToday {
+  border-color: rgba(181, 71, 8, 0.35);
+  box-shadow: inset 0 0 0 1px rgba(181, 71, 8, 0.12);
+}
+
+.dateRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dayNumber {
+  color: #101828;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.dayNumberMuted {
+  color: #98a2b3;
+}
+
+.todayBadge {
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(181, 71, 8, 0.12);
+  color: #b54708;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.raceList {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 6px;
+  min-height: 0;
+}
+
+.raceItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: rgba(255, 244, 229, 0.74);
+  overflow: hidden;
+}
+
+.raceName {
+  overflow: hidden;
+  color: #101828;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.raceMeta {
+  overflow: hidden;
+  color: #667085;
+  font-size: 11px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.moreLabel {
+  color: #b54708;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+@media (max-width: 768px) {
+  .cell {
+    min-height: 96px;
+    height: 96px;
+    padding: 8px;
+  }
+
+  .raceName {
+    font-size: 11px;
+  }
+
+  .raceMeta {
+    font-size: 10px;
+  }
+}

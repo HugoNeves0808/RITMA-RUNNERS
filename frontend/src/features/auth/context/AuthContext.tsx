@@ -1,6 +1,7 @@
 import { createContext, useEffect, useState } from 'react'
 import { changePassword, getCurrentUser, loginRequest, logoutRequest } from '../services/authService'
 import { clearStoredToken, getStoredToken, setStoredToken } from '../../../utils/tokenStorage'
+import { isApiError } from '../../../services/apiClient'
 import type { AuthenticatedUser, ChangePasswordPayload, LoginPayload } from '../types/auth'
 
 export type AuthContextValue = {
@@ -53,10 +54,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const currentUser = await getCurrentUser(token)
         setUser(currentUser)
-      } catch {
-        clearStoredToken()
-        setToken(null)
-        setUser(null)
+      } catch (error) {
+        if (isApiError(error) && error.status === 401) {
+          clearStoredToken()
+          setToken(null)
+          setUser(null)
+        }
       } finally {
         setIsLoading(false)
       }

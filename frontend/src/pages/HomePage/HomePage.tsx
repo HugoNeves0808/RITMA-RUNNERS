@@ -2,8 +2,10 @@ import { useState } from 'react'
 import { Typography } from 'antd'
 import {
   RacesCalendarView,
+  RacesCalendarModeSwitcher,
   RacesTableView,
   RacesViewSwitcher,
+  type RacesCalendarMode,
   type RacesViewMode,
 } from '../../features/races'
 import styles from './HomePage.module.css'
@@ -12,6 +14,7 @@ const { Title } = Typography
 
 export function HomePage() {
   const [selectedView, setSelectedView] = useState<RacesViewMode>('calendar')
+  const [selectedCalendarMode, setSelectedCalendarMode] = useState<RacesCalendarMode>('monthly')
 
   return (
     <div className={styles.page}>
@@ -20,10 +23,21 @@ export function HomePage() {
           <Title level={1} className={styles.pageTitle}>Races</Title>
         </div>
 
-        <RacesViewSwitcher selectedView={selectedView} onViewChange={setSelectedView} />
+        <div className={styles.headerControls}>
+          {selectedView === 'calendar' ? (
+            <RacesCalendarModeSwitcher
+              selectedMode={selectedCalendarMode}
+              onModeChange={setSelectedCalendarMode}
+            />
+          ) : null}
+
+          <RacesViewSwitcher selectedView={selectedView} onViewChange={setSelectedView} />
+        </div>
       </div>
 
-      {selectedView === 'calendar' ? <RacesCalendarView /> : <RacesTableView />}
+      {selectedView === 'calendar'
+        ? <RacesCalendarView selectedMode={selectedCalendarMode} onModeChange={setSelectedCalendarMode} />
+        : <RacesTableView />}
     </div>
   )
 }

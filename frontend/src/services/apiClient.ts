@@ -20,7 +20,11 @@ function notifyUnauthorized(token: string) {
   window.dispatchEvent(new CustomEvent('ritma:unauthorized', { detail: { token } }))
 }
 
-export async function apiGet<T>(path: string, token?: string): Promise<T> {
+export async function apiGet<T>(
+  path: string,
+  token?: string,
+  options?: { suppressUnauthorized?: boolean },
+): Promise<T> {
   const response = await fetch(buildApiUrl(path), {
     headers: {
       'X-Client-Platform': 'web',
@@ -29,7 +33,7 @@ export async function apiGet<T>(path: string, token?: string): Promise<T> {
   })
 
   if (!response.ok) {
-    throw await buildApiError(response, token)
+    throw await buildApiError(response, token, options)
   }
 
   return response.json() as Promise<T>
@@ -89,8 +93,12 @@ async function apiRequest<T>(
   return response.json() as Promise<T>
 }
 
-async function buildApiError(response: Response, token?: string) {
-  if (token && response.status === 401) {
+async function buildApiError(
+  response: Response,
+  token?: string,
+  options?: { suppressUnauthorized?: boolean },
+) {
+  if (token && response.status === 401 && !options?.suppressUnauthorized) {
     notifyUnauthorized(token)
   }
 

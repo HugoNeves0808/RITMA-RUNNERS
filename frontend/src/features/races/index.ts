@@ -1,4 +1,7 @@
 export { RacesCalendarView } from './components/RacesCalendarView'
+export { RacesCalendarModeSwitcher } from './components/RacesCalendarModeSwitcher'
 export { RacesTableView } from './components/RacesTableView'
 export { RacesViewSwitcher } from './components/RacesViewSwitcher'
+export type { RaceCalendarDay, RaceCalendarItem, RaceCalendarMonthPayload } from './types/racesCalendar'
+export type { RacesCalendarMode } from './types/racesCalendarMode'
 export type { RacesViewMode } from './types/racesViewMode'
