@@ -2,14 +2,21 @@ import { useState } from 'react'
 import { ScrollView, StyleSheet, Text, View } from 'react-native'
 import {
   RacesCalendarView,
+  RacesCalendarModeSwitcher,
   RacesTableView,
   RacesViewSwitcher,
+  type RacesCalendarMode,
   type RacesViewMode,
 } from '../../features/races'
 import { colors } from '../../theme/colors'
 
-export function HomeScreen() {
+type HomeScreenProps = {
+  token: string
+}
+
+export function HomeScreen({ token }: HomeScreenProps) {
   const [selectedView, setSelectedView] = useState<RacesViewMode>('calendar')
+  const [selectedCalendarMode, setSelectedCalendarMode] = useState<RacesCalendarMode>('monthly')
 
   return (
     <ScrollView
@@ -19,10 +26,17 @@ export function HomeScreen() {
     >
       <View style={styles.header}>
         <Text style={styles.title}>Races</Text>
-        <RacesViewSwitcher selectedView={selectedView} onViewChange={setSelectedView} />
+        <View style={styles.headerControls}>
+          {selectedView === 'calendar' ? (
+            <RacesCalendarModeSwitcher selectedMode={selectedCalendarMode} onModeChange={setSelectedCalendarMode} />
+          ) : null}
+          <RacesViewSwitcher selectedView={selectedView} onViewChange={setSelectedView} />
+        </View>
       </View>
 
-      {selectedView === 'calendar' ? <RacesCalendarView /> : <RacesTableView />}
+      {selectedView === 'calendar'
+        ? <RacesCalendarView token={token} selectedMode={selectedCalendarMode} />
+        : <RacesTableView />}
     </ScrollView>
   )
 }
@@ -42,10 +56,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 16,
+    gap: 12,
+  },
+  headerControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   title: {
-    flex: 1,
     color: colors.textPrimary,
     fontSize: 32,
     fontWeight: '800',

@@ -1,7 +1,7 @@
 .cell {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 2px;
   min-height: 112px;
   height: 112px;
   padding: 10px;
@@ -58,19 +58,48 @@
 .raceItem {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 6px 8px;
+  gap: 5px;
+  padding: 5px 7px;
   border-radius: 10px;
-  background: rgba(255, 244, 229, 0.74);
+  background: rgba(248, 250, 252, 0.9);
+  min-height: 0;
   overflow: hidden;
+}
+
+.raceItemInList {
+  background: rgba(226, 232, 240, 0.9);
+}
+
+.raceItemRegistered {
+  background: rgba(219, 234, 254, 0.95);
+}
+
+.raceItemNotRegistered {
+  background: rgba(254, 240, 138, 0.45);
+}
+
+.raceItemCompleted {
+  background: rgba(220, 252, 231, 0.9);
+}
+
+.raceItemCancelled {
+  background: rgba(254, 226, 226, 0.95);
+}
+
+.raceItemDidNotFinish {
+  background: rgba(255, 237, 213, 0.95);
+}
+
+.raceItemDidNotStart {
+  background: rgba(243, 232, 255, 0.95);
 }
 
 .raceName {
   overflow: hidden;
   color: #101828;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
-  line-height: 1.3;
+  line-height: 1.15;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -78,17 +107,69 @@
 .raceMeta {
   overflow: hidden;
   color: #667085;
-  font-size: 11px;
-  line-height: 1.3;
+  font-size: 10px;
+  line-height: 1.1;
   text-overflow: ellipsis;
   text-transform: capitalize;
   white-space: nowrap;
 }
 
+.raceStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  color: #475467;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.statusDot {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #94a3b8;
+}
+
+.statusDotInList {
+  background: #64748b;
+}
+
+.statusDotRegistered {
+  background: #2563eb;
+}
+
+.statusDotNotRegistered {
+  background: #ca8a04;
+}
+
+.statusDotCompleted {
+  background: #16a34a;
+}
+
+.statusDotCancelled {
+  background: #dc2626;
+}
+
+.statusDotDidNotFinish {
+  background: #ea580c;
+}
+
+.statusDotDidNotStart {
+  background: #9333ea;
+}
+
 .moreLabel {
+  margin-top: auto;
   color: #b54708;
   font-size: 11px;
   font-weight: 700;
+  line-height: 1;
 }
 
 @media (max-width: 768px) {
@@ -99,10 +180,14 @@
   }
 
   .raceName {
-    font-size: 11px;
+    font-size: 10px;
   }
 
   .raceMeta {
-    font-size: 10px;
+    font-size: 9px;
+  }
+
+  .raceStatus {
+    font-size: 8px;
   }
 }

@@ -83,6 +83,7 @@ The first backend run downloads Maven locally through the wrapper.
 - Flyway applies the initial database schema automatically on backend startup.
 - The authenticated `Races` area in web and mobile now has a structural base for switching between `Calendar` and `Table` views, ready for future feature work.
 - The web `Races` area now includes a first functional monthly calendar view backed by authenticated race data from the backend.
+- The mobile `Races` area now also includes a first functional monthly calendar view backed by the same authenticated backend calendar data, while keeping the yearly mode structurally prepared.
 
 ## Database configuration
 

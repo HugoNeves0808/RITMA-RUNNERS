@@ -64,7 +64,7 @@ These are not backend API endpoints, but they are relevant to the current user f
   Authenticated `Races` entry route in the web app.
 - `/races`
   Alias route that opens the same authenticated `Races` page in the web app.
-  The page now includes a top view switcher for `Calendar` and `Table`, plus a calendar-mode dropdown prepared for `Monthly` and `Yearly` layouts.
+  The page now includes a top view switcher for `Calendar` and `Table`, plus a calendar-mode dropdown in the same header row for `Monthly` and `Yearly` layouts.
 - `/best-efforts`
   Authenticated web section for best efforts.
 - `/profile`
@@ -88,8 +88,8 @@ Authenticated client shell status:
 - mobile now uses a fixed top bar, fixed bottom navigation, and a fullscreen menu page opened from the hamburger button, including the same admin-only dropdown group and account actions near the end of the menu
 - `Admin Area` is currently a grouped navigation label in both clients, not a standalone page or backend endpoint
 - web `Races` now has an icon-only switcher that swaps between separate placeholder `Calendar` and `Table` view components
-- web `Races` now renders a real monthly calendar grid backed by authenticated race data, while the `Yearly` calendar mode remains structurally prepared as a future step
-- mobile `Races` now mirrors that same icon-only switcher pattern, aligned to the right of the page title
+- web `Races` now renders a real monthly calendar grid backed by authenticated race data, with compact day cards that summarize the day's races and use race-status color cues, while the `Yearly` calendar mode remains structurally prepared as a future step
+- mobile `Races` now mirrors the same top-level switcher pattern and also renders a real monthly calendar backed by the same authenticated race data, with a compact per-day race-count summary and a prepared yearly placeholder
 - web `Pending Approvals` and `Users` now show real admin data with actions and pagination, while the admin overview section is still a placeholder
 - mobile `Pending Approvals`, `Users`, and `Overview` now also show real admin data with actions and pagination
 
@@ -355,7 +355,7 @@ Expected response example:
 
 ### `GET /api/races/calendar`
 
-Returns the authenticated user's races for a selected month, grouped by day for the web calendar experience.
+Returns the authenticated user's races for a selected month, grouped by day for the calendar experience shared by web and mobile.
 
 Optional query params:
 
@@ -403,6 +403,7 @@ Current client usage:
 
 - web `Races` monthly calendar consumes `/api/races/calendar`, requests the visible month from the top controls, and renders the returned races inside the correct day cells
 - the response now includes `raceTypeName` so the compact day cards can show race type instead of race status
+- mobile `Races` monthly calendar also consumes `/api/races/calendar`, requests the visible month from its centered month controls, and uses the returned races to derive each day's compact race-count and status-priority summary
 
 ## Admin
 

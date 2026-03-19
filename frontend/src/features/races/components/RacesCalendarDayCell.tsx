@@ -8,12 +8,36 @@ type RacesCalendarDayCellProps = {
   races: RaceCalendarItem[]
 }
 
+const RACE_STATUS_CLASS_MAP: Record<string, string> = {
+  IN_LIST: 'raceItemInList',
+  REGISTERED: 'raceItemRegistered',
+  NOT_REGISTERED: 'raceItemNotRegistered',
+  COMPLETED: 'raceItemCompleted',
+  CANCELLED: 'raceItemCancelled',
+  DID_NOT_FINISH: 'raceItemDidNotFinish',
+  DID_NOT_START: 'raceItemDidNotStart',
+}
+
+const RACE_STATUS_DOT_CLASS_MAP: Record<string, string> = {
+  IN_LIST: 'statusDotInList',
+  REGISTERED: 'statusDotRegistered',
+  NOT_REGISTERED: 'statusDotNotRegistered',
+  COMPLETED: 'statusDotCompleted',
+  CANCELLED: 'statusDotCancelled',
+  DID_NOT_FINISH: 'statusDotDidNotFinish',
+  DID_NOT_START: 'statusDotDidNotStart',
+}
+
 function formatRaceCategory(race: RaceCalendarItem) {
   if (race.raceTypeName) {
     return race.raceTypeName
   }
 
   return 'No race type'
+}
+
+function formatRaceStatus(race: RaceCalendarItem) {
+  return race.raceStatus.replaceAll('_', ' ').toLowerCase()
 }
 
 export function RacesCalendarDayCell({
@@ -42,9 +66,24 @@ export function RacesCalendarDayCell({
 
       <div className={styles.raceList}>
         {visibleRaces.map((race) => (
-          <div key={race.id} className={styles.raceItem}>
+          <div
+            key={race.id}
+            className={[
+              styles.raceItem,
+              styles[RACE_STATUS_CLASS_MAP[race.raceStatus] ?? ''],
+            ].filter(Boolean).join(' ')}
+          >
             <span className={styles.raceName}>{race.name}</span>
             <span className={styles.raceMeta}>{formatRaceCategory(race)}</span>
+            <span className={styles.raceStatus}>
+              <span
+                className={[
+                  styles.statusDot,
+                  styles[RACE_STATUS_DOT_CLASS_MAP[race.raceStatus] ?? ''],
+                ].filter(Boolean).join(' ')}
+              />
+              {formatRaceStatus(race)}
+            </span>
           </div>
         ))}
 

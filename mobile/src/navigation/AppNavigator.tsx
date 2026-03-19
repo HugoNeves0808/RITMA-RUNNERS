@@ -126,7 +126,7 @@ export function AppNavigator() {
           {currentRoute === routes.bestEfforts ? <BestEffortsScreen /> : null}
           {currentRoute === routes.profile ? <ProfileScreen /> : null}
           {currentRoute === routes.settings ? <SettingsScreen /> : null}
-          {currentRoute === routes.home || currentRoute === routes.races ? <HomeScreen /> : null}
+          {currentRoute === routes.home || currentRoute === routes.races ? <HomeScreen token={authSession.token} /> : null}
         </AuthenticatedShell>
         <ForcePasswordChangeModal
           visible={false}
