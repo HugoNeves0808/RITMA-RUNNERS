@@ -10,6 +10,9 @@ Initial mobile base for the RITMA RUNNERS ecosystem.
 - forced password change flow on first login
 - request-account flow aligned with frontend feedback states
 - lightweight internal navigator prepared to evolve later
+- authenticated `Races` area with real `Calendar` and `Table` modes
+- monthly and yearly race calendars backed by the authenticated backend
+- default mobile `Table` view with compact race cards, `Coming Up` logic, and a filter sheet for calendar mode and year scope
 
 ## Run locally
 

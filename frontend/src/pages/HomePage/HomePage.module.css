@@ -27,6 +27,10 @@
   gap: 12px;
 }
 
+.tableYearsSelect {
+  min-width: 128px;
+}
+
 @media (max-width: 768px) {
   .pageHeader {
     flex-direction: column;
@@ -36,5 +40,9 @@
   .headerControls {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .tableYearsSelect {
+    flex: 1;
   }
 }

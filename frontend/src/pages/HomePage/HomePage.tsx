@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Typography } from 'antd'
+import { Select, Typography } from 'antd'
 import {
   RacesCalendarView,
   RacesCalendarModeSwitcher,
@@ -13,8 +13,9 @@ import styles from './HomePage.module.css'
 const { Title } = Typography
 
 export function HomePage() {
-  const [selectedView, setSelectedView] = useState<RacesViewMode>('calendar')
+  const [selectedView, setSelectedView] = useState<RacesViewMode>('table')
   const [selectedCalendarMode, setSelectedCalendarMode] = useState<RacesCalendarMode>('monthly')
+  const [showAllTableYears, setShowAllTableYears] = useState(false)
 
   return (
     <div className={styles.page}>
@@ -31,13 +32,26 @@ export function HomePage() {
             />
           ) : null}
 
+          {selectedView === 'table' ? (
+            <Select
+              className={styles.tableYearsSelect}
+              value={showAllTableYears ? 'all' : 'current'}
+              onChange={(value) => setShowAllTableYears(value === 'all')}
+              options={[
+                { value: 'current', label: 'Current year' },
+                { value: 'all', label: 'All years' },
+              ]}
+              popupMatchSelectWidth={false}
+            />
+          ) : null}
+
           <RacesViewSwitcher selectedView={selectedView} onViewChange={setSelectedView} />
         </div>
       </div>
 
       {selectedView === 'calendar'
         ? <RacesCalendarView selectedMode={selectedCalendarMode} onModeChange={setSelectedCalendarMode} />
-        : <RacesTableView />}
+        : <RacesTableView showAllYears={showAllTableYears} />}
     </div>
   )
 }

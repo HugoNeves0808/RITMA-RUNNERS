@@ -51,17 +51,26 @@ export async function apiPostWithToken<T>(path: string, body: unknown, token?: s
   })
 }
 
-export async function apiDeleteWithToken<T>(path: string, token?: string): Promise<T> {
+export async function apiPutWithToken<T>(path: string, body: unknown, token?: string): Promise<T> {
+  return apiRequest<T>(path, {
+    method: 'PUT',
+    token,
+    body,
+  })
+}
+
+export async function apiDeleteWithToken<T>(path: string, token?: string, body?: unknown): Promise<T> {
   return apiRequest<T>(path, {
     method: 'DELETE',
     token,
+    body,
   })
 }
 
 async function apiRequest<T>(
   path: string,
   options: {
-    method: 'POST' | 'DELETE'
+    method: 'POST' | 'PUT' | 'DELETE'
     token?: string
     body?: unknown
   },

@@ -64,7 +64,7 @@ These are not backend API endpoints, but they are relevant to the current user f
   Authenticated `Races` entry route in the web app.
 - `/races`
   Alias route that opens the same authenticated `Races` page in the web app.
-  The page now includes a top view switcher for `Calendar` and `Table`, plus a calendar-mode dropdown in the same header row for `Monthly` and `Yearly` layouts.
+  The page now opens in `Table` mode by default, includes a top view switcher for `Calendar` and `Table`, a calendar-mode dropdown for `Monthly` and `Yearly`, and a table-scope dropdown for `Current year` and `All years`.
 - `/best-efforts`
   Authenticated web section for best efforts.
 - `/profile`
@@ -89,7 +89,9 @@ Authenticated client shell status:
 - `Admin Area` is currently a grouped navigation label in both clients, not a standalone page or backend endpoint
 - web `Races` now has an icon-only switcher that swaps between separate placeholder `Calendar` and `Table` view components
 - web `Races` now renders real monthly and yearly calendar views backed by authenticated race data, with compact monthly day cards and a yearly 12-month overview that uses race-status color cues on the day numbers
+- web `Races` also includes a real card-based table mode grouped by year, with inline per-race edit/delete actions, a `Coming Up` section for registered races, and header-level `Current year` / `All years` filtering
 - mobile `Races` now mirrors the same top-level switcher pattern and renders real monthly and yearly calendars backed by the same authenticated race data, with a compact per-day monthly summary and a single-column yearly overview adapted for smaller screens
+- mobile `Races` also includes a real table mode with a compact card layout, the same `Coming Up` weekly logic for registered races, and a filter-sheet icon that exposes `Monthly` / `Yearly` and `Current year` / `All years` switchers depending on the active view
 - web `Pending Approvals` and `Users` now show real admin data with actions and pagination, while the admin overview section is still a placeholder
 - mobile `Pending Approvals`, `Users`, and `Overview` now also show real admin data with actions and pagination
 
@@ -458,6 +460,129 @@ Current client usage:
 - web `Races` yearly calendar consumes `/api/races/calendar/yearly`, requests the visible year from the top controls, and renders a 12-month overview
 - mobile `Races` yearly calendar also consumes `/api/races/calendar/yearly`, requests the visible year from its own year controls, and renders the same year as stacked month cards for better mobile readability
 - each day with races is marked by a circular number badge whose fill color comes from the prioritized race status for that day
+
+### `GET /api/races/table`
+
+Returns the authenticated user's races grouped by year for the `Table` experience shared by web and mobile.
+
+Optional query params:
+
+- `scope`
+  accepts `current` or `all`
+  defaults to `current` when omitted
+
+Postman:
+
+- Method: `GET`
+- URL: `{{baseUrl}}/api/races/table?scope=current`
+- Auth: `Bearer Token`
+- Token: `{{token}}`
+
+Expected response example:
+
+```json
+{
+  "years": [
+    {
+      "year": 2026,
+      "races": [
+        {
+          "id": "uuid",
+          "raceNumber": 6,
+          "raceDate": "2026-03-20",
+          "raceTime": "09:45:00",
+          "raceStatus": "REGISTERED",
+          "name": "Corrida de Hoje 2026",
+          "location": "Coimbra, Portugal",
+          "raceTypeId": "uuid",
+          "raceTypeName": "Corrida 10 km",
+          "officialTimeSeconds": 2405,
+          "chipTimeSeconds": 2398,
+          "pacePerKmSeconds": 240
+        }
+      ]
+    }
+  ]
+}
+```
+
+Client usage notes:
+
+- web `Races` table consumes `/api/races/table`, opens in `Current year` by default, and renders a card-style list grouped by year instead of a classic spreadsheet layout
+- mobile `Races` table consumes the same endpoint, also opens in `Current year` by default, and renders a simplified compact card layout for smaller screens
+- both clients use `raceStatus` and `raceTime` to drive the `Coming Up` section, which only considers `REGISTERED` races in the current Monday-to-Sunday week or, when none exist, the next future registered race
+
+### `GET /api/races/types`
+
+Returns the authenticated user's available race types for table editing.
+
+Postman:
+
+- Method: `GET`
+- URL: `{{baseUrl}}/api/races/types`
+- Auth: `Bearer Token`
+- Token: `{{token}}`
+
+Expected response example:
+
+```json
+[
+  {
+    "id": "uuid",
+    "name": "Corrida 10 km"
+  }
+]
+```
+
+### `PUT /api/races/table/{raceId}`
+
+Updates a single race from the table editing flow.
+
+Postman:
+
+- Method: `PUT`
+- URL: `{{baseUrl}}/api/races/table/{{raceId}}`
+- Header: `Content-Type: application/json`
+- Auth: `Bearer Token`
+- Token: `{{token}}`
+
+Example body:
+
+```json
+{
+  "raceDate": "2026-03-20",
+  "raceTime": "09:45:00",
+  "name": "Corrida de Hoje 2026",
+  "location": "Coimbra, Portugal",
+  "raceTypeId": "uuid",
+  "officialTimeSeconds": 2405,
+  "chipTimeSeconds": 2398,
+  "pacePerKmSeconds": 240
+}
+```
+
+### `DELETE /api/races/table`
+
+Deletes one or more races from the table flow.
+
+Postman:
+
+- Method: `DELETE`
+- URL: `{{baseUrl}}/api/races/table`
+- Header: `Content-Type: application/json`
+- Auth: `Bearer Token`
+- Token: `{{token}}`
+
+Example body:
+
+```json
+{
+  "raceIds": [
+    "uuid-1",
+    "uuid-2"
+  ]
+}
+```
 
 ## Admin
 

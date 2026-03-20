@@ -1,0 +1,386 @@
+.pageCard {
+  border-radius: 24px;
+}
+
+.yearSection {
+  margin-top: 18px;
+}
+
+.yearCard {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.yearHeader {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.yearHeader::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(16, 24, 40, 0.12);
+}
+
+.yearTitle {
+  margin: 0;
+  color: #101828;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.yearCount {
+  color: #475467;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.raceTypeTag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(15, 118, 110, 0.08);
+  color: #0f766e;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.emptyValue {
+  color: #98a2b3;
+}
+
+.modalHint {
+  margin: 0 0 16px;
+  color: #667085;
+  font-size: 13px;
+}
+
+.datePicker {
+  width: 100%;
+}
+
+.emptyWrap {
+  padding: 18px 0 8px;
+}
+
+.monthSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.raceList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.raceRow {
+  display: flex;
+  align-items: stretch;
+  gap: 16px;
+  padding: 16px 18px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at top left, rgba(15, 118, 110, 0.06), transparent 35%),
+    rgba(255, 255, 255, 0.96);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.raceRow:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 32px rgba(15, 23, 42, 0.08);
+}
+
+.raceRowToday {
+  border-color: rgba(249, 115, 22, 0.24);
+  background:
+    linear-gradient(90deg, rgba(249, 115, 22, 0.12) 0%, rgba(249, 115, 22, 0.04) 38%, rgba(255, 255, 255, 0.98) 100%),
+    radial-gradient(circle at top left, rgba(249, 115, 22, 0.12), transparent 42%),
+    rgba(255, 255, 255, 0.98);
+}
+
+.raceRowToday:hover {
+  box-shadow: none;
+}
+
+.dateBadge {
+  display: flex;
+  flex: 0 0 88px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.04) 0%, rgba(255, 255, 255, 0.98) 100%);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.dateBadgeDay {
+  color: #101828;
+  font-size: 30px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.dateBadgeMonth {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.raceContent {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.raceTopRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.raceTopMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.raceTitleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.raceMetaRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.raceNumber {
+  color: #0f766e;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.raceCardTitle {
+  margin: 0;
+  color: #101828;
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1.02;
+}
+
+.raceStatusBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.raceStatusRegistered {
+  background: rgba(37, 99, 235, 0.12);
+  color: #1d4ed8;
+}
+
+.raceStatusCompleted {
+  background: rgba(22, 163, 74, 0.12);
+  color: #15803d;
+}
+
+.raceStatusInList {
+  background: rgba(245, 158, 11, 0.14);
+  color: #b45309;
+}
+
+.raceStatusNotRegistered {
+  background: rgba(107, 114, 128, 0.14);
+  color: #4b5563;
+}
+
+.raceStatusCancelled {
+  background: rgba(220, 38, 38, 0.12);
+  color: #b91c1c;
+}
+
+.raceStatusDnf {
+  background: rgba(124, 58, 237, 0.12);
+  color: #6d28d9;
+}
+
+.raceStatusUnknown {
+  background: rgba(16, 24, 40, 0.06);
+  color: #475467;
+}
+
+.monthBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.05);
+  color: #475467;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.countdownBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(249, 115, 22, 0.12);
+  color: #c2410c;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  white-space: nowrap;
+}
+
+.raceBottomRow {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.metricsGrid {
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.metricItem {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.metricLabel {
+  color: #98a2b3;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.metricValue {
+  color: #101828;
+  font-size: 15px;
+  font-weight: 700;
+  min-height: 24px;
+}
+
+.cardActions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  min-width: 92px;
+}
+
+.iconAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.92);
+  color: #101828;
+}
+
+.iconAction:hover {
+  background: rgba(15, 23, 42, 0.04) !important;
+  color: #101828 !important;
+}
+
+.iconActionDanger {
+  color: #d92d20;
+}
+
+.iconActionDanger:hover {
+  background: rgba(217, 45, 32, 0.08) !important;
+  color: #d92d20 !important;
+}
+
+@media (max-width: 960px) {
+  .yearHeader {
+    gap: 12px;
+  }
+
+  .raceRow {
+    flex-direction: column;
+  }
+
+  .dateBadge {
+    flex-basis: auto;
+    width: 92px;
+  }
+
+  .raceTopRow {
+    flex-direction: column;
+  }
+
+  .raceTopMeta {
+    justify-content: flex-start;
+  }
+
+  .raceCardTitle {
+    font-size: 20px;
+  }
+
+  .raceBottomRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .metricsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cardActions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 640px) {
+  .metricsGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

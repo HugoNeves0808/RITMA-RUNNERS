@@ -1,7 +1,7 @@
 import { config } from '../constants/config'
 
 type RequestOptions = {
-  method?: 'GET' | 'POST' | 'DELETE'
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
   token?: string
   body?: unknown
 }

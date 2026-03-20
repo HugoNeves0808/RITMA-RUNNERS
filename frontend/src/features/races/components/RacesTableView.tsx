@@ -1,18 +1,712 @@
-import { Card, Typography } from 'antd'
-import styles from './RacesViewPlaceholder.module.css'
+import { faEye, faPenToSquare, faTrashCan } from '@fortawesome/free-solid-svg-icons'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { useEffect, useState } from 'react'
+import dayjs from 'dayjs'
+import {
+  Alert,
+  Button,
+  Card,
+  DatePicker,
+  Empty,
+  Form,
+  Input,
+  Modal,
+  Select,
+  Space,
+  Spin,
+} from 'antd'
+import { useAuth } from '../../auth'
+import {
+  deleteRaceTableItems,
+  fetchRaceTable,
+  fetchRaceTypes,
+  updateRaceTableItem,
+} from '../services/racesTableService'
+import type { RaceTableItem, RaceTableYearGroup, RaceTypeOption } from '../types/racesTable'
+import styles from './RacesTableView.module.css'
 
-const { Paragraph, Title } = Typography
+type EditRaceFormValues = {
+  raceDate: dayjs.Dayjs
+  name: string
+  location?: string
+  raceTypeId?: string
+  officialTime?: string
+  chipTime?: string
+  pacePerKm?: string
+}
 
-export function RacesTableView() {
+function getLongMonthLabel(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return 'SEM MES'
+  }
+
+  return new Intl.DateTimeFormat('pt-PT', {
+    month: 'long',
+  }).format(date).toUpperCase()
+}
+
+function getDayLabel(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return '--'
+  }
+
+  return String(date.getDate()).padStart(2, '0')
+}
+
+function getCompactMonthLabel(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return '---'
+  }
+
+  const month = new Intl.DateTimeFormat('en-GB', { month: 'short' }).format(date)
+  return month.charAt(0).toUpperCase() + month.slice(1).toLowerCase()
+}
+
+function getRaceStatusLabel(status: string | null | undefined) {
+  if (!status) {
+    return 'Unknown'
+  }
+
+  switch (status) {
+    case 'REGISTERED':
+      return 'Registered'
+    case 'COMPLETED':
+      return 'Completed'
+    case 'IN_LIST':
+      return 'In list'
+    case 'NOT_REGISTERED':
+      return 'Not registered'
+    case 'CANCELLED':
+      return 'Cancelled'
+    case 'DID_NOT_FINISH':
+      return 'DNF'
+    default:
+      return status.replaceAll('_', ' ').toLowerCase()
+  }
+}
+
+function getRaceStatusClassName(status: string | null | undefined) {
+  switch (status) {
+    case 'REGISTERED':
+      return styles.raceStatusRegistered
+    case 'COMPLETED':
+      return styles.raceStatusCompleted
+    case 'IN_LIST':
+      return styles.raceStatusInList
+    case 'NOT_REGISTERED':
+      return styles.raceStatusNotRegistered
+    case 'CANCELLED':
+      return styles.raceStatusCancelled
+    case 'DID_NOT_FINISH':
+      return styles.raceStatusDnf
+    default:
+      return styles.raceStatusUnknown
+  }
+}
+
+function formatDuration(totalSeconds: number | null) {
+  if (totalSeconds == null) {
+    return <span className={styles.emptyValue}>-</span>
+  }
+
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
+
+function formatPace(totalSeconds: number | null) {
+  if (totalSeconds == null) {
+    return <span className={styles.emptyValue}>-</span>
+  }
+
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${minutes}:${String(seconds).padStart(2, '0')} /km`
+}
+
+function formatDurationInput(totalSeconds: number | null) {
+  if (totalSeconds == null) {
+    return ''
+  }
+
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
+
+function formatPaceInput(totalSeconds: number | null) {
+  if (totalSeconds == null) {
+    return ''
+  }
+
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${minutes}:${String(seconds).padStart(2, '0')}`
+}
+
+function parseTimeToSeconds(value: string | undefined, mode: 'duration' | 'pace') {
+  const normalized = value?.trim()
+  if (!normalized) {
+    return null
+  }
+
+  const parts = normalized.split(':')
+  if (mode === 'duration' && parts.length === 3) {
+    const [hours, minutes, seconds] = parts.map((part) => Number(part))
+    if ([hours, minutes, seconds].some((part) => Number.isNaN(part) || part < 0)) {
+      throw new Error('Chip time must use HH:MM:SS.')
+    }
+
+    return (hours * 3600) + (minutes * 60) + seconds
+  }
+
+  if (parts.length === 2) {
+    const [minutes, seconds] = parts.map((part) => Number(part))
+    if ([minutes, seconds].some((part) => Number.isNaN(part) || part < 0)) {
+      throw new Error(mode === 'duration' ? 'Chip time must use HH:MM:SS.' : 'Pace must use MM:SS.')
+    }
+
+    return (minutes * 60) + seconds
+  }
+
+  throw new Error(mode === 'duration' ? 'Chip time must use HH:MM:SS.' : 'Pace must use MM:SS.')
+}
+
+function groupRacesByMonth(races: RaceTableItem[]) {
+  const monthMap = new Map<string, RaceTableItem[]>()
+
+  races.forEach((race) => {
+    const key = race.raceDate.slice(0, 7)
+    const currentMonthRaces = monthMap.get(key)
+    if (currentMonthRaces) {
+      currentMonthRaces.push(race)
+      return
+    }
+
+    monthMap.set(key, [race])
+  })
+
+  return Array.from(monthMap.entries()).map(([key, monthRaces]) => ({
+    key,
+    label: getLongMonthLabel(`${key}-01`),
+    races: monthRaces,
+  }))
+}
+
+function getRaceDateTime(race: RaceTableItem) {
+  if (race.raceTime) {
+    return dayjs(`${race.raceDate}T${race.raceTime}`)
+  }
+
+  return dayjs(`${race.raceDate}T23:59:59`)
+}
+
+function isRegisteredRace(race: RaceTableItem) {
+  return race.raceStatus === 'REGISTERED'
+}
+
+function isUpcomingRace(race: RaceTableItem, now: dayjs.Dayjs) {
+  if (!isRegisteredRace(race)) {
+    return false
+  }
+
+  const raceDateTime = getRaceDateTime(race)
+  const startOfToday = now.startOf('day')
+  const daysSinceMonday = (startOfToday.day() + 6) % 7
+  const startOfWeek = startOfToday.subtract(daysSinceMonday, 'day')
+  const endOfWeek = startOfWeek.add(7, 'day')
+
+  return raceDateTime.isSame(startOfToday, 'day')
+    || (raceDateTime.isAfter(now) && raceDateTime.isBefore(endOfWeek))
+}
+
+function formatCountdown(race: RaceTableItem, now: dayjs.Dayjs) {
+  const raceDateTime = getRaceDateTime(race)
+  if (!raceDateTime.isAfter(now)) {
+    return null
+  }
+
+  const diffMinutes = Math.max(raceDateTime.diff(now, 'minute'), 0)
+  const days = Math.floor(diffMinutes / (60 * 24))
+  const hours = Math.floor((diffMinutes % (60 * 24)) / 60)
+  const minutes = diffMinutes % 60
+
+  return `starts in ${String(days).padStart(2, '0')}d ${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m`
+}
+
+function removeUpcomingRaces(years: RaceTableYearGroup[], upcomingRaceIds: Set<string>) {
+  return years
+    .map((yearGroup) => ({
+      ...yearGroup,
+      races: yearGroup.races.filter((race) => !upcomingRaceIds.has(race.id)),
+    }))
+    .filter((yearGroup) => yearGroup.races.length > 0)
+}
+
+function getFallbackUpcomingRaces(races: RaceTableItem[], now: dayjs.Dayjs) {
+  const nextRace = races
+    .filter((race) => isRegisteredRace(race) && getRaceDateTime(race).isAfter(now))
+    .sort((left, right) => getRaceDateTime(left).diff(getRaceDateTime(right)))[0]
+
+  return nextRace ? [nextRace] : []
+}
+
+type RacesTableViewProps = {
+  showAllYears: boolean
+}
+
+export function RacesTableView({ showAllYears }: RacesTableViewProps) {
+  const { token } = useAuth()
+  const currentYear = dayjs().year()
+  const [now, setNow] = useState(() => dayjs())
+  const [years, setYears] = useState<RaceTableYearGroup[]>([])
+  const [raceTypes, setRaceTypes] = useState<RaceTypeOption[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isDeleteLoading, setIsDeleteLoading] = useState(false)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isSavingEdit, setIsSavingEdit] = useState(false)
+  const [editingRace, setEditingRace] = useState<RaceTableItem | null>(null)
+  const [form] = Form.useForm<EditRaceFormValues>()
+
+  const visibleYears = showAllYears
+    ? years
+    : years.filter((yearGroup) => yearGroup.year === currentYear)
+  const visibleRaces = visibleYears.flatMap((yearGroup) => yearGroup.races)
+  const weekUpcomingRaces = visibleRaces
+    .filter((race) => isUpcomingRace(race, now))
+    .sort((left, right) => getRaceDateTime(left).diff(getRaceDateTime(right)))
+  const upcomingRaces = weekUpcomingRaces.length > 0
+    ? weekUpcomingRaces
+    : getFallbackUpcomingRaces(visibleRaces, now)
+  const regularYears = removeUpcomingRaces(visibleYears, new Set(upcomingRaces.map((race) => race.id)))
+
+  const loadTableData = async () => {
+    if (!token) {
+      setYears([])
+      setRaceTypes([])
+      setIsLoading(false)
+      return
+    }
+
+    try {
+      setIsLoading(true)
+      const [tablePayload, raceTypePayload] = await Promise.all([
+        fetchRaceTable(token),
+        fetchRaceTypes(token),
+      ])
+
+      setYears(tablePayload.years)
+      setRaceTypes(raceTypePayload)
+      setError(null)
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Unknown error')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void loadTableData()
+  }, [token])
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setNow(dayjs())
+    }, 1000)
+
+    return () => window.clearInterval(intervalId)
+  }, [])
+
+  const handleOpenEdit = (race: RaceTableItem) => {
+    setEditingRace(race)
+    form.setFieldsValue({
+      raceDate: dayjs(race.raceDate),
+      name: race.name,
+      location: race.location ?? '',
+      raceTypeId: race.raceTypeId ?? undefined,
+      officialTime: formatDurationInput(race.officialTimeSeconds),
+      chipTime: formatDurationInput(race.chipTimeSeconds),
+      pacePerKm: formatPaceInput(race.pacePerKmSeconds),
+    })
+    setIsEditModalOpen(true)
+  }
+
+  const handleDelete = (race: RaceTableItem) => {
+    if (!token) {
+      return
+    }
+
+    Modal.confirm({
+      title: 'Delete race?',
+      content: 'This action cannot be undone.',
+      okText: 'Delete',
+      cancelText: 'Cancel',
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          setIsDeleteLoading(true)
+          await deleteRaceTableItems([race.id], token)
+          await loadTableData()
+        } catch (deleteError) {
+          setError(deleteError instanceof Error ? deleteError.message : 'Unknown error')
+        } finally {
+          setIsDeleteLoading(false)
+        }
+      },
+    })
+  }
+
+  const handleSubmitEdit = async () => {
+    if (!token || !editingRace) {
+      return
+    }
+
+    try {
+      const values = await form.validateFields()
+      setIsSavingEdit(true)
+
+      await updateRaceTableItem(
+        editingRace.id,
+        {
+          raceDate: values.raceDate.format('YYYY-MM-DD'),
+          name: values.name.trim(),
+          location: values.location?.trim() ? values.location.trim() : null,
+          raceTypeId: values.raceTypeId ?? null,
+          officialTimeSeconds: parseTimeToSeconds(values.officialTime, 'duration'),
+          chipTimeSeconds: parseTimeToSeconds(values.chipTime, 'duration'),
+          pacePerKmSeconds: parseTimeToSeconds(values.pacePerKm, 'pace'),
+        },
+        token,
+      )
+
+      setIsEditModalOpen(false)
+      setEditingRace(null)
+      await loadTableData()
+    } catch (submitError) {
+      if (submitError instanceof Error && !('errorFields' in submitError)) {
+        setError(submitError.message)
+      }
+    } finally {
+      setIsSavingEdit(false)
+    }
+  }
+
   return (
-    <Card className={styles.viewCard} variant="borderless">
-      <div className={styles.viewContent}>
-        <p className={styles.eyebrow}>Table view</p>
-        <Title level={3} className={styles.title}>Race table placeholder</Title>
-        <Paragraph className={styles.description}>
-          This area will host the tabular race listing and related controls.
-        </Paragraph>
-      </div>
+    <Card className={styles.pageCard} variant="borderless">
+      {isLoading ? (
+        <Space>
+          <Spin size="small" />
+          <span>Loading races</span>
+        </Space>
+      ) : null}
+
+      {error ? (
+        <Alert type="error" showIcon message="Could not load the race table" description={error} />
+      ) : null}
+
+      {!isLoading && years.length === 0 ? (
+        <div className={styles.emptyWrap}>
+          <Empty description="No dated races available." />
+        </div>
+      ) : null}
+
+      {!isLoading && years.length > 0 && visibleYears.length === 0 ? (
+        <div className={styles.emptyWrap}>
+          <Empty description={`No races available for ${currentYear}.`} />
+        </div>
+      ) : null}
+
+      {!isLoading && upcomingRaces.length > 0 ? (
+        <section className={styles.yearSection}>
+          <div className={styles.yearHeader}>
+            <h3 className={styles.yearTitle}>Coming Up</h3>
+          </div>
+
+          <div className={styles.yearCard}>
+            <div className={styles.monthSection}>
+              <div className={styles.raceList}>
+                {upcomingRaces.map((race) => {
+                  const countdown = formatCountdown(race, now)
+
+                  return (
+                    <article
+                      key={race.id}
+                      className={`${styles.raceRow} ${styles.raceRowToday}`.trim()}
+                    >
+                      <div className={styles.dateBadge}>
+                        <span className={styles.dateBadgeDay}>{getDayLabel(race.raceDate)}</span>
+                        <span className={styles.dateBadgeMonth}>{getCompactMonthLabel(race.raceDate)}</span>
+                      </div>
+
+                      <div className={styles.raceContent}>
+                        <div className={styles.raceTopRow}>
+                          <div className={styles.raceTitleBlock}>
+                            <div className={styles.raceMetaRow}>
+                              <span className={styles.raceNumber}>#{race.raceNumber}</span>
+                              <span className={`${styles.raceStatusBadge} ${getRaceStatusClassName(race.raceStatus)}`.trim()}>
+                                {getRaceStatusLabel(race.raceStatus)}
+                              </span>
+                            </div>
+                            <h4 className={styles.raceCardTitle}>{race.name}</h4>
+                          </div>
+
+                          <div className={styles.raceTopMeta}>
+                            {countdown ? <span className={styles.countdownBadge}>{countdown}</span> : null}
+                            <span className={styles.monthBadge}>{getLongMonthLabel(race.raceDate)}</span>
+                          </div>
+                        </div>
+
+                        <div className={styles.raceBottomRow}>
+                          <div className={styles.metricsGrid}>
+                            <div className={styles.metricItem}>
+                              <span className={styles.metricLabel}>Location</span>
+                              <span className={styles.metricValue}>
+                                {race.location ?? <span className={styles.emptyValue}>-</span>}
+                              </span>
+                            </div>
+
+                            <div className={styles.metricItem}>
+                              <span className={styles.metricLabel}>Race type</span>
+                              <span className={styles.metricValue}>
+                                {race.raceTypeName
+                                  ? <span className={styles.raceTypeTag}>{race.raceTypeName}</span>
+                                  : <span className={styles.emptyValue}>-</span>}
+                              </span>
+                            </div>
+
+                            <div className={styles.metricItem}>
+                              <span className={styles.metricLabel}>Official time</span>
+                              <span className={styles.metricValue}>{formatDuration(race.officialTimeSeconds)}</span>
+                            </div>
+
+                            <div className={styles.metricItem}>
+                              <span className={styles.metricLabel}>Chip time</span>
+                              <span className={styles.metricValue}>{formatDuration(race.chipTimeSeconds)}</span>
+                            </div>
+
+                            <div className={styles.metricItem}>
+                              <span className={styles.metricLabel}>Pace per km</span>
+                              <span className={styles.metricValue}>{formatPace(race.pacePerKmSeconds)}</span>
+                            </div>
+                          </div>
+
+                          <div className={styles.cardActions}>
+                            <Button
+                              type="text"
+                              className={styles.iconAction}
+                              title="View details"
+                              aria-label="View details"
+                              icon={<FontAwesomeIcon icon={faEye} />}
+                            />
+                            <Button
+                              type="text"
+                              className={styles.iconAction}
+                              onClick={() => handleOpenEdit(race)}
+                              title="Edit race"
+                              aria-label="Edit race"
+                              icon={<FontAwesomeIcon icon={faPenToSquare} />}
+                            />
+                            <Button
+                              type="text"
+                              danger
+                              className={`${styles.iconAction} ${styles.iconActionDanger}`.trim()}
+                              onClick={() => handleDelete(race)}
+                              loading={isDeleteLoading}
+                              title="Delete race"
+                              aria-label="Delete race"
+                              icon={<FontAwesomeIcon icon={faTrashCan} />}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </article>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {!isLoading ? regularYears.map((yearGroup) => (
+        <section key={yearGroup.year} className={styles.yearSection}>
+          <div className={styles.yearHeader}>
+            <h3 className={styles.yearTitle}>{yearGroup.year}</h3>
+          </div>
+
+          <div className={styles.yearCard}>
+            {groupRacesByMonth(yearGroup.races).map((monthGroup) => (
+              <div key={monthGroup.key} className={styles.monthSection}>
+                <div className={styles.raceList}>
+                  {monthGroup.races.map((race) => {
+                    const isTodayRace = race.raceDate === now.format('YYYY-MM-DD')
+                    const countdown = formatCountdown(race, now)
+
+                    return (
+                      <article
+                        key={race.id}
+                        className={isTodayRace ? `${styles.raceRow} ${styles.raceRowToday}` : styles.raceRow}
+                      >
+                        <div className={styles.dateBadge}>
+                          <span className={styles.dateBadgeDay}>{getDayLabel(race.raceDate)}</span>
+                          <span className={styles.dateBadgeMonth}>{getCompactMonthLabel(race.raceDate)}</span>
+                        </div>
+
+                        <div className={styles.raceContent}>
+                          <div className={styles.raceTopRow}>
+                            <div className={styles.raceTitleBlock}>
+                              <div className={styles.raceMetaRow}>
+                                <span className={styles.raceNumber}>#{race.raceNumber}</span>
+                                <span className={`${styles.raceStatusBadge} ${getRaceStatusClassName(race.raceStatus)}`.trim()}>
+                                  {getRaceStatusLabel(race.raceStatus)}
+                                </span>
+                              </div>
+                              <h4 className={styles.raceCardTitle}>{race.name}</h4>
+                            </div>
+
+                            <div className={styles.raceTopMeta}>
+                              {isUpcomingRace(race, now) && countdown ? <span className={styles.countdownBadge}>{countdown}</span> : null}
+                              <span className={styles.monthBadge}>{getLongMonthLabel(race.raceDate)}</span>
+                            </div>
+                          </div>
+
+                          <div className={styles.raceBottomRow}>
+                            <div className={styles.metricsGrid}>
+                              <div className={styles.metricItem}>
+                                <span className={styles.metricLabel}>Location</span>
+                                <span className={styles.metricValue}>
+                                  {race.location ?? <span className={styles.emptyValue}>-</span>}
+                                </span>
+                              </div>
+
+                              <div className={styles.metricItem}>
+                                <span className={styles.metricLabel}>Race type</span>
+                                <span className={styles.metricValue}>
+                                  {race.raceTypeName
+                                    ? <span className={styles.raceTypeTag}>{race.raceTypeName}</span>
+                                    : <span className={styles.emptyValue}>-</span>}
+                                </span>
+                              </div>
+
+                              <div className={styles.metricItem}>
+                                <span className={styles.metricLabel}>Official time</span>
+                                <span className={styles.metricValue}>{formatDuration(race.officialTimeSeconds)}</span>
+                              </div>
+
+                              <div className={styles.metricItem}>
+                                <span className={styles.metricLabel}>Chip time</span>
+                                <span className={styles.metricValue}>{formatDuration(race.chipTimeSeconds)}</span>
+                              </div>
+
+                              <div className={styles.metricItem}>
+                                <span className={styles.metricLabel}>Pace per km</span>
+                                <span className={styles.metricValue}>{formatPace(race.pacePerKmSeconds)}</span>
+                              </div>
+                            </div>
+
+                            <div className={styles.cardActions}>
+                              <Button
+                                type="text"
+                                className={styles.iconAction}
+                                title="View details"
+                                aria-label="View details"
+                                icon={<FontAwesomeIcon icon={faEye} />}
+                              />
+                              <Button
+                                type="text"
+                                className={styles.iconAction}
+                                onClick={() => handleOpenEdit(race)}
+                                title="Edit race"
+                                aria-label="Edit race"
+                                icon={<FontAwesomeIcon icon={faPenToSquare} />}
+                              />
+                              <Button
+                                type="text"
+                                danger
+                                className={`${styles.iconAction} ${styles.iconActionDanger}`.trim()}
+                                onClick={() => handleDelete(race)}
+                                loading={isDeleteLoading}
+                                title="Delete race"
+                                aria-label="Delete race"
+                                icon={<FontAwesomeIcon icon={faTrashCan} />}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </article>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )) : null}
+
+      <Modal
+        title="Edit race"
+        open={isEditModalOpen}
+        okText="Save"
+        cancelText="Cancel"
+        confirmLoading={isSavingEdit}
+        onOk={() => void handleSubmitEdit()}
+        onCancel={() => {
+          setIsEditModalOpen(false)
+          setEditingRace(null)
+          form.resetFields()
+        }}
+      >
+        <p className={styles.modalHint}>Only one selected race can be edited at a time.</p>
+
+        <Form form={form} layout="vertical">
+          <Form.Item<EditRaceFormValues>
+            label="race_date"
+            name="raceDate"
+            rules={[{ required: true, message: 'Race date is required.' }]}
+          >
+            <DatePicker format="YYYY-MM-DD" className={styles.datePicker} />
+          </Form.Item>
+
+          <Form.Item<EditRaceFormValues>
+            label="name"
+            name="name"
+            rules={[{ required: true, message: 'Race name is required.' }]}
+          >
+            <Input />
+          </Form.Item>
+
+          <Form.Item<EditRaceFormValues> label="location" name="location">
+            <Input placeholder="Race location" />
+          </Form.Item>
+
+          <Form.Item<EditRaceFormValues> label="race_type" name="raceTypeId">
+            <Select
+              allowClear
+              options={raceTypes.map((raceType) => ({ value: raceType.id, label: raceType.name }))}
+              placeholder="Select a race type"
+            />
+          </Form.Item>
+
+          <Form.Item<EditRaceFormValues> label="official_time" name="officialTime">
+            <Input placeholder="HH:MM:SS" />
+          </Form.Item>
+
+          <Form.Item<EditRaceFormValues> label="chip_time" name="chipTime">
+            <Input placeholder="HH:MM:SS" />
+          </Form.Item>
+
+          <Form.Item<EditRaceFormValues> label="pace_per_km" name="pacePerKm">
+            <Input placeholder="MM:SS" />
+          </Form.Item>
+        </Form>
+      </Modal>
     </Card>
   )
 }

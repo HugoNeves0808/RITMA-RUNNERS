@@ -11,6 +11,14 @@ This file keeps a short, slightly more detailed record of what was done in each 
 
 ## Entries
 
+### `Unreleased` - Add races table mode across backend, web, and mobile
+
+- Added an authenticated `/api/races/table` flow in the backend, including grouped yearly responses, race-type option loading, single-row updates, batch deletion support, and extra table fields such as `location`, `officialTimeSeconds`, `raceTime`, and `raceStatus`.
+- Reworked the web `Races` area so it now opens by default in `Table` mode, shows a card-based yearly list instead of a classic grid, keeps a header-level `Current year` / `All years` scope selector, and lets each race be managed directly with icon actions for view, edit, and delete.
+- Added a `Coming Up` section on the web table view that prioritizes `REGISTERED` races in the current Monday-to-Sunday week and otherwise falls back to the next upcoming registered race, with a live `starts in ...` countdown and status-aware presentation.
+- Implemented the same real `Table` mode on mobile, made it the default `Races` entry state, mirrored the weekly `Coming Up` logic, and added a filter-sheet experience with switcher-style controls for calendar mode and table scope.
+- Simplified the mobile table cards into a more compact layout by trimming secondary metrics from the main card body, tightening spacing, shortening long race names with ellipsis, and moving filtering into a shared header icon for both `Calendar` and `Table`.
+
 ### `Unreleased` - Add yearly races calendar on the web client
 
 - Added an authenticated `GET /api/races/calendar/yearly` endpoint that returns the logged-in user's races for a selected year, grouped by month and day so the web client can render a full-year calendar without extra client-side reshaping.

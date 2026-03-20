@@ -1,0 +1,2 @@
+ALTER TABLE user_races
+ADD COLUMN IF NOT EXISTS location VARCHAR(150);
