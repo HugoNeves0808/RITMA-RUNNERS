@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react'
 import { StyleSheet, View } from 'react-native'
-import { fetchRaceCalendarMonth } from '../services/racesCalendarService'
-import type { RaceCalendarMonthPayload } from '../types/racesCalendar'
+import { fetchRaceCalendarMonth, fetchRaceCalendarYear } from '../services/racesCalendarService'
+import type { RaceCalendarMonthPayload, RaceCalendarYearPayload } from '../types/racesCalendar'
 import type { RacesCalendarMode } from '../types/racesCalendarMode'
 import { RacesCalendarMonthlyView } from './RacesCalendarMonthlyView'
 import { RacesCalendarYearlyView } from './RacesCalendarYearlyView'
-import { colors } from '../../../theme/colors'
 
 type RacesCalendarViewProps = {
   token: string
@@ -17,9 +16,13 @@ export function RacesCalendarView({ token, selectedMode }: RacesCalendarViewProp
     const today = new Date()
     return { year: today.getFullYear(), month: today.getMonth() + 1 }
   })
+  const [visibleYear, setVisibleYear] = useState(() => new Date().getFullYear())
   const [calendarData, setCalendarData] = useState<RaceCalendarMonthPayload | null>(null)
+  const [yearCalendarData, setYearCalendarData] = useState<RaceCalendarYearPayload | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [isYearLoading, setIsYearLoading] = useState(false)
+  const [yearErrorMessage, setYearErrorMessage] = useState<string | null>(null)
 
   useEffect(() => {
     if (selectedMode !== 'monthly') {
@@ -42,6 +45,27 @@ export function RacesCalendarView({ token, selectedMode }: RacesCalendarViewProp
     void loadMonthlyCalendar()
   }, [selectedMode, token, visibleMonth.month, visibleMonth.year])
 
+  useEffect(() => {
+    if (selectedMode !== 'yearly') {
+      return
+    }
+
+    const loadYearlyCalendar = async () => {
+      try {
+        setIsYearLoading(true)
+        const response = await fetchRaceCalendarYear(visibleYear, token)
+        setYearCalendarData(response)
+        setYearErrorMessage(null)
+      } catch {
+        setYearErrorMessage('Calendar data is temporarily unavailable.')
+      } finally {
+        setIsYearLoading(false)
+      }
+    }
+
+    void loadYearlyCalendar()
+  }, [selectedMode, token, visibleYear])
+
   const moveMonth = (direction: -1 | 1) => {
     setVisibleMonth((currentValue) => {
       const nextDate = new Date(currentValue.year, currentValue.month - 1 + direction, 1)
@@ -50,6 +74,10 @@ export function RacesCalendarView({ token, selectedMode }: RacesCalendarViewProp
         month: nextDate.getMonth() + 1,
       }
     })
+  }
+
+  const moveYear = (direction: -1 | 1) => {
+    setVisibleYear((currentValue) => currentValue + direction)
   }
 
   return (
@@ -65,7 +93,14 @@ export function RacesCalendarView({ token, selectedMode }: RacesCalendarViewProp
           onNextMonth={() => moveMonth(1)}
         />
       ) : (
-        <RacesCalendarYearlyView />
+        <RacesCalendarYearlyView
+          year={yearCalendarData?.year ?? visibleYear}
+          months={yearCalendarData?.months ?? []}
+          isLoading={isYearLoading}
+          errorMessage={yearErrorMessage}
+          onPreviousYear={() => moveYear(-1)}
+          onNextYear={() => moveYear(1)}
+        />
       )}
     </View>
   )

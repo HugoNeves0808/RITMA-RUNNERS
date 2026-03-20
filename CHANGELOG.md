@@ -16,12 +16,13 @@ This file keeps a short, slightly more detailed record of what was done in each 
 - Added an authenticated `GET /api/races/calendar/yearly` endpoint that returns the logged-in user's races for a selected year, grouped by month and day so the web client can render a full-year calendar without extra client-side reshaping.
 - Implemented a separate web `Yearly` calendar mode with its own components, year navigation, a 12-month overview grid, and per-day circular markers that use the prioritized race status color when that day has races.
 - Aligned yearly calendar behavior with the monthly mode by reusing shared race-priority rules, keeping the current month highlighted, and marking the current day inside the yearly overview with the same orange accent treatment.
+- Extended the same yearly calendar flow to mobile with real year loading, single-column month cards, compact status-colored day markers, and spacing refinements so the full-year view remains readable on smaller screens.
 
 ### `Unreleased` - Refine races calendar across web and mobile
 
 - Refined the web monthly `Races` calendar into a tighter, cleaner layout with smaller month navigation controls, a top-row calendar-mode dropdown, fixed-height day cells, single-race summarization, status-colored cards, race-type display, and overflow handling for crowded days.
-- Added the first real mobile monthly `Races` calendar flow backed by the same authenticated `/api/races/calendar` endpoint, including shared month loading, top-level `Calendar` / `Table` switching, a `Monthly` / `Yearly` mode selector, and a placeholder yearly mode ready for later work.
-- Adapted the mobile monthly calendar for a compact touch-first presentation with centered month navigation, smaller controls, stable day-card sizing, and day summaries that prioritize the earliest or most relevant race status while showing only the race count indicator.
+- Added the first real mobile monthly `Races` calendar flow backed by the same authenticated `/api/races/calendar` endpoint, including shared month loading, top-level `Calendar` / `Table` switching, and a `Monthly` / `Yearly` mode selector.
+- Adapted the mobile monthly calendar for a compact touch-first presentation with centered month navigation, smaller controls, stable day-card sizing, softened current-day highlighting, and day summaries that prioritize the earliest or most relevant race status while showing only the race count indicator.
 
 ### `Unreleased` - Add monthly races calendar on the web client
 

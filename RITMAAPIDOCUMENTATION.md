@@ -89,7 +89,7 @@ Authenticated client shell status:
 - `Admin Area` is currently a grouped navigation label in both clients, not a standalone page or backend endpoint
 - web `Races` now has an icon-only switcher that swaps between separate placeholder `Calendar` and `Table` view components
 - web `Races` now renders real monthly and yearly calendar views backed by authenticated race data, with compact monthly day cards and a yearly 12-month overview that uses race-status color cues on the day numbers
-- mobile `Races` now mirrors the same top-level switcher pattern and also renders a real monthly calendar backed by the same authenticated race data, with a compact per-day race-count summary and a prepared yearly placeholder
+- mobile `Races` now mirrors the same top-level switcher pattern and renders real monthly and yearly calendars backed by the same authenticated race data, with a compact per-day monthly summary and a single-column yearly overview adapted for smaller screens
 - web `Pending Approvals` and `Users` now show real admin data with actions and pagination, while the admin overview section is still a placeholder
 - mobile `Pending Approvals`, `Users`, and `Overview` now also show real admin data with actions and pagination
 
@@ -407,7 +407,7 @@ Current client usage:
 
 ### `GET /api/races/calendar/yearly`
 
-Returns the authenticated user's races for a selected year, grouped by month and day for the web yearly calendar experience.
+Returns the authenticated user's races for a selected year, grouped by month and day for the yearly calendar experience shared by web and mobile.
 
 Optional query params:
 
@@ -456,6 +456,7 @@ Expected response example:
 Current client usage:
 
 - web `Races` yearly calendar consumes `/api/races/calendar/yearly`, requests the visible year from the top controls, and renders a 12-month overview
+- mobile `Races` yearly calendar also consumes `/api/races/calendar/yearly`, requests the visible year from its own year controls, and renders the same year as stacked month cards for better mobile readability
 - each day with races is marked by a circular number badge whose fill color comes from the prioritized race status for that day
 
 ## Admin
