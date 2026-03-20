@@ -11,7 +11,7 @@ This file keeps a short, slightly more detailed record of what was done in each 
 
 ## Entries
 
-### `Unreleased` - Refine races filters, actions, and admin entry cleanup across web and mobile
+### `c447603` - Refine races filters, actions, and admin entry cleanup across web and mobile
 
 - Removed the leftover admin diagnostics flow from the product by deleting the web `/admin/diagnostics` route, the diagnostics page and service, and the backend technical diagnostics controller that exposed the old admin-only system-health endpoint.
 - Corrected authenticated entry behavior so regular users now always land on `Races` after login, while admins land on the admin overview using the authenticated role returned by the login response instead of stale in-memory state.
@@ -19,7 +19,7 @@ This file keeps a short, slightly more detailed record of what was done in each 
 - Reworked the web `Races` header to use a dedicated search field plus an icon-only filters drawer, added removable active-filter chips, and moved row management to a lighter action model with visible `view` plus a three-dot menu for `edit` and `delete`.
 - Brought the same filtering model to mobile `Races` with a shared filter sheet for table and calendar, local name search in table mode, compact action handling through a three-dot menu, and tighter race-card presentation without duplicated month labels or extra race-type styling.
 
-### `Unreleased` - Add races table mode across backend, web, and mobile
+### `2ef36b0` - Add races table mode across backend, web, and mobile
 
 - Added an authenticated `/api/races/table` flow in the backend, including grouped yearly responses, race-type option loading, single-row updates, batch deletion support, and extra table fields such as `location`, `officialTimeSeconds`, `raceTime`, and `raceStatus`.
 - Reworked the web `Races` area so it now opens by default in `Table` mode, shows a card-based yearly list instead of a classic grid, keeps a header-level `Current year` / `All years` scope selector, and lets each race be managed directly with icon actions for view, edit, and delete.
@@ -27,39 +27,43 @@ This file keeps a short, slightly more detailed record of what was done in each 
 - Implemented the same real `Table` mode on mobile, made it the default `Races` entry state, mirrored the weekly `Coming Up` logic, and added a filter-sheet experience with switcher-style controls for calendar mode and table scope.
 - Simplified the mobile table cards into a more compact layout by trimming secondary metrics from the main card body, tightening spacing, shortening long race names with ellipsis, and moving filtering into a shared header icon for both `Calendar` and `Table`.
 
-### `Unreleased` - Add yearly races calendar on the web client
+### `f257c49` - Add yearly races calendar on the web client
 
 - Added an authenticated `GET /api/races/calendar/yearly` endpoint that returns the logged-in user's races for a selected year, grouped by month and day so the web client can render a full-year calendar without extra client-side reshaping.
 - Implemented a separate web `Yearly` calendar mode with its own components, year navigation, a 12-month overview grid, and per-day circular markers that use the prioritized race status color when that day has races.
 - Aligned yearly calendar behavior with the monthly mode by reusing shared race-priority rules, keeping the current month highlighted, and marking the current day inside the yearly overview with the same orange accent treatment.
-- Extended the same yearly calendar flow to mobile with real year loading, single-column month cards, compact status-colored day markers, and spacing refinements so the full-year view remains readable on smaller screens.
 
-### `Unreleased` - Refine races calendar across web and mobile
+### `258d09f` - Add mobile yearly races calendar and refine calendar highlights
+
+- Extended the yearly calendar flow to mobile with real year loading, single-column month cards, compact status-colored day markers, and spacing refinements so the full-year view remains readable on smaller screens.
+- Refined shared calendar highlighting so current-day and status-priority cues stay visually aligned between the web and mobile yearly experiences.
+
+### `3a4146e` - Refine races calendar across web and mobile
 
 - Refined the web monthly `Races` calendar into a tighter, cleaner layout with smaller month navigation controls, a top-row calendar-mode dropdown, fixed-height day cells, single-race summarization, status-colored cards, race-type display, and overflow handling for crowded days.
 - Added the first real mobile monthly `Races` calendar flow backed by the same authenticated `/api/races/calendar` endpoint, including shared month loading, top-level `Calendar` / `Table` switching, and a `Monthly` / `Yearly` mode selector.
 - Adapted the mobile monthly calendar for a compact touch-first presentation with centered month navigation, smaller controls, stable day-card sizing, softened current-day highlighting, and day summaries that prioritize the earliest or most relevant race status while showing only the race count indicator.
 
-### `Unreleased` - Add monthly races calendar on the web client
+### `b82b3e3` - Add monthly races calendar on the web client
 
 - Added a new authenticated `GET /api/races/calendar` endpoint that returns the logged-in user's races for a selected month, grouped by day and enriched for calendar rendering.
 - Reworked the web `Races` calendar mode from a placeholder into a real monthly calendar with month navigation, a `Monthly` / `Yearly` mode dropdown prepared for future growth, and compact day cells that summarize the day's races.
 - Refined the web calendar presentation with tighter sizing, single-card-per-day summarization, race-type display instead of race status, ellipsis handling for long labels, and a more stable fallback when the calendar request fails.
 
-### `Unreleased` - Prepare races view switching on web and mobile
+### `cf65b13` - Prepare races view switching on web and mobile
 
 - Reworked the web `Races` page into a structured base with a page-level view state, an icon-only top switcher, and separate `Calendar` and `Table` view components so the feature can evolve without concentrating everything in one file.
 - Added the same base `Races` view-switching structure to mobile, including an icon-only switcher aligned to the page title and separate placeholder components for the future calendar and table experiences.
 - Refined mobile page spacing by giving the main screen titles more top breathing room and by reducing the visual weight of the `Users` and `Pending Approvals` counters.
 
-### `Unreleased` - Refine admin overview and simplify admin dashboard scope
+### `3de0665` - Refine admin overview across web and mobile
 
 - Reworked the admin `Overview` in the web client into a real dashboard with key account metrics, a pending-approvals preview, inline approve/reject actions, a compact icon-only refresh control, and direct navigation to the full pending-approvals page.
 - Brought the mobile admin `Overview` in line with the web version by showing the same top metrics, a pending-approvals preview, inline approve/reject actions, and a shortcut into the full mobile pending-approvals screen.
 - Simplified the admin dashboard scope by removing the temporary `Recent activity` and `System status` sections from the overview experience in both clients and by cleaning up the temporary backend activity-tracking table with a follow-up database migration.
 - Kept the authenticated logout flow available in both clients through a backend `POST /api/auth/logout` endpoint so session handling remains consistent without exposing technical behavior in the UI.
 
-### `Unreleased` - Add admin filters across web and mobile
+### `0929d52` - Add admin filters across web and mobile
 
 - Added backend filtering support for admin `Users` and `Pending Approvals`, including email search, `onlyAdmins`, stale-login filtering for users inactive for more than one year, and pending-request filtering for requests older than three days.
 - Reworked the web `Users` and `Pending Approvals` pages to use a dedicated filters panel, backend-backed filter params, local fallback filtering, and warning indicators for stale rows directly in the tables.
@@ -79,14 +83,20 @@ This file keeps a short, slightly more detailed record of what was done in each 
 - Added the same `Pending Approvals` admin flow to mobile with live data loading, relative request-time formatting, 10-row pagination, refresh support, and approve/reject actions against the existing admin account-request endpoints.
 - Fixed authenticated layout sizing in the web shell so admin and authenticated pages no longer create horizontal page scroll beside the fixed sidebar.
 
-### `Unreleased` - Align authenticated navigation, account emails, and branding across clients
+### `197c8a8` - Add authenticated web and mobile app shells
 
-- Aligned frontend and mobile login, request-account, and forced-password-change flows so both clients now use the same messages, visual states, and first-login password-change behavior.
 - Added persisted mobile authentication with session restore, authenticated navigation, forced password change handling, logout support, and local storage for the current session.
 - Replaced the temporary authenticated web view with a real shell: fixed sidebar, active states, account actions, `Races` and `Best Efforts` navigation, and lightweight `Profile` and `Settings` placeholders.
 - Added matching mobile authenticated navigation with a fixed top bar, fixed bottom navigation, fullscreen menu page, and route-driven switching between `Races`, `Best Efforts`, `Profile`, and `Settings`.
+
+### `fb130ab` - Add admin navigation structure across web and mobile
+
 - Added admin-only navigation structure to both clients with an `Admin Area` dropdown group and placeholder subpages for `RITMA Overview`, `User List`, and `Pending Approvals`.
 - Refined the authenticated navigation polish across clients by tightening menu ordering, icon treatment, active states, logo sizing, and top-spacing behavior on public mobile screens.
+
+### `e9e9183` - Refine admin labels and web session persistence
+
+- Aligned frontend and mobile login, request-account, and forced-password-change flows so both clients now use the same messages, visual states, and first-login password-change behavior.
 - Made the web `Remember me` checkbox effective by storing the auth token in `localStorage` only when requested and falling back to session-only persistence otherwise.
 - Simplified admin submenu copy across clients to `Overview` and `Users`, and removed the extra logo from the mobile fullscreen hamburger menu.
 - Reworked the public `Future Goals` presentation in frontend and mobile to center the RITMA logo more prominently and keep the public product overview visually consistent.
