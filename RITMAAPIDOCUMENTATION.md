@@ -60,11 +60,12 @@ These are not backend API endpoints, but they are relevant to the current user f
 - `/login`
   Main login page, request-account modal, and entry point for authentication.
   In the web client, `Remember me` now keeps the token in persistent browser storage; when unchecked, the session uses session-only storage and ends when the browser is closed.
+  After a successful login, `USER` accounts now always enter through `Races`, while `ADMIN` accounts are redirected to the admin overview.
 - `/`
   Authenticated `Races` entry route in the web app.
 - `/races`
   Alias route that opens the same authenticated `Races` page in the web app.
-  The page now opens in `Table` mode by default, includes a top view switcher for `Calendar` and `Table`, a calendar-mode dropdown for `Monthly` and `Yearly`, and a table-scope dropdown for `Current year` and `All years`.
+  The page now opens in `Table` mode by default, includes a top view switcher for `Calendar` and `Table`, a calendar-mode dropdown for `Monthly` and `Yearly`, a table-scope dropdown for `Current year` and `All years`, a name search field, and a filters button for shared race filters.
 - `/best-efforts`
   Authenticated web section for best efforts.
 - `/profile`
@@ -89,9 +90,9 @@ Authenticated client shell status:
 - `Admin Area` is currently a grouped navigation label in both clients, not a standalone page or backend endpoint
 - web `Races` now has an icon-only switcher that swaps between separate placeholder `Calendar` and `Table` view components
 - web `Races` now renders real monthly and yearly calendar views backed by authenticated race data, with compact monthly day cards and a yearly 12-month overview that uses race-status color cues on the day numbers
-- web `Races` also includes a real card-based table mode grouped by year, with inline per-race edit/delete actions, a `Coming Up` section for registered races, and header-level `Current year` / `All years` filtering
+- web `Races` also includes a real card-based table mode grouped by year, with header-level name search, a shared race-filters drawer, a `Coming Up` section for registered races, and row actions split between visible `view` and a three-dot menu for `edit` and `delete`
 - mobile `Races` now mirrors the same top-level switcher pattern and renders real monthly and yearly calendars backed by the same authenticated race data, with a compact per-day monthly summary and a single-column yearly overview adapted for smaller screens
-- mobile `Races` also includes a real table mode with a compact card layout, the same `Coming Up` weekly logic for registered races, and a filter-sheet icon that exposes `Monthly` / `Yearly` and `Current year` / `All years` switchers depending on the active view
+- mobile `Races` also includes a real table mode with a compact card layout, the same `Coming Up` weekly logic for registered races, a shared race-filters sheet for both table and calendar, and a three-dot action menu on each race card
 - web `Pending Approvals` and `Users` now show real admin data with actions and pagination, while the admin overview section is still a placeholder
 - mobile `Pending Approvals`, `Users`, and `Overview` now also show real admin data with actions and pagination
 
@@ -365,11 +366,17 @@ Optional query params:
   target year for the calendar month; defaults to the current year when omitted
 - `month`
   target month from `1` to `12`; defaults to the current month when omitted
+- `statuses`
+  optional repeated filter for one or more race statuses
+  example: `statuses=REGISTERED&statuses=COMPLETED`
+- `raceTypeIds`
+  optional repeated filter for one or more race-type ids
+  example: `raceTypeIds=uuid-1&raceTypeIds=uuid-2`
 
 Postman:
 
 - Method: `GET`
-- URL: `{{baseUrl}}/api/races/calendar?year=2026&month=3`
+- URL: `{{baseUrl}}/api/races/calendar?year=2026&month=3&statuses=REGISTERED&raceTypeIds=uuid-1`
 - Auth: `Bearer Token`
 - Token: `{{token}}`
 
@@ -404,8 +411,9 @@ Expected response example:
 Current client usage:
 
 - web `Races` monthly calendar consumes `/api/races/calendar`, requests the visible month from the top controls, and renders the returned races inside the correct day cells
+- web applies race-name search locally in the client while using `statuses` and `raceTypeIds` as backend filters shared with the table experience
 - the response now includes `raceTypeName` so the compact day cards can show race type instead of race status
-- mobile `Races` monthly calendar also consumes `/api/races/calendar`, requests the visible month from its centered month controls, and uses the returned races to derive each day's compact race-count and status-priority summary
+- mobile `Races` monthly calendar also consumes `/api/races/calendar`, requests the visible month from its centered month controls, and uses the returned races to derive each day's compact race-count and status-priority summary while sharing the same status and race-type filters
 
 ### `GET /api/races/calendar/yearly`
 
@@ -415,11 +423,15 @@ Optional query params:
 
 - `year`
   target year for the calendar; defaults to the current year when omitted
+- `statuses`
+  optional repeated filter for one or more race statuses
+- `raceTypeIds`
+  optional repeated filter for one or more race-type ids
 
 Postman:
 
 - Method: `GET`
-- URL: `{{baseUrl}}/api/races/calendar/yearly?year=2026`
+- URL: `{{baseUrl}}/api/races/calendar/yearly?year=2026&statuses=REGISTERED&raceTypeIds=uuid-1`
 - Auth: `Bearer Token`
 - Token: `{{token}}`
 
@@ -460,6 +472,7 @@ Current client usage:
 - web `Races` yearly calendar consumes `/api/races/calendar/yearly`, requests the visible year from the top controls, and renders a 12-month overview
 - mobile `Races` yearly calendar also consumes `/api/races/calendar/yearly`, requests the visible year from its own year controls, and renders the same year as stacked month cards for better mobile readability
 - each day with races is marked by a circular number badge whose fill color comes from the prioritized race status for that day
+- both clients share backend filters for `statuses` and `raceTypeIds`, while race-name search remains local in the UI
 
 ### `GET /api/races/table`
 
@@ -470,11 +483,17 @@ Optional query params:
 - `scope`
   accepts `current` or `all`
   defaults to `current` when omitted
+- `statuses`
+  optional repeated filter for one or more race statuses
+  example: `statuses=REGISTERED&statuses=COMPLETED`
+- `raceTypeIds`
+  optional repeated filter for one or more race-type ids
+  example: `raceTypeIds=uuid-1&raceTypeIds=uuid-2`
 
 Postman:
 
 - Method: `GET`
-- URL: `{{baseUrl}}/api/races/table?scope=current`
+- URL: `{{baseUrl}}/api/races/table?scope=current&statuses=REGISTERED&raceTypeIds=uuid-1`
 - Auth: `Bearer Token`
 - Token: `{{token}}`
 
@@ -508,13 +527,13 @@ Expected response example:
 
 Client usage notes:
 
-- web `Races` table consumes `/api/races/table`, opens in `Current year` by default, and renders a card-style list grouped by year instead of a classic spreadsheet layout
-- mobile `Races` table consumes the same endpoint, also opens in `Current year` by default, and renders a simplified compact card layout for smaller screens
+- web `Races` table consumes `/api/races/table`, opens in `Current year` by default, applies race-name search locally, and uses backend filters for selected statuses and race types while rendering a card-style list grouped by year instead of a classic spreadsheet layout
+- mobile `Races` table consumes the same endpoint, also opens in `Current year` by default, applies race-name search locally in table mode, and uses the same backend-backed status and race-type filters in its compact card layout
 - both clients use `raceStatus` and `raceTime` to drive the `Coming Up` section, which only considers `REGISTERED` races in the current Monday-to-Sunday week or, when none exist, the next future registered race
 
 ### `GET /api/races/types`
 
-Returns the authenticated user's available race types for table editing.
+Returns the authenticated user's available race types for table editing and race filtering.
 
 Postman:
 
@@ -587,37 +606,6 @@ Example body:
 ## Admin
 
 All endpoints below are `ADMIN` only.
-
-### `GET /api/admin/system-health`
-
-Protected diagnostics endpoint with technical system information.
-
-Postman:
-
-- Method: `GET`
-- URL: `{{baseUrl}}/api/admin/system-health`
-- Auth: `Bearer Token`
-- Token: admin token
-
-Expected response example:
-
-```json
-{
-  "status": "ok",
-  "application": "ritma-runners-backend",
-  "database": "ritmarunners",
-  "serverTime": "2026-03-13T12:00:00Z",
-  "currentUser": {
-    "email": "admin@ritma.com",
-    "role": "ADMIN"
-  }
-}
-```
-
-Current note:
-
-- this endpoint still exists as a standalone technical admin endpoint
-- it is no longer embedded in the `Overview` dashboard
 
 ### `GET /api/admin/overview`
 
@@ -849,8 +837,7 @@ Expected response:
 7. `GET /api/auth/me`
 8. `POST /api/auth/change-password`
 9. `GET /api/admin/users`
-10. `GET /api/admin/system-health`
-11. `GET /api/db-check`
+10. `GET /api/db-check`
 
 ## Notes
 
@@ -860,6 +847,7 @@ Expected response:
 - Request-account submissions also trigger an internal notification email to the configured RITMA mailbox.
 - Forced password change is part of the first-login security flow.
 - `last_login_at` is now updated on successful login and is used by the admin `Users` screens in both clients.
-- the admin `Overview` is now focused on metrics and pending approvals only; it no longer includes embedded system diagnostics or recent-activity tracking
+- the admin `Overview` is now focused on metrics and pending approvals only; it no longer includes embedded technical diagnostics or recent-activity tracking
+- the older admin diagnostics page and backend system-health endpoint have been removed from the product
 - `/api/races` is still a technical preview endpoint and should later be restricted by authenticated user context.
 - The login and account-request frontend now use more user-friendly validation and error messages than the raw HTTP responses.

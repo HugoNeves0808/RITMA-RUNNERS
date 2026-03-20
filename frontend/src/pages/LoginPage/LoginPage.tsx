@@ -25,7 +25,7 @@ export function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isRequestAccountOpen, setIsRequestAccountOpen] = useState(false)
 
-  const redirectTarget = isAuthenticated && isAdmin ? ROUTES.adminDiagnostics : ROUTES.home
+  const redirectTarget = isAuthenticated && isAdmin ? ROUTES.adminRitmaOverview : ROUTES.races
   const requestedTarget = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname
 
   if (isAuthenticated) {
@@ -37,7 +37,7 @@ export function LoginPage() {
     setIsSubmitting(true)
 
     try {
-      await login(
+      const authenticatedUser = await login(
         {
           email: values.email,
           password: values.password,
@@ -46,7 +46,10 @@ export function LoginPage() {
           remember: values.rememberPassword ?? false,
         },
       )
-      navigate(requestedTarget ?? ROUTES.home, { replace: true })
+      navigate(
+        requestedTarget ?? (authenticatedUser.role === 'ADMIN' ? ROUTES.adminRitmaOverview : ROUTES.races),
+        { replace: true },
+      )
     } catch (loginError) {
       setError(getLoginErrorMessage(loginError))
     } finally {

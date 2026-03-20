@@ -5,8 +5,10 @@ import java.time.YearMonth;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.IntStream;
 import java.util.stream.Collectors;
@@ -18,8 +20,10 @@ import org.springframework.http.HttpStatus;
 
 import com.ritma.runners.race.dto.DeleteRacesRequest;
 import com.ritma.runners.race.dto.RaceCalendarDayResponse;
+import com.ritma.runners.race.dto.RaceFilterOptionsResponse;
 import com.ritma.runners.race.dto.RaceCalendarItemResponse;
 import com.ritma.runners.race.dto.RaceCalendarMonthResponse;
+import com.ritma.runners.race.dto.RaceQueryFilters;
 import com.ritma.runners.race.dto.RaceTableItemResponse;
 import com.ritma.runners.race.dto.RaceTableResponse;
 import com.ritma.runners.race.dto.RaceTableYearResponse;
@@ -32,17 +36,28 @@ import com.ritma.runners.race.repository.RaceRepository;
 @Service
 public class RaceService {
 
+    private static final Set<String> ALLOWED_RACE_STATUSES = Set.of(
+            "IN_LIST",
+            "REGISTERED",
+            "NOT_REGISTERED",
+            "COMPLETED",
+            "CANCELLED",
+            "DID_NOT_START",
+            "DID_NOT_FINISH"
+    );
+
     private final RaceRepository raceRepository;
 
     public RaceService(RaceRepository raceRepository) {
         this.raceRepository = raceRepository;
     }
 
-    public RaceCalendarMonthResponse getMonthlyCalendar(UUID userId, YearMonth month) {
+    public RaceCalendarMonthResponse getMonthlyCalendar(UUID userId, YearMonth month, RaceQueryFilters filters) {
         List<RaceCalendarItemResponse> races = raceRepository.findCalendarRacesForMonth(
                 userId,
                 month.atDay(1),
-                month.atEndOfMonth()
+                month.atEndOfMonth(),
+                filters
         );
 
         Map<java.time.LocalDate, List<RaceCalendarItemResponse>> racesByDay = races.stream()
@@ -59,11 +74,12 @@ public class RaceService {
         return new RaceCalendarMonthResponse(month.getYear(), month.getMonthValue(), days);
     }
 
-    public RaceCalendarYearResponse getYearlyCalendar(UUID userId, int year) {
+    public RaceCalendarYearResponse getYearlyCalendar(UUID userId, int year, RaceQueryFilters filters) {
         List<RaceCalendarItemResponse> races = raceRepository.findCalendarRacesForRange(
                 userId,
                 java.time.LocalDate.of(year, 1, 1),
-                java.time.LocalDate.of(year, 12, 31)
+                java.time.LocalDate.of(year, 12, 31),
+                filters
         );
 
         Map<Integer, Map<java.time.LocalDate, List<RaceCalendarItemResponse>>> racesByMonthAndDay = races.stream()
@@ -93,8 +109,8 @@ public class RaceService {
         return new RaceCalendarYearResponse(year, months);
     }
 
-    public RaceTableResponse getTableRaces(UUID userId) {
-        List<RaceTableYearResponse> years = raceRepository.findTableRaces(userId).stream()
+    public RaceTableResponse getTableRaces(UUID userId, RaceQueryFilters filters) {
+        List<RaceTableYearResponse> years = raceRepository.findTableRaces(userId, filters).stream()
                 .collect(Collectors.groupingBy(
                         race -> race.raceDate().getYear(),
                         LinkedHashMap::new,
@@ -111,6 +127,50 @@ public class RaceService {
 
     public List<RaceTypeOptionResponse> getRaceTypes(UUID userId) {
         return raceRepository.findRaceTypes(userId);
+    }
+
+    public RaceFilterOptionsResponse getFilterOptions(UUID userId) {
+        return new RaceFilterOptionsResponse(
+                raceRepository.findAvailableYears(userId),
+                raceRepository.findRaceTypes(userId)
+        );
+    }
+
+    public RaceQueryFilters normalizeFilters(String search,
+                                             List<String> statuses,
+                                             List<Integer> years,
+                                             List<UUID> raceTypeIds) {
+        String normalizedSearch = search == null || search.trim().isEmpty() ? null : search.trim();
+
+        List<String> normalizedStatuses = statuses == null
+                ? List.of()
+                : statuses.stream()
+                        .filter(Objects::nonNull)
+                        .map(value -> value.trim().toUpperCase(Locale.ROOT))
+                        .filter(value -> !value.isEmpty())
+                        .distinct()
+                        .toList();
+
+        if (normalizedStatuses.stream().anyMatch(status -> !ALLOWED_RACE_STATUSES.contains(status))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid race status filter.");
+        }
+
+        List<Integer> normalizedYears = years == null
+                ? List.of()
+                : years.stream()
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .sorted(Comparator.reverseOrder())
+                        .toList();
+
+        List<UUID> normalizedRaceTypeIds = raceTypeIds == null
+                ? List.of()
+                : raceTypeIds.stream()
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .toList();
+
+        return new RaceQueryFilters(normalizedSearch, normalizedStatuses, normalizedYears, normalizedRaceTypeIds);
     }
 
     @Transactional
@@ -140,7 +200,7 @@ public class RaceService {
                 request.pacePerKmSeconds()
         );
 
-        return raceRepository.findTableRaces(userId).stream()
+        return raceRepository.findTableRaces(userId, RaceQueryFilters.empty()).stream()
                 .filter(race -> race.id().equals(raceId))
                 .findFirst()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Race not found."));

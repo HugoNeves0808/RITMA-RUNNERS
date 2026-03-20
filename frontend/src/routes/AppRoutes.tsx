@@ -2,7 +2,6 @@ import { Route, Routes } from 'react-router-dom'
 import { ProtectedRoute } from './ProtectedRoute'
 import { ROUTES } from '../constants/routes'
 import { AdminRitmaOverviewPage } from '../pages/AdminRitmaOverviewPage/AdminRitmaOverviewPage'
-import { AdminDiagnosticsPage } from '../pages/AdminDiagnosticsPage/AdminDiagnosticsPage'
 import { AdminPendingAccountsPage } from '../pages/AdminPendingAccountsPage/AdminPendingAccountsPage'
 import { BestEffortsPage } from '../pages/BestEffortsPage/BestEffortsPage'
 import { FutureGoalsPage } from '../pages/FutureGoalsPage/FutureGoalsPage'
@@ -29,7 +28,6 @@ export function AppRoutes() {
         <Route path={ROUTES.adminRitmaOverview} element={<AdminRitmaOverviewPage />} />
         <Route path={ROUTES.adminUserList} element={<UserListPage />} />
         <Route path={ROUTES.adminPendingApprovals} element={<PendingApprovalsPage />} />
-        <Route path={ROUTES.adminDiagnostics} element={<AdminDiagnosticsPage />} />
         <Route path={ROUTES.adminPendingAccounts} element={<AdminPendingAccountsPage />} />
       </Route>
     </Routes>

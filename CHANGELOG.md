@@ -11,6 +11,14 @@ This file keeps a short, slightly more detailed record of what was done in each 
 
 ## Entries
 
+### `Unreleased` - Refine races filters, actions, and admin entry cleanup across web and mobile
+
+- Removed the leftover admin diagnostics flow from the product by deleting the web `/admin/diagnostics` route, the diagnostics page and service, and the backend technical diagnostics controller that exposed the old admin-only system-health endpoint.
+- Corrected authenticated entry behavior so regular users now always land on `Races` after login, while admins land on the admin overview using the authenticated role returned by the login response instead of stale in-memory state.
+- Extended backend race querying so both `/api/races/table` and the calendar endpoints now support shared race filters for `raceStatus` and `raceTypeId`, keeping the dedicated `Current year` / `All years` and `Monthly` / `Yearly` mode controls separate from those reusable filters.
+- Reworked the web `Races` header to use a dedicated search field plus an icon-only filters drawer, added removable active-filter chips, and moved row management to a lighter action model with visible `view` plus a three-dot menu for `edit` and `delete`.
+- Brought the same filtering model to mobile `Races` with a shared filter sheet for table and calendar, local name search in table mode, compact action handling through a three-dot menu, and tighter race-card presentation without duplicated month labels or extra race-type styling.
+
 ### `Unreleased` - Add races table mode across backend, web, and mobile
 
 - Added an authenticated `/api/races/table` flow in the backend, including grouped yearly responses, race-type option loading, single-row updates, batch deletion support, and extra table fields such as `location`, `officialTimeSeconds`, `raceTime`, and `raceStatus`.
@@ -112,7 +120,6 @@ This file keeps a short, slightly more detailed record of what was done in each 
 ### `3ec32b0` - Harden health visibility and refine auth testing
 
 - Reduced the public `/api/health` payload to a minimal status response and moved the health probe logic into a dedicated backend component.
-- Kept technical diagnostics in protected admin-only endpoints and restricted `/api/db-check` to `ADMIN`.
 - Updated Spring Security exception handling so missing or invalid tokens return `401` while authenticated access without the required role returns `403`.
 - Refined frontend health handling to work with the reduced public health payload.
 - Replaced raw `HTTP 401` login feedback with a user-friendly invalid-credentials message and added a temporary logout button for testing.
@@ -137,7 +144,7 @@ This file keeps a short, slightly more detailed record of what was done in each 
 ### `1cd6ef8` - Restructure frontend into scalable application architecture
 
 - Reorganized the frontend into `app`, `routes`, `pages`, `components`, `layouts`, `features`, `services`, `hooks`, `contexts`, `types`, `utils`, `constants`, and `assets`.
-- Moved the existing authentication, session handling, admin diagnostics access, and protected routing into the new frontend architecture instead of duplicating them.
+- Moved the existing authentication, session handling, admin access, and protected routing into the new frontend architecture instead of duplicating them.
 - Centralized route constants, token storage helpers, shared API access, and shared frontend types for cleaner growth.
 - Added feature-oriented foundations for `auth`, `admin`, `races`, `profile`, and `best-efforts`, with real services where needed and placeholders elsewhere.
 - Kept the frontend build working while preparing the project to grow by functionality in a cleaner structure.
@@ -153,9 +160,9 @@ This file keeps a short, slightly more detailed record of what was done in each 
 ### `b95616a` - Add authentication and authorization foundation
 
 - Added JWT-based authentication in the backend with stateless Spring Security configuration.
-- Added role-aware access control for `ADMIN` and `USER`, including an admin-only diagnostics endpoint.
+- Added role-aware access control for `ADMIN` and `USER`.
 - Added backend auth endpoints for login and current-user retrieval using the existing PostgreSQL users table.
-- Added frontend authentication state, login page, protected routes, and admin-only diagnostics page visibility.
+- Added frontend authentication state, login page, and protected routes.
 - Seeded temporary `admin@ritma.com` and `user@ritma.com` accounts through Flyway instead of hardcoding runtime admin creation.
 
 ### `316de55` - Add initial PostgreSQL schema integration

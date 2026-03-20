@@ -12,11 +12,13 @@ import {
 } from 'react-native'
 import { colors } from '../../../theme/colors'
 import { fetchRaceTable, fetchRaceTypes, updateRaceTableItem, deleteRaceTableItems } from '../services/racesTableService'
+import type { RaceFilters } from '../types/raceFilters'
 import type { RaceTableItem, RaceTableYearGroup, RaceTypeOption } from '../types/racesTable'
 
 type RacesTableViewProps = {
   token: string
   showAllYears: boolean
+  filters: RaceFilters
 }
 
 type EditFormState = {
@@ -27,16 +29,6 @@ type EditFormState = {
   officialTime: string
   chipTime: string
   pacePerKm: string
-}
-
-function getLongMonthLabel(value: string) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return 'No month'
-  }
-
-  const label = new Intl.DateTimeFormat('en-GB', { month: 'long' }).format(date)
-  return label.charAt(0).toUpperCase() + label.slice(1)
 }
 
 function getDayLabel(value: string) {
@@ -76,6 +68,8 @@ function getRaceStatusLabel(status: string | null | undefined) {
       return 'Cancelled'
     case 'DID_NOT_FINISH':
       return 'DNF'
+    case 'DID_NOT_START':
+      return 'DNS'
     default:
       return status.replaceAll('_', ' ').toLowerCase()
   }
@@ -95,6 +89,8 @@ function getStatusPalette(status: string | null | undefined) {
       return { backgroundColor: 'rgba(220, 38, 38, 0.12)', color: '#b91c1c' }
     case 'DID_NOT_FINISH':
       return { backgroundColor: 'rgba(124, 58, 237, 0.12)', color: '#6d28d9' }
+    case 'DID_NOT_START':
+      return { backgroundColor: 'rgba(190, 24, 93, 0.12)', color: '#be185d' }
     default:
       return { backgroundColor: 'rgba(16, 24, 40, 0.06)', color: '#475467' }
   }
@@ -227,6 +223,20 @@ function removeUpcomingRaces(years: RaceTableYearGroup[], upcomingRaceIds: Set<s
     .filter((yearGroup) => yearGroup.races.length > 0)
 }
 
+function filterYearsByRaceName(years: RaceTableYearGroup[], search: string) {
+  const normalizedSearch = search.trim().toLowerCase()
+  if (!normalizedSearch) {
+    return years
+  }
+
+  return years
+    .map((yearGroup) => ({
+      ...yearGroup,
+      races: yearGroup.races.filter((race) => race.name.toLowerCase().includes(normalizedSearch)),
+    }))
+    .filter((yearGroup) => yearGroup.races.length > 0)
+}
+
 function createEditFormState(race: RaceTableItem): EditFormState {
   return {
     raceDate: race.raceDate,
@@ -239,24 +249,7 @@ function createEditFormState(race: RaceTableItem): EditFormState {
   }
 }
 
-function FieldRow({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.metricItem}>
-      <Text style={styles.metricLabel}>{label}</Text>
-      <Text style={styles.metricValue}>{value}</Text>
-    </View>
-  )
-}
-
-function ValueRow({ value }: { value: string }) {
-  return (
-    <View style={styles.metricItem}>
-      <Text style={styles.metricValue}>{value}</Text>
-    </View>
-  )
-}
-
-export function RacesTableView({ token, showAllYears }: RacesTableViewProps) {
+export function RacesTableView({ token, showAllYears, filters }: RacesTableViewProps) {
   const currentYear = new Date().getFullYear()
   const [now, setNow] = useState(() => new Date())
   const [years, setYears] = useState<RaceTableYearGroup[]>([])
@@ -267,15 +260,21 @@ export function RacesTableView({ token, showAllYears }: RacesTableViewProps) {
   const [formState, setFormState] = useState<EditFormState | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isRaceTypeSelectorOpen, setIsRaceTypeSelectorOpen] = useState(false)
+  const [actionRace, setActionRace] = useState<RaceTableItem | null>(null)
 
   const visibleYears = useMemo(
     () => (showAllYears ? years : years.filter((yearGroup) => yearGroup.year === currentYear)),
     [currentYear, showAllYears, years],
   )
 
+  const filteredVisibleYears = useMemo(
+    () => filterYearsByRaceName(visibleYears, filters.search),
+    [filters.search, visibleYears],
+  )
+
   const visibleRaces = useMemo(
-    () => visibleYears.flatMap((yearGroup) => yearGroup.races),
-    [visibleYears],
+    () => filteredVisibleYears.flatMap((yearGroup) => yearGroup.races),
+    [filteredVisibleYears],
   )
 
   const upcomingRaces = useMemo(() => {
@@ -289,8 +288,8 @@ export function RacesTableView({ token, showAllYears }: RacesTableViewProps) {
   }, [now, visibleRaces])
 
   const regularYears = useMemo(
-    () => removeUpcomingRaces(visibleYears, new Set(upcomingRaces.map((race) => race.id))),
-    [upcomingRaces, visibleYears],
+    () => removeUpcomingRaces(filteredVisibleYears, new Set(upcomingRaces.map((race) => race.id))),
+    [filteredVisibleYears, upcomingRaces],
   )
 
   useEffect(() => {
@@ -306,7 +305,7 @@ export function RacesTableView({ token, showAllYears }: RacesTableViewProps) {
       try {
         setIsLoading(true)
         const [tablePayload, raceTypesPayload] = await Promise.all([
-          fetchRaceTable(token),
+          fetchRaceTable(token, filters),
           fetchRaceTypes(token),
         ])
 
@@ -321,12 +320,12 @@ export function RacesTableView({ token, showAllYears }: RacesTableViewProps) {
     }
 
     void loadTableData()
-  }, [token])
+  }, [filters, token])
 
   const reloadTableData = async () => {
     try {
       setIsLoading(true)
-      const tablePayload = await fetchRaceTable(token)
+      const tablePayload = await fetchRaceTable(token, filters)
       setYears(tablePayload.years)
       setErrorMessage(null)
     } catch (error) {
@@ -397,7 +396,6 @@ export function RacesTableView({ token, showAllYears }: RacesTableViewProps) {
   }
 
   const renderRaceCard = (race: RaceTableItem, highlighted = false) => {
-    const countdown = highlighted ? formatCountdown(race, now) : null
     const statusPalette = getStatusPalette(race.raceStatus)
 
     return (
@@ -412,44 +410,31 @@ export function RacesTableView({ token, showAllYears }: RacesTableViewProps) {
             <View style={styles.raceTitleBlock}>
               <View style={styles.raceMetaRow}>
                 <Text style={styles.raceNumber}>#{race.raceNumber}</Text>
-                <Text style={styles.monthBadge}>{getLongMonthLabel(race.raceDate)}</Text>
                 <View style={[styles.statusBadge, { backgroundColor: statusPalette.backgroundColor }]}>
                   <Text style={[styles.statusBadgeText, { color: statusPalette.color }]}>
                     {getRaceStatusLabel(race.raceStatus)}
                   </Text>
                 </View>
+                <View style={styles.raceMetaSpacer} />
               </View>
               <Text style={styles.raceTitle} numberOfLines={1} ellipsizeMode="tail">{race.name}</Text>
-            </View>
-
-            <View style={styles.raceHeaderMeta}>
-              {countdown ? <Text style={styles.countdownBadge}>{countdown}</Text> : null}
             </View>
           </View>
 
           <View style={styles.metricsGrid}>
-            <ValueRow value={race.raceTypeName ?? '-'} />
+            <View style={styles.metricItem}>
+              <Text style={styles.metricValue}>{race.raceTypeName ?? '-'}</Text>
+            </View>
           </View>
 
           <View style={styles.cardActions}>
-            <Pressable style={styles.iconButton} accessibilityRole="button" accessibilityLabel="View details">
-              <FontAwesome6 name="eye" size={16} color={colors.textPrimary} />
-            </Pressable>
             <Pressable
-              style={styles.iconButton}
+              style={styles.moreAction}
               accessibilityRole="button"
-              accessibilityLabel="Edit race"
-              onPress={() => handleOpenEdit(race)}
+              accessibilityLabel="More actions"
+              onPress={() => setActionRace(race)}
             >
-              <FontAwesome6 name="pen-to-square" size={16} color={colors.textPrimary} />
-            </Pressable>
-            <Pressable
-              style={[styles.iconButton, styles.iconButtonDanger]}
-              accessibilityRole="button"
-              accessibilityLabel="Delete race"
-              onPress={() => handleDelete(race)}
-            >
-              <FontAwesome6 name="trash-can" size={16} color={colors.error} />
+              <FontAwesome6 name="ellipsis-vertical" size={16} color={colors.textSecondary} />
             </Pressable>
           </View>
         </View>
@@ -491,6 +476,14 @@ export function RacesTableView({ token, showAllYears }: RacesTableViewProps) {
     )
   }
 
+  if (filteredVisibleYears.length === 0) {
+    return (
+      <View style={styles.stateCard}>
+        <Text style={styles.stateText}>No races match the current filters.</Text>
+      </View>
+    )
+  }
+
   return (
     <View style={styles.content}>
       {upcomingRaces.length > 0 ? (
@@ -498,6 +491,11 @@ export function RacesTableView({ token, showAllYears }: RacesTableViewProps) {
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Coming Up</Text>
             <View style={styles.sectionRule} />
+            {formatCountdown(upcomingRaces[0], now) ? (
+              <Text style={styles.sectionCountdown}>
+                {formatCountdown(upcomingRaces[0], now)}
+              </Text>
+            ) : null}
           </View>
 
           <View style={styles.sectionBody}>
@@ -518,6 +516,43 @@ export function RacesTableView({ token, showAllYears }: RacesTableViewProps) {
           </View>
         </View>
       ))}
+
+      <Modal
+        visible={actionRace != null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setActionRace(null)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => setActionRace(null)}>
+          <View style={styles.actionSheet}>
+            <Text style={styles.actionSheetTitle}>{actionRace?.name ?? 'Race actions'}</Text>
+            <Pressable
+              style={styles.actionSheetButton}
+              onPress={() => {
+                if (actionRace) {
+                  handleOpenEdit(actionRace)
+                }
+                setActionRace(null)
+              }}
+            >
+              <FontAwesome6 name="pen-to-square" size={16} color={colors.textPrimary} />
+              <Text style={styles.actionSheetButtonLabel}>Edit race</Text>
+            </Pressable>
+            <Pressable
+              style={styles.actionSheetButton}
+              onPress={() => {
+                if (actionRace) {
+                  handleDelete(actionRace)
+                }
+                setActionRace(null)
+              }}
+            >
+              <FontAwesome6 name="trash-can" size={16} color={colors.error} />
+              <Text style={[styles.actionSheetButtonLabel, styles.actionSheetButtonLabelDanger]}>Delete race</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
 
       <Modal
         visible={editingRace != null && formState != null}
@@ -686,6 +721,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
+  sectionCountdown: {
+    marginLeft: 'auto',
+    color: '#c2410c',
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'lowercase',
+  },
   sectionTitle: {
     color: colors.textPrimary,
     fontSize: 26,
@@ -766,19 +808,21 @@ const styles = StyleSheet.create({
   },
   raceMain: {
     flex: 1,
-    gap: 10,
+    gap: 6,
   },
   raceHeaderRow: {
-    gap: 8,
+    gap: 6,
   },
   raceTitleBlock: {
-    gap: 4,
+    gap: 2,
   },
   raceMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    flexWrap: 'wrap',
+  },
+  raceMetaSpacer: {
+    flex: 1,
   },
   raceNumber: {
     color: colors.teal,
@@ -804,34 +848,8 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     lineHeight: 24,
   },
-  raceHeaderMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flexWrap: 'wrap',
-  },
-  countdownBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: 'rgba(249, 115, 22, 0.12)',
-    color: '#c2410c',
-    fontSize: 11,
-    fontWeight: '800',
-    textTransform: 'lowercase',
-  },
-  monthBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: 'rgba(16, 24, 40, 0.05)',
-    color: colors.textSecondary,
-    fontSize: 11,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-  },
   metricsGrid: {
-    gap: 8,
+    gap: 4,
   },
   metricItem: {
     gap: 4,
@@ -853,18 +871,13 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     gap: 8,
   },
-  iconButton: {
+  moreAction: {
     width: 38,
     height: 38,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 999,
-    borderWidth: 1,
-    borderColor: 'rgba(16, 24, 40, 0.08)',
     backgroundColor: 'rgba(255, 255, 255, 0.92)',
-  },
-  iconButtonDanger: {
-    borderColor: 'rgba(217, 45, 32, 0.12)',
   },
   modalBackdrop: {
     flex: 1,
@@ -883,6 +896,38 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: 22,
     fontWeight: '800',
+  },
+  actionSheet: {
+    alignSelf: 'center',
+    width: '100%',
+    maxWidth: 340,
+    borderRadius: 24,
+    backgroundColor: colors.cardBackground,
+    padding: 18,
+    gap: 8,
+  },
+  actionSheetTitle: {
+    color: colors.textPrimary,
+    fontSize: 16,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  actionSheetButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    backgroundColor: 'rgba(16, 24, 40, 0.04)',
+  },
+  actionSheetButtonLabel: {
+    color: colors.textPrimary,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  actionSheetButtonLabelDanger: {
+    color: colors.error,
   },
   formFields: {
     gap: 12,

@@ -9,6 +9,5 @@ export const ROUTES = {
   adminPendingApprovals: '/admin-area/pending-approvals',
   login: '/login',
   futureGoals: '/future-goals',
-  adminDiagnostics: '/admin/diagnostics',
   adminPendingAccounts: '/admin/account-requests',
 } as const

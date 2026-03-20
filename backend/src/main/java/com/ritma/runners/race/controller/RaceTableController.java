@@ -1,5 +1,6 @@
 package com.ritma.runners.race.controller;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
@@ -10,12 +11,15 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.ritma.runners.common.util.SecurityUtils;
 import com.ritma.runners.race.dto.DeleteRacesRequest;
+import com.ritma.runners.race.dto.RaceFilterOptionsResponse;
+import com.ritma.runners.race.dto.RaceQueryFilters;
 import com.ritma.runners.race.dto.RaceTableItemResponse;
 import com.ritma.runners.race.dto.RaceTableResponse;
 import com.ritma.runners.race.dto.RaceTypeOptionResponse;
@@ -34,8 +38,12 @@ public class RaceTableController {
     }
 
     @GetMapping("/table")
-    public RaceTableResponse getTableRaces() {
-        return raceService.getTableRaces(requireAuthenticatedUserId());
+    public RaceTableResponse getTableRaces(@RequestParam(required = false) String search,
+                                           @RequestParam(required = false) List<String> statuses,
+                                           @RequestParam(required = false) List<Integer> years,
+                                           @RequestParam(required = false) List<UUID> raceTypeIds) {
+        RaceQueryFilters filters = raceService.normalizeFilters(search, statuses, years, raceTypeIds);
+        return raceService.getTableRaces(requireAuthenticatedUserId(), filters);
     }
 
     @GetMapping("/types")
@@ -43,7 +51,12 @@ public class RaceTableController {
         return raceService.getRaceTypes(requireAuthenticatedUserId());
     }
 
-    @PutMapping("/{raceId}")
+    @GetMapping("/filters/options")
+    public RaceFilterOptionsResponse getFilterOptions() {
+        return raceService.getFilterOptions(requireAuthenticatedUserId());
+    }
+
+    @PutMapping("/{raceId:[0-9a-fA-F\\-]{36}}")
     public RaceTableItemResponse updateRace(
             @PathVariable UUID raceId,
             @RequestBody UpdateRaceTableItemRequest request

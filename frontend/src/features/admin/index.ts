@@ -1,4 +1,3 @@
-export { fetchAdminDiagnostics } from './services/diagnosticsService'
 export { fetchAdminOverview } from './services/overviewService'
 export {
   fetchPendingAccounts,

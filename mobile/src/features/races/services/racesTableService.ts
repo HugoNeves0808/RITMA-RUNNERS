@@ -5,9 +5,15 @@ import type {
   RaceTypeOption,
   UpdateRaceTableItemPayload,
 } from '../types/racesTable'
+import type { RaceFilters } from '../types/raceFilters'
+import { appendRaceFilters } from './sharedRaceFilters'
 
-export function fetchRaceTable(token: string) {
-  return apiRequest<RaceTablePayload>('/api/races/table', {
+export function fetchRaceTable(token: string, filters?: RaceFilters) {
+  const params = new URLSearchParams()
+  appendRaceFilters(params, filters)
+  const query = params.toString()
+
+  return apiRequest<RaceTablePayload>(`/api/races/table${query ? `?${query}` : ''}`, {
     token,
   })
 }

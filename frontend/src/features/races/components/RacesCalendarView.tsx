@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../auth'
 import { fetchRaceCalendarMonth, fetchRaceCalendarYear } from '../services/racesCalendarService'
+import type { RaceFilters } from '../types/raceFilters'
 import type { RaceCalendarMonthPayload, RaceCalendarYearPayload } from '../types/racesCalendar'
 import type { RacesCalendarMode } from '../types/racesCalendarMode'
 import { RacesCalendarMonthlyView } from './RacesCalendarMonthlyView'
@@ -9,9 +10,47 @@ import { RacesCalendarYearlyView } from './RacesCalendarYearlyView'
 type RacesCalendarViewProps = {
   selectedMode: RacesCalendarMode
   onModeChange: (mode: RacesCalendarMode) => void
+  filters: RaceFilters
 }
 
-export function RacesCalendarView({ selectedMode }: RacesCalendarViewProps) {
+function filterCalendarMonthPayload(payload: RaceCalendarMonthPayload, search: string) {
+  const normalizedSearch = search.trim().toLowerCase()
+  if (!normalizedSearch) {
+    return payload
+  }
+
+  return {
+    ...payload,
+    days: payload.days
+      .map((day) => ({
+        ...day,
+        races: day.races.filter((race) => race.name.toLowerCase().includes(normalizedSearch)),
+      }))
+      .filter((day) => day.races.length > 0),
+  }
+}
+
+function filterCalendarYearPayload(payload: RaceCalendarYearPayload, search: string) {
+  const normalizedSearch = search.trim().toLowerCase()
+  if (!normalizedSearch) {
+    return payload
+  }
+
+  return {
+    ...payload,
+    months: payload.months.map((month) => ({
+      ...month,
+      days: month.days
+        .map((day) => ({
+          ...day,
+          races: day.races.filter((race) => race.name.toLowerCase().includes(normalizedSearch)),
+        }))
+        .filter((day) => day.races.length > 0),
+    })),
+  }
+}
+
+export function RacesCalendarView({ selectedMode, filters }: RacesCalendarViewProps) {
   const { token } = useAuth()
   const [visibleYear, setVisibleYear] = useState(() => new Date().getFullYear())
   const [visibleMonth, setVisibleMonth] = useState(() => {
@@ -33,8 +72,8 @@ export function RacesCalendarView({ selectedMode }: RacesCalendarViewProps) {
     const loadMonthlyCalendar = async () => {
       try {
         setIsMonthlyLoading(true)
-        const response = await fetchRaceCalendarMonth(visibleMonth.year, visibleMonth.month, token)
-        setCalendarData(response)
+        const response = await fetchRaceCalendarMonth(visibleMonth.year, visibleMonth.month, token, filters)
+        setCalendarData(filterCalendarMonthPayload(response, filters.search))
         setMonthlyErrorMessage(null)
       } catch (error) {
         setMonthlyErrorMessage(
@@ -48,7 +87,7 @@ export function RacesCalendarView({ selectedMode }: RacesCalendarViewProps) {
     }
 
     void loadMonthlyCalendar()
-  }, [selectedMode, token, visibleMonth.month, visibleMonth.year])
+  }, [filters, selectedMode, token, visibleMonth.month, visibleMonth.year])
 
   useEffect(() => {
     if (!token || selectedMode !== 'yearly') {
@@ -58,8 +97,8 @@ export function RacesCalendarView({ selectedMode }: RacesCalendarViewProps) {
     const loadYearlyCalendar = async () => {
       try {
         setIsYearlyLoading(true)
-        const response = await fetchRaceCalendarYear(visibleYear, token)
-        setYearCalendarData(response)
+        const response = await fetchRaceCalendarYear(visibleYear, token, filters)
+        setYearCalendarData(filterCalendarYearPayload(response, filters.search))
         setYearlyErrorMessage(null)
       } catch (error) {
         setYearlyErrorMessage(
@@ -73,7 +112,7 @@ export function RacesCalendarView({ selectedMode }: RacesCalendarViewProps) {
     }
 
     void loadYearlyCalendar()
-  }, [selectedMode, token, visibleYear])
+  }, [filters, selectedMode, token, visibleYear])
 
   const moveMonth = (direction: -1 | 1) => {
     setVisibleMonth((currentValue) => {

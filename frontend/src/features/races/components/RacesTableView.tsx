@@ -1,4 +1,4 @@
-import { faEye, faPenToSquare, faTrashCan } from '@fortawesome/free-solid-svg-icons'
+import { faEllipsisVertical, faEye, faPenToSquare, faTrashCan } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { useEffect, useState } from 'react'
 import dayjs from 'dayjs'
@@ -7,6 +7,7 @@ import {
   Button,
   Card,
   DatePicker,
+  Dropdown,
   Empty,
   Form,
   Input,
@@ -22,6 +23,7 @@ import {
   fetchRaceTypes,
   updateRaceTableItem,
 } from '../services/racesTableService'
+import type { RaceFilters } from '../types/raceFilters'
 import type { RaceTableItem, RaceTableYearGroup, RaceTypeOption } from '../types/racesTable'
 import styles from './RacesTableView.module.css'
 
@@ -33,17 +35,6 @@ type EditRaceFormValues = {
   officialTime?: string
   chipTime?: string
   pacePerKm?: string
-}
-
-function getLongMonthLabel(value: string) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return 'SEM MES'
-  }
-
-  return new Intl.DateTimeFormat('pt-PT', {
-    month: 'long',
-  }).format(date).toUpperCase()
 }
 
 function getDayLabel(value: string) {
@@ -65,6 +56,17 @@ function getCompactMonthLabel(value: string) {
   return month.charAt(0).toUpperCase() + month.slice(1).toLowerCase()
 }
 
+function getLongMonthLabel(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return 'NO MONTH'
+  }
+
+  return new Intl.DateTimeFormat('en-GB', {
+    month: 'long',
+  }).format(date).toUpperCase()
+}
+
 function getRaceStatusLabel(status: string | null | undefined) {
   if (!status) {
     return 'Unknown'
@@ -81,6 +83,8 @@ function getRaceStatusLabel(status: string | null | undefined) {
       return 'Not registered'
     case 'CANCELLED':
       return 'Cancelled'
+    case 'DID_NOT_START':
+      return 'DNS'
     case 'DID_NOT_FINISH':
       return 'DNF'
     default:
@@ -100,6 +104,8 @@ function getRaceStatusClassName(status: string | null | undefined) {
       return styles.raceStatusNotRegistered
     case 'CANCELLED':
       return styles.raceStatusCancelled
+    case 'DID_NOT_START':
+      return styles.raceStatusDns
     case 'DID_NOT_FINISH':
       return styles.raceStatusDnf
     default:
@@ -257,11 +263,26 @@ function getFallbackUpcomingRaces(races: RaceTableItem[], now: dayjs.Dayjs) {
   return nextRace ? [nextRace] : []
 }
 
-type RacesTableViewProps = {
-  showAllYears: boolean
+function filterYearsByRaceName(years: RaceTableYearGroup[], search: string) {
+  const normalizedSearch = search.trim().toLowerCase()
+  if (!normalizedSearch) {
+    return years
+  }
+
+  return years
+    .map((yearGroup) => ({
+      ...yearGroup,
+      races: yearGroup.races.filter((race) => race.name.toLowerCase().includes(normalizedSearch)),
+    }))
+    .filter((yearGroup) => yearGroup.races.length > 0)
 }
 
-export function RacesTableView({ showAllYears }: RacesTableViewProps) {
+type RacesTableViewProps = {
+  showAllYears: boolean
+  filters: RaceFilters
+}
+
+export function RacesTableView({ showAllYears, filters }: RacesTableViewProps) {
   const { token } = useAuth()
   const currentYear = dayjs().year()
   const [now, setNow] = useState(() => dayjs())
@@ -269,7 +290,6 @@ export function RacesTableView({ showAllYears }: RacesTableViewProps) {
   const [raceTypes, setRaceTypes] = useState<RaceTypeOption[]>([])
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [isDeleteLoading, setIsDeleteLoading] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isSavingEdit, setIsSavingEdit] = useState(false)
   const [editingRace, setEditingRace] = useState<RaceTableItem | null>(null)
@@ -278,14 +298,15 @@ export function RacesTableView({ showAllYears }: RacesTableViewProps) {
   const visibleYears = showAllYears
     ? years
     : years.filter((yearGroup) => yearGroup.year === currentYear)
-  const visibleRaces = visibleYears.flatMap((yearGroup) => yearGroup.races)
+  const filteredVisibleYears = filterYearsByRaceName(visibleYears, filters.search)
+  const visibleRaces = filteredVisibleYears.flatMap((yearGroup) => yearGroup.races)
   const weekUpcomingRaces = visibleRaces
     .filter((race) => isUpcomingRace(race, now))
     .sort((left, right) => getRaceDateTime(left).diff(getRaceDateTime(right)))
   const upcomingRaces = weekUpcomingRaces.length > 0
     ? weekUpcomingRaces
     : getFallbackUpcomingRaces(visibleRaces, now)
-  const regularYears = removeUpcomingRaces(visibleYears, new Set(upcomingRaces.map((race) => race.id)))
+  const regularYears = removeUpcomingRaces(filteredVisibleYears, new Set(upcomingRaces.map((race) => race.id)))
 
   const loadTableData = async () => {
     if (!token) {
@@ -298,7 +319,7 @@ export function RacesTableView({ showAllYears }: RacesTableViewProps) {
     try {
       setIsLoading(true)
       const [tablePayload, raceTypePayload] = await Promise.all([
-        fetchRaceTable(token),
+        fetchRaceTable(token, filters),
         fetchRaceTypes(token),
       ])
 
@@ -314,7 +335,7 @@ export function RacesTableView({ showAllYears }: RacesTableViewProps) {
 
   useEffect(() => {
     void loadTableData()
-  }, [token])
+  }, [filters, token])
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
@@ -351,13 +372,10 @@ export function RacesTableView({ showAllYears }: RacesTableViewProps) {
       okButtonProps: { danger: true },
       onOk: async () => {
         try {
-          setIsDeleteLoading(true)
           await deleteRaceTableItems([race.id], token)
           await loadTableData()
         } catch (deleteError) {
           setError(deleteError instanceof Error ? deleteError.message : 'Unknown error')
-        } finally {
-          setIsDeleteLoading(false)
         }
       },
     })
@@ -398,6 +416,31 @@ export function RacesTableView({ showAllYears }: RacesTableViewProps) {
     }
   }
 
+  const getRaceActionsMenu = (race: RaceTableItem) => ({
+    items: [
+      {
+        key: 'edit',
+        label: 'Edit race',
+        icon: <FontAwesomeIcon icon={faPenToSquare} />,
+      },
+      {
+        key: 'delete',
+        label: 'Delete race',
+        icon: <FontAwesomeIcon icon={faTrashCan} />,
+        danger: true,
+      },
+    ],
+    onClick: ({ key }: { key: string }) => {
+      if (key === 'edit') {
+        handleOpenEdit(race)
+      }
+
+      if (key === 'delete') {
+        handleDelete(race)
+      }
+    },
+  })
+
   return (
     <Card className={styles.pageCard} variant="borderless">
       {isLoading ? (
@@ -423,7 +466,13 @@ export function RacesTableView({ showAllYears }: RacesTableViewProps) {
         </div>
       ) : null}
 
-      {!isLoading && upcomingRaces.length > 0 ? (
+      {!isLoading && visibleYears.length > 0 && filteredVisibleYears.length === 0 ? (
+        <div className={styles.emptyWrap}>
+          <Empty description="No races match the current filters." />
+        </div>
+      ) : null}
+
+      {!isLoading && filteredVisibleYears.length > 0 && upcomingRaces.length > 0 ? (
         <section className={styles.yearSection}>
           <div className={styles.yearHeader}>
             <h3 className={styles.yearTitle}>Coming Up</h3>
@@ -459,7 +508,18 @@ export function RacesTableView({ showAllYears }: RacesTableViewProps) {
 
                           <div className={styles.raceTopMeta}>
                             {countdown ? <span className={styles.countdownBadge}>{countdown}</span> : null}
-                            <span className={styles.monthBadge}>{getLongMonthLabel(race.raceDate)}</span>
+                            <Dropdown
+                              menu={getRaceActionsMenu(race)}
+                              trigger={['click']}
+                              placement="bottomRight"
+                            >
+                              <Button
+                                type="text"
+                                className={styles.moreAction}
+                                aria-label="Race actions"
+                                icon={<FontAwesomeIcon icon={faEllipsisVertical} />}
+                              />
+                            </Dropdown>
                           </div>
                         </div>
 
@@ -475,9 +535,7 @@ export function RacesTableView({ showAllYears }: RacesTableViewProps) {
                             <div className={styles.metricItem}>
                               <span className={styles.metricLabel}>Race type</span>
                               <span className={styles.metricValue}>
-                                {race.raceTypeName
-                                  ? <span className={styles.raceTypeTag}>{race.raceTypeName}</span>
-                                  : <span className={styles.emptyValue}>-</span>}
+                                {race.raceTypeName ?? <span className={styles.emptyValue}>-</span>}
                               </span>
                             </div>
 
@@ -505,24 +563,6 @@ export function RacesTableView({ showAllYears }: RacesTableViewProps) {
                               aria-label="View details"
                               icon={<FontAwesomeIcon icon={faEye} />}
                             />
-                            <Button
-                              type="text"
-                              className={styles.iconAction}
-                              onClick={() => handleOpenEdit(race)}
-                              title="Edit race"
-                              aria-label="Edit race"
-                              icon={<FontAwesomeIcon icon={faPenToSquare} />}
-                            />
-                            <Button
-                              type="text"
-                              danger
-                              className={`${styles.iconAction} ${styles.iconActionDanger}`.trim()}
-                              onClick={() => handleDelete(race)}
-                              loading={isDeleteLoading}
-                              title="Delete race"
-                              aria-label="Delete race"
-                              icon={<FontAwesomeIcon icon={faTrashCan} />}
-                            />
                           </div>
                         </div>
                       </div>
@@ -535,7 +575,7 @@ export function RacesTableView({ showAllYears }: RacesTableViewProps) {
         </section>
       ) : null}
 
-      {!isLoading ? regularYears.map((yearGroup) => (
+      {!isLoading && filteredVisibleYears.length > 0 ? regularYears.map((yearGroup) => (
         <section key={yearGroup.year} className={styles.yearSection}>
           <div className={styles.yearHeader}>
             <h3 className={styles.yearTitle}>{yearGroup.year}</h3>
@@ -573,7 +613,18 @@ export function RacesTableView({ showAllYears }: RacesTableViewProps) {
 
                             <div className={styles.raceTopMeta}>
                               {isUpcomingRace(race, now) && countdown ? <span className={styles.countdownBadge}>{countdown}</span> : null}
-                              <span className={styles.monthBadge}>{getLongMonthLabel(race.raceDate)}</span>
+                              <Dropdown
+                                menu={getRaceActionsMenu(race)}
+                                trigger={['click']}
+                                placement="bottomRight"
+                              >
+                                <Button
+                                  type="text"
+                                  className={styles.moreAction}
+                                  aria-label="Race actions"
+                                  icon={<FontAwesomeIcon icon={faEllipsisVertical} />}
+                                />
+                              </Dropdown>
                             </div>
                           </div>
 
@@ -589,9 +640,7 @@ export function RacesTableView({ showAllYears }: RacesTableViewProps) {
                               <div className={styles.metricItem}>
                                 <span className={styles.metricLabel}>Race type</span>
                                 <span className={styles.metricValue}>
-                                  {race.raceTypeName
-                                    ? <span className={styles.raceTypeTag}>{race.raceTypeName}</span>
-                                    : <span className={styles.emptyValue}>-</span>}
+                                  {race.raceTypeName ?? <span className={styles.emptyValue}>-</span>}
                                 </span>
                               </div>
 
@@ -618,24 +667,6 @@ export function RacesTableView({ showAllYears }: RacesTableViewProps) {
                                 title="View details"
                                 aria-label="View details"
                                 icon={<FontAwesomeIcon icon={faEye} />}
-                              />
-                              <Button
-                                type="text"
-                                className={styles.iconAction}
-                                onClick={() => handleOpenEdit(race)}
-                                title="Edit race"
-                                aria-label="Edit race"
-                                icon={<FontAwesomeIcon icon={faPenToSquare} />}
-                              />
-                              <Button
-                                type="text"
-                                danger
-                                className={`${styles.iconAction} ${styles.iconActionDanger}`.trim()}
-                                onClick={() => handleDelete(race)}
-                                loading={isDeleteLoading}
-                                title="Delete race"
-                                aria-label="Delete race"
-                                icon={<FontAwesomeIcon icon={faTrashCan} />}
                               />
                             </div>
                           </div>

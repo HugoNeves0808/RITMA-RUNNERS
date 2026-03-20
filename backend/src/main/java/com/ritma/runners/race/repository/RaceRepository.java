@@ -4,6 +4,7 @@ import java.sql.Time;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -12,6 +13,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import com.ritma.runners.race.dto.RaceCalendarItemResponse;
+import com.ritma.runners.race.dto.RaceQueryFilters;
 import com.ritma.runners.race.dto.RaceTableItemResponse;
 import com.ritma.runners.race.dto.RaceTypeOptionResponse;
 
@@ -24,12 +26,18 @@ public class RaceRepository {
         this.jdbcTemplateProvider = jdbcTemplateProvider;
     }
 
-    public List<RaceCalendarItemResponse> findCalendarRacesForMonth(UUID userId, LocalDate startDate, LocalDate endDate) {
-        return findCalendarRacesForRange(userId, startDate, endDate);
+    public List<RaceCalendarItemResponse> findCalendarRacesForMonth(UUID userId,
+                                                                    LocalDate startDate,
+                                                                    LocalDate endDate,
+                                                                    RaceQueryFilters filters) {
+        return findCalendarRacesForRange(userId, startDate, endDate, filters);
     }
 
-    public List<RaceCalendarItemResponse> findCalendarRacesForRange(UUID userId, LocalDate startDate, LocalDate endDate) {
-        String sql = """
+    public List<RaceCalendarItemResponse> findCalendarRacesForRange(UUID userId,
+                                                                    LocalDate startDate,
+                                                                    LocalDate endDate,
+                                                                    RaceQueryFilters filters) {
+        StringBuilder sql = new StringBuilder("""
                 SELECT
                     ur.id,
                     ur.name,
@@ -47,11 +55,15 @@ public class RaceRepository {
                   AND ur.race_date IS NOT NULL
                   AND ur.race_date >= ?
                   AND ur.race_date <= ?
+                """);
+        List<Object> args = new ArrayList<>(List.of(userId, startDate, endDate));
+        appendRaceFilters(sql, args, filters);
+        sql.append("""
                 ORDER BY ur.race_date ASC, ur.race_time ASC NULLS LAST, lower(ur.name) ASC
-                """;
+                """);
 
         return jdbcTemplate().query(
-                sql,
+                sql.toString(),
                 (rs, rowNum) -> new RaceCalendarItemResponse(
                         rs.getObject("id", UUID.class),
                         rs.getString("name"),
@@ -64,14 +76,12 @@ public class RaceRepository {
                         rs.getBoolean("archived"),
                         rs.getBoolean("is_valid_for_category_ranking")
                 ),
-                userId,
-                startDate,
-                endDate
+                args.toArray()
         );
     }
 
-    public List<RaceTableItemResponse> findTableRaces(UUID userId) {
-        String sql = """
+    public List<RaceTableItemResponse> findTableRaces(UUID userId, RaceQueryFilters filters) {
+        StringBuilder sql = new StringBuilder("""
                 SELECT
                     ur.id,
                     ROW_NUMBER() OVER (
@@ -92,11 +102,15 @@ public class RaceRepository {
                 LEFT JOIN user_race_results urr ON urr.user_race_id = ur.id
                 WHERE ur.user_id = ?
                   AND ur.race_date IS NOT NULL
+                """);
+        List<Object> args = new ArrayList<>(List.of(userId));
+        appendRaceFilters(sql, args, filters);
+        sql.append("""
                 ORDER BY EXTRACT(YEAR FROM ur.race_date) DESC, ur.race_date DESC, ur.race_time DESC NULLS LAST, lower(ur.name) ASC
-                """;
+                """);
 
         return jdbcTemplate().query(
-                sql,
+                sql.toString(),
                 (rs, rowNum) -> new RaceTableItemResponse(
                         rs.getObject("id", UUID.class),
                         rs.getInt("race_number"),
@@ -111,7 +125,7 @@ public class RaceRepository {
                         getNullableInteger(rs, "chip_time"),
                         getNullableInteger(rs, "pace_per_km")
                 ),
-                userId
+                args.toArray()
         );
     }
 
@@ -130,6 +144,20 @@ public class RaceRepository {
                         rs.getObject("id", UUID.class),
                         rs.getString("name")
                 ),
+                userId
+        );
+    }
+
+    public List<Integer> findAvailableYears(UUID userId) {
+        return jdbcTemplate().query(
+                """
+                        SELECT DISTINCT EXTRACT(YEAR FROM race_date)::int AS year
+                        FROM user_races
+                        WHERE user_id = ?
+                          AND race_date IS NOT NULL
+                        ORDER BY year DESC
+                        """,
+                (rs, rowNum) -> rs.getInt("year"),
                 userId
         );
     }
@@ -269,6 +297,38 @@ public class RaceRepository {
             throw new IllegalStateException("JdbcTemplate is not available");
         }
         return jdbcTemplate;
+    }
+
+    private void appendRaceFilters(StringBuilder sql, List<Object> args, RaceQueryFilters filters) {
+        if (filters == null) {
+            return;
+        }
+
+        if (filters.search() != null) {
+            sql.append(" AND lower(ur.name) LIKE ?");
+            args.add("%" + filters.search().toLowerCase(java.util.Locale.ROOT) + "%");
+        }
+
+        if (!filters.statuses().isEmpty()) {
+            sql.append(" AND ur.race_status::text IN (");
+            sql.append(String.join(", ", Collections.nCopies(filters.statuses().size(), "?")));
+            sql.append(")");
+            args.addAll(filters.statuses());
+        }
+
+        if (!filters.years().isEmpty()) {
+            sql.append(" AND EXTRACT(YEAR FROM ur.race_date)::int IN (");
+            sql.append(String.join(", ", Collections.nCopies(filters.years().size(), "?")));
+            sql.append(")");
+            args.addAll(filters.years());
+        }
+
+        if (!filters.raceTypeIds().isEmpty()) {
+            sql.append(" AND ur.race_type_id IN (");
+            sql.append(String.join(", ", Collections.nCopies(filters.raceTypeIds().size(), "?")));
+            sql.append(")");
+            args.addAll(filters.raceTypeIds());
+        }
     }
 
     private LocalTime getNullableLocalTime(Time value) {
