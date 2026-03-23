@@ -11,6 +11,13 @@ This file keeps a short, slightly more detailed record of what was done in each 
 
 ## Entries
 
+### `current` - Add race creation flow across backend, web, and mobile
+
+- Added an authenticated `POST /api/races` backend flow that creates the base race row plus optional `user_race_results` and `user_race_analysis` data in a single request, with validation for required race fields, numeric values, and optional race-type ownership.
+- Extended the web `Races` header with a compact orange add button that opens a right-side creation drawer with `Race data`, `Race results`, and `Race analysis` tabs, plus confirmation before closing with unsaved changes and styling aligned to the product's orange-and-black race management accents.
+- Brought the same add-race capability to mobile through a dedicated `Add race` modal with the same three tabs, unsaved-changes confirmation, required-field indicators, and guided date/time selection instead of free-text entry.
+- Wired both clients so creating a race refreshes the current `Table` or `Calendar` view immediately after save, keeping newly created races visible without a manual reload.
+
 ### `c447603` - Refine races filters, actions, and admin entry cleanup across web and mobile
 
 - Removed the leftover admin diagnostics flow from the product by deleting the web `/admin/diagnostics` route, the diagnostics page and service, and the backend technical diagnostics controller that exposed the old admin-only system-health endpoint.

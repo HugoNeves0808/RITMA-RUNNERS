@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { FontAwesome6 } from '@expo/vector-icons'
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import {
+  AddRaceModal,
   EMPTY_RACE_FILTERS,
   RACE_STATUS_OPTIONS,
   RacesCalendarView,
@@ -29,6 +30,7 @@ export function HomeScreen({ token }: HomeScreenProps) {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false)
   const [filters, setFilters] = useState<RaceFilters>(EMPTY_RACE_FILTERS)
   const [filterOptions, setFilterOptions] = useState<RaceFilterOptions>({ years: [], raceTypes: [] })
+  const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
     const loadFilterOptions = async () => {
@@ -48,7 +50,7 @@ export function HomeScreen({ token }: HomeScreenProps) {
     }
 
     void loadFilterOptions()
-  }, [token])
+  }, [refreshKey, token])
 
   return (
     <ScrollView
@@ -57,7 +59,14 @@ export function HomeScreen({ token }: HomeScreenProps) {
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.header}>
-        <Text style={styles.title}>Races</Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.title}>Races</Text>
+          <AddRaceModal
+            token={token}
+            raceTypes={filterOptions.raceTypes}
+            onCreated={() => setRefreshKey((current) => current + 1)}
+          />
+        </View>
         <View style={styles.headerControls}>
           <Pressable
             style={styles.filterButton}
@@ -83,8 +92,8 @@ export function HomeScreen({ token }: HomeScreenProps) {
       ) : null}
 
       {selectedView === 'calendar'
-        ? <RacesCalendarView token={token} selectedMode={selectedCalendarMode} filters={filters} />
-        : <RacesTableView token={token} showAllYears={showAllTableYears} filters={filters} />}
+        ? <RacesCalendarView token={token} selectedMode={selectedCalendarMode} filters={filters} refreshKey={refreshKey} />
+        : <RacesTableView token={token} showAllYears={showAllTableYears} filters={filters} refreshKey={refreshKey} />}
 
       <Modal
         visible={isFiltersOpen}
@@ -251,6 +260,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 12,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   headerControls: {
     flexDirection: 'row',

@@ -1,5 +1,7 @@
-import { apiDeleteWithToken, apiGet, apiPutWithToken } from '../../../services/apiClient'
+import { apiDeleteWithToken, apiGet, apiPostWithToken, apiPutWithToken } from '../../../services/apiClient'
 import type {
+  CreateRacePayload,
+  CreateRaceResponse,
   RaceTableItem,
   RaceTablePayload,
   RaceTypeOption,
@@ -30,10 +32,20 @@ export function fetchRaceFilterOptions(token: string) {
   })
 }
 
+export function createRace(payload: CreateRacePayload, token: string) {
+  return apiPostWithToken<CreateRaceResponse>('/api/races', payload, token, {
+    suppressUnauthorized: true,
+  })
+}
+
 export function updateRaceTableItem(raceId: string, payload: UpdateRaceTableItemPayload, token: string) {
-  return apiPutWithToken<RaceTableItem>(`/api/races/${raceId}`, payload, token)
+  return apiPutWithToken<RaceTableItem>(`/api/races/${raceId}`, payload, token, {
+    suppressUnauthorized: true,
+  })
 }
 
 export function deleteRaceTableItems(raceIds: string[], token: string) {
-  return apiDeleteWithToken<void>('/api/races/bulk', token, { raceIds })
+  return apiDeleteWithToken<void>('/api/races/bulk', token, { raceIds }, {
+    suppressUnauthorized: true,
+  })
 }

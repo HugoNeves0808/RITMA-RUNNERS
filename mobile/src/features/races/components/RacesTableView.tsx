@@ -19,6 +19,7 @@ type RacesTableViewProps = {
   token: string
   showAllYears: boolean
   filters: RaceFilters
+  refreshKey?: number
 }
 
 type EditFormState = {
@@ -249,7 +250,7 @@ function createEditFormState(race: RaceTableItem): EditFormState {
   }
 }
 
-export function RacesTableView({ token, showAllYears, filters }: RacesTableViewProps) {
+export function RacesTableView({ token, showAllYears, filters, refreshKey = 0 }: RacesTableViewProps) {
   const currentYear = new Date().getFullYear()
   const [now, setNow] = useState(() => new Date())
   const [years, setYears] = useState<RaceTableYearGroup[]>([])
@@ -320,7 +321,7 @@ export function RacesTableView({ token, showAllYears, filters }: RacesTableViewP
     }
 
     void loadTableData()
-  }, [filters, token])
+  }, [filters, refreshKey, token])
 
   const reloadTableData = async () => {
     try {

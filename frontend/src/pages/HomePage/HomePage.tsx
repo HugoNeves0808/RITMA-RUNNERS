@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Input, Select, Typography } from 'antd'
 import { useAuth } from '../../features/auth'
 import {
+  AddRaceDrawer,
   RacesCalendarView,
   RacesCalendarModeSwitcher,
   RacesFiltersButton,
@@ -40,6 +41,7 @@ export function HomePage() {
   const [filters, setFilters] = useState<RaceFilters>(EMPTY_RACE_FILTERS)
   const [filterOptions, setFilterOptions] = useState<RaceFilterOptions>({ years: [], raceTypes: [] })
   const [isFilterOptionsLoading, setIsFilterOptionsLoading] = useState(true)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   const activeFilterChips = useMemo<ActiveFilterChip[]>(() => {
     const chips: ActiveFilterChip[] = []
@@ -113,7 +115,13 @@ export function HomePage() {
     <div className={styles.page}>
       <div className={styles.pageHeader}>
         <div className={styles.titleBlock}>
-          <Title level={1} className={styles.pageTitle}>Races</Title>
+          <div className={styles.titleRow}>
+            <Title level={1} className={styles.pageTitle}>Races</Title>
+            <AddRaceDrawer
+              raceTypes={filterOptions.raceTypes}
+              onCreated={() => setRefreshKey((current) => current + 1)}
+            />
+          </div>
         </div>
 
         <div className={styles.headerControls}>
@@ -188,8 +196,8 @@ export function HomePage() {
       ) : null}
 
       {selectedView === 'calendar'
-        ? <RacesCalendarView selectedMode={selectedCalendarMode} onModeChange={setSelectedCalendarMode} filters={filters} />
-        : <RacesTableView showAllYears={showAllTableYears} filters={filters} />}
+        ? <RacesCalendarView selectedMode={selectedCalendarMode} onModeChange={setSelectedCalendarMode} filters={filters} refreshKey={refreshKey} />
+        : <RacesTableView showAllYears={showAllTableYears} filters={filters} refreshKey={refreshKey} />}
     </div>
   )
 }

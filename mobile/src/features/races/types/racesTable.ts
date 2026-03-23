@@ -36,3 +36,40 @@ export type UpdateRaceTableItemPayload = {
   chipTimeSeconds: number | null
   pacePerKmSeconds: number | null
 }
+
+export type CreateRacePayload = {
+  race: {
+    raceStatus: string
+    raceDate: string
+    raceTime: string | null
+    name: string
+    location: string | null
+    raceTypeId: string | null
+    realKm: number | null
+    elevation: number | null
+    isValidForCategoryRanking: boolean
+  }
+  results: {
+    officialTimeSeconds: number | null
+    chipTimeSeconds: number | null
+    pacePerKmSeconds: number | null
+    generalClassification: number | null
+    isGeneralClassificationPodium: boolean
+    ageGroupClassification: number | null
+    isAgeGroupClassificationPodium: boolean
+    teamClassification: number | null
+    isTeamClassificationPodium: boolean
+  }
+  analysis: {
+    preRaceConfidence: string | null
+    raceDifficulty: string | null
+    finalSatisfaction: string | null
+    painInjuries: string | null
+    analysisNotes: string | null
+    wouldRepeatThisRace: boolean | null
+  }
+}
+
+export type CreateRaceResponse = {
+  id: string
+}

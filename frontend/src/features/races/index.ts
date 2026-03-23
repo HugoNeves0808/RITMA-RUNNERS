@@ -1,3 +1,4 @@
+export { AddRaceDrawer } from './components/AddRaceDrawer'
 export { RacesCalendarView } from './components/RacesCalendarView'
 export { RacesCalendarModeSwitcher } from './components/RacesCalendarModeSwitcher'
 export { RacesFiltersButton } from './components/RacesFiltersButton'
@@ -11,6 +12,8 @@ export {
   RACE_STATUS_OPTIONS,
 } from './types/raceFilters'
 export type {
+  CreateRacePayload,
+  CreateRaceResponse,
   RaceTableItem,
   RaceTablePayload,
   RaceTableYearGroup,

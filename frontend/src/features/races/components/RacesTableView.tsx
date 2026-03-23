@@ -280,9 +280,10 @@ function filterYearsByRaceName(years: RaceTableYearGroup[], search: string) {
 type RacesTableViewProps = {
   showAllYears: boolean
   filters: RaceFilters
+  refreshKey?: number
 }
 
-export function RacesTableView({ showAllYears, filters }: RacesTableViewProps) {
+export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesTableViewProps) {
   const { token } = useAuth()
   const currentYear = dayjs().year()
   const [now, setNow] = useState(() => dayjs())
@@ -335,7 +336,7 @@ export function RacesTableView({ showAllYears, filters }: RacesTableViewProps) {
 
   useEffect(() => {
     void loadTableData()
-  }, [filters, token])
+  }, [filters, refreshKey, token])
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {

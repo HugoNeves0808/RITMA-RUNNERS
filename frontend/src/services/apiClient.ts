@@ -43,27 +43,45 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
   return apiPostWithToken<T>(path, body)
 }
 
-export async function apiPostWithToken<T>(path: string, body: unknown, token?: string): Promise<T> {
+export async function apiPostWithToken<T>(
+  path: string,
+  body: unknown,
+  token?: string,
+  options?: { suppressUnauthorized?: boolean },
+): Promise<T> {
   return apiRequest<T>(path, {
     method: 'POST',
     token,
     body,
+    suppressUnauthorized: options?.suppressUnauthorized,
   })
 }
 
-export async function apiPutWithToken<T>(path: string, body: unknown, token?: string): Promise<T> {
+export async function apiPutWithToken<T>(
+  path: string,
+  body: unknown,
+  token?: string,
+  options?: { suppressUnauthorized?: boolean },
+): Promise<T> {
   return apiRequest<T>(path, {
     method: 'PUT',
     token,
     body,
+    suppressUnauthorized: options?.suppressUnauthorized,
   })
 }
 
-export async function apiDeleteWithToken<T>(path: string, token?: string, body?: unknown): Promise<T> {
+export async function apiDeleteWithToken<T>(
+  path: string,
+  token?: string,
+  body?: unknown,
+  options?: { suppressUnauthorized?: boolean },
+): Promise<T> {
   return apiRequest<T>(path, {
     method: 'DELETE',
     token,
     body,
+    suppressUnauthorized: options?.suppressUnauthorized,
   })
 }
 
@@ -73,6 +91,7 @@ async function apiRequest<T>(
     method: 'POST' | 'PUT' | 'DELETE'
     token?: string
     body?: unknown
+    suppressUnauthorized?: boolean
   },
 ): Promise<T> {
   const response = await fetch(buildApiUrl(path), {
@@ -86,7 +105,9 @@ async function apiRequest<T>(
   })
 
   if (!response.ok) {
-    throw await buildApiError(response, options.token)
+    throw await buildApiError(response, options.token, {
+      suppressUnauthorized: options.suppressUnauthorized,
+    })
   }
 
   if (response.status === 204) {

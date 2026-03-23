@@ -1,0 +1,104 @@
+.trigger {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 999px !important;
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%) !important;
+  box-shadow: 0 10px 18px rgba(234, 88, 12, 0.18);
+  color: #fff !important;
+}
+
+.trigger:hover,
+.trigger:focus {
+  background: linear-gradient(135deg, #fb923c 0%, #f97316 100%) !important;
+  color: #fff !important;
+}
+
+.drawer :global(.ant-tabs-tab:hover .ant-tabs-tab-btn) {
+  color: #f97316 !important;
+}
+
+.drawer :global(.ant-checkbox-checked .ant-checkbox-inner) {
+  background-color: #111827 !important;
+  border-color: #111827 !important;
+}
+
+.drawer :global(.ant-checkbox-wrapper:hover .ant-checkbox-inner),
+.drawer :global(.ant-checkbox:hover .ant-checkbox-inner),
+.drawer :global(.ant-checkbox-input:focus-visible + .ant-checkbox-inner) {
+  border-color: #111827 !important;
+}
+
+.drawer :global(.ant-checkbox-checked::after) {
+  border-color: #111827 !important;
+}
+
+.drawer :global(.ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn) {
+  color: #ea580c !important;
+}
+
+.drawer :global(.ant-tabs-ink-bar) {
+  background: #ea580c !important;
+}
+
+.drawer :global(.ant-btn-color-primary) {
+  box-shadow: none;
+}
+
+.cancelButton:hover,
+.cancelButton:focus {
+  color: #ea580c !important;
+  border-color: #f97316 !important;
+  background: #fff7ed !important;
+}
+
+.saveButton {
+  border-color: #111827 !important;
+  background: #111827 !important;
+  color: #ffffff !important;
+}
+
+.saveButton:hover,
+.saveButton:focus {
+  border-color: #000000 !important;
+  background: #000000 !important;
+  color: #ffffff !important;
+}
+
+.alert {
+  margin-bottom: 16px;
+}
+
+.tabPane {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.rowItem {
+  margin-bottom: 18px;
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+.checkboxGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+@media (max-width: 768px) {
+  .row {
+    grid-template-columns: 1fr;
+  }
+}

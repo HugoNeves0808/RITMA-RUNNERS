@@ -11,6 +11,7 @@ type RacesCalendarViewProps = {
   selectedMode: RacesCalendarMode
   onModeChange: (mode: RacesCalendarMode) => void
   filters: RaceFilters
+  refreshKey?: number
 }
 
 function filterCalendarMonthPayload(payload: RaceCalendarMonthPayload, search: string) {
@@ -50,7 +51,7 @@ function filterCalendarYearPayload(payload: RaceCalendarYearPayload, search: str
   }
 }
 
-export function RacesCalendarView({ selectedMode, filters }: RacesCalendarViewProps) {
+export function RacesCalendarView({ selectedMode, filters, refreshKey = 0 }: RacesCalendarViewProps) {
   const { token } = useAuth()
   const [visibleYear, setVisibleYear] = useState(() => new Date().getFullYear())
   const [visibleMonth, setVisibleMonth] = useState(() => {
@@ -87,7 +88,7 @@ export function RacesCalendarView({ selectedMode, filters }: RacesCalendarViewPr
     }
 
     void loadMonthlyCalendar()
-  }, [filters, selectedMode, token, visibleMonth.month, visibleMonth.year])
+  }, [filters, refreshKey, selectedMode, token, visibleMonth.month, visibleMonth.year])
 
   useEffect(() => {
     if (!token || selectedMode !== 'yearly') {
@@ -112,7 +113,7 @@ export function RacesCalendarView({ selectedMode, filters }: RacesCalendarViewPr
     }
 
     void loadYearlyCalendar()
-  }, [filters, selectedMode, token, visibleYear])
+  }, [filters, refreshKey, selectedMode, token, visibleYear])
 
   const moveMonth = (direction: -1 | 1) => {
     setVisibleMonth((currentValue) => {

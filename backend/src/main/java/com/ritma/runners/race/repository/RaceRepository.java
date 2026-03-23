@@ -1,6 +1,7 @@
 package com.ritma.runners.race.repository;
 
 import java.sql.Time;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -242,6 +243,135 @@ public class RaceRepository {
                 officialTimeSeconds,
                 chipTimeSeconds,
                 pacePerKmSeconds
+        );
+    }
+
+    public UUID createRace(UUID userId,
+                           String raceStatus,
+                           LocalDate raceDate,
+                           LocalTime raceTime,
+                           String name,
+                           String location,
+                           UUID raceTypeId,
+                           BigDecimal realKm,
+                           Integer elevation,
+                           boolean isValidForCategoryRanking) {
+        return jdbcTemplate().queryForObject(
+                """
+                        INSERT INTO user_races (
+                            user_id,
+                            race_status,
+                            race_date,
+                            race_time,
+                            name,
+                            location,
+                            race_type_id,
+                            real_km,
+                            elevation,
+                            is_valid_for_category_ranking
+                        )
+                        VALUES (?, ?::race_status, ?, ?, ?, ?, ?, ?, ?, ?)
+                        RETURNING id
+                        """,
+                UUID.class,
+                userId,
+                raceStatus,
+                raceDate,
+                raceTime,
+                name,
+                location,
+                raceTypeId,
+                realKm,
+                elevation,
+                isValidForCategoryRanking
+        );
+    }
+
+    public void upsertRaceResultDetails(UUID raceId,
+                                        Integer officialTimeSeconds,
+                                        Integer chipTimeSeconds,
+                                        Integer pacePerKmSeconds,
+                                        Integer generalClassification,
+                                        Boolean isGeneralClassificationPodium,
+                                        Integer ageGroupClassification,
+                                        Boolean isAgeGroupClassificationPodium,
+                                        Integer teamClassification,
+                                        Boolean isTeamClassificationPodium) {
+        jdbcTemplate().update(
+                """
+                        INSERT INTO user_race_results (
+                            user_race_id,
+                            official_time,
+                            chip_time,
+                            pace_per_km,
+                            general_classification,
+                            is_general_classification_podium,
+                            age_group_classification,
+                            is_age_group_classification_podium,
+                            team_classification,
+                            is_team_classification_podium
+                        )
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ON CONFLICT (user_race_id)
+                        DO UPDATE
+                        SET official_time = EXCLUDED.official_time,
+                            chip_time = EXCLUDED.chip_time,
+                            pace_per_km = EXCLUDED.pace_per_km,
+                            general_classification = EXCLUDED.general_classification,
+                            is_general_classification_podium = EXCLUDED.is_general_classification_podium,
+                            age_group_classification = EXCLUDED.age_group_classification,
+                            is_age_group_classification_podium = EXCLUDED.is_age_group_classification_podium,
+                            team_classification = EXCLUDED.team_classification,
+                            is_team_classification_podium = EXCLUDED.is_team_classification_podium
+                        """,
+                raceId,
+                officialTimeSeconds,
+                chipTimeSeconds,
+                pacePerKmSeconds,
+                generalClassification,
+                isGeneralClassificationPodium != null && isGeneralClassificationPodium,
+                ageGroupClassification,
+                isAgeGroupClassificationPodium != null && isAgeGroupClassificationPodium,
+                teamClassification,
+                isTeamClassificationPodium != null && isTeamClassificationPodium
+        );
+    }
+
+    public void upsertRaceAnalysis(UUID raceId,
+                                   String preRaceConfidence,
+                                   String raceDifficulty,
+                                   String finalSatisfaction,
+                                   String painInjuries,
+                                   String analysisNotes,
+                                   Boolean wouldRepeatThisRace) {
+        jdbcTemplate().update(
+                """
+                        INSERT INTO user_race_analysis (
+                            user_race_id,
+                            pre_race_confidence,
+                            race_difficulty,
+                            final_satisfaction,
+                            pain_injuries,
+                            analysis_notes,
+                            would_repeat_this_race
+                        )
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                        ON CONFLICT (user_race_id)
+                        DO UPDATE
+                        SET pre_race_confidence = EXCLUDED.pre_race_confidence,
+                            race_difficulty = EXCLUDED.race_difficulty,
+                            final_satisfaction = EXCLUDED.final_satisfaction,
+                            pain_injuries = EXCLUDED.pain_injuries,
+                            analysis_notes = EXCLUDED.analysis_notes,
+                            would_repeat_this_race = EXCLUDED.would_repeat_this_race
+                        """,
+                raceId,
+                preRaceConfidence,
+                raceDifficulty,
+                finalSatisfaction,
+                painInjuries,
+                analysisNotes,
+                wouldRepeatThisRace
         );
     }
 

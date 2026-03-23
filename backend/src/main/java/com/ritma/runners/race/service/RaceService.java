@@ -12,12 +12,15 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.IntStream;
 import java.util.stream.Collectors;
+import java.math.BigDecimal;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
 
+import com.ritma.runners.race.dto.CreateRaceRequest;
+import com.ritma.runners.race.dto.CreateRaceResponse;
 import com.ritma.runners.race.dto.DeleteRacesRequest;
 import com.ritma.runners.race.dto.RaceCalendarDayResponse;
 import com.ritma.runners.race.dto.RaceFilterOptionsResponse;
@@ -134,6 +137,60 @@ public class RaceService {
                 raceRepository.findAvailableYears(userId),
                 raceRepository.findRaceTypes(userId)
         );
+    }
+
+    @Transactional
+    public CreateRaceResponse createRace(UUID userId, CreateRaceRequest request) {
+        validateCreateRequest(request);
+
+        CreateRaceRequest.RaceData raceData = request.race();
+        if (raceData.raceTypeId() != null && !raceRepository.raceTypeExists(userId, raceData.raceTypeId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid race type.");
+        }
+
+        UUID raceId = raceRepository.createRace(
+                userId,
+                raceData.raceStatus().trim().toUpperCase(Locale.ROOT),
+                raceData.raceDate(),
+                raceData.raceTime(),
+                raceData.name().trim(),
+                normalizeOptionalText(raceData.location()),
+                raceData.raceTypeId(),
+                raceData.realKm(),
+                raceData.elevation(),
+                raceData.isValidForCategoryRanking() == null || raceData.isValidForCategoryRanking()
+        );
+
+        if (hasRaceResults(request.results())) {
+            CreateRaceRequest.RaceResultData results = request.results();
+            raceRepository.upsertRaceResultDetails(
+                    raceId,
+                    results.officialTimeSeconds(),
+                    results.chipTimeSeconds(),
+                    results.pacePerKmSeconds(),
+                    results.generalClassification(),
+                    results.isGeneralClassificationPodium(),
+                    results.ageGroupClassification(),
+                    results.isAgeGroupClassificationPodium(),
+                    results.teamClassification(),
+                    results.isTeamClassificationPodium()
+            );
+        }
+
+        if (hasRaceAnalysis(request.analysis())) {
+            CreateRaceRequest.RaceAnalysisData analysis = request.analysis();
+            raceRepository.upsertRaceAnalysis(
+                    raceId,
+                    normalizeOptionalText(analysis.preRaceConfidence()),
+                    normalizeOptionalText(analysis.raceDifficulty()),
+                    normalizeOptionalText(analysis.finalSatisfaction()),
+                    normalizeOptionalText(analysis.painInjuries()),
+                    normalizeOptionalText(analysis.analysisNotes()),
+                    analysis.wouldRepeatThisRace()
+            );
+        }
+
+        return new CreateRaceResponse(raceId);
     }
 
     public RaceQueryFilters normalizeFilters(String search,
@@ -253,5 +310,105 @@ public class RaceService {
         if (request.pacePerKmSeconds() != null && request.pacePerKmSeconds() < 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Pace per km must be zero or greater.");
         }
+    }
+
+    private void validateCreateRequest(CreateRaceRequest request) {
+        if (request == null || request.race() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Race data is required.");
+        }
+
+        CreateRaceRequest.RaceData race = request.race();
+        if (race.raceStatus() == null || race.raceStatus().trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Race status is required.");
+        }
+
+        String normalizedStatus = race.raceStatus().trim().toUpperCase(Locale.ROOT);
+        if (!ALLOWED_RACE_STATUSES.contains(normalizedStatus)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid race status.");
+        }
+
+        if (race.raceDate() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Race date is required.");
+        }
+
+        if (race.name() == null || race.name().trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Race name is required.");
+        }
+
+        if (race.location() != null && race.location().trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Location cannot be blank.");
+        }
+
+        BigDecimal realKm = race.realKm();
+        if (realKm != null && realKm.signum() < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Distance must be zero or greater.");
+        }
+
+        if (race.elevation() != null && race.elevation() < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Elevation must be zero or greater.");
+        }
+
+        validateCreateResults(request.results());
+    }
+
+    private void validateCreateResults(CreateRaceRequest.RaceResultData results) {
+        if (results == null) {
+            return;
+        }
+
+        if (results.officialTimeSeconds() != null && results.officialTimeSeconds() < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Official time must be zero or greater.");
+        }
+
+        if (results.chipTimeSeconds() != null && results.chipTimeSeconds() < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Chip time must be zero or greater.");
+        }
+
+        if (results.pacePerKmSeconds() != null && results.pacePerKmSeconds() < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Pace per km must be zero or greater.");
+        }
+
+        if (results.generalClassification() != null && results.generalClassification() <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "General classification must be greater than zero.");
+        }
+
+        if (results.ageGroupClassification() != null && results.ageGroupClassification() <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Age group classification must be greater than zero.");
+        }
+
+        if (results.teamClassification() != null && results.teamClassification() <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Team classification must be greater than zero.");
+        }
+    }
+
+    private boolean hasRaceResults(CreateRaceRequest.RaceResultData results) {
+        return results != null
+                && (results.officialTimeSeconds() != null
+                || results.chipTimeSeconds() != null
+                || results.pacePerKmSeconds() != null
+                || results.generalClassification() != null
+                || results.ageGroupClassification() != null
+                || results.teamClassification() != null
+                || Boolean.TRUE.equals(results.isGeneralClassificationPodium())
+                || Boolean.TRUE.equals(results.isAgeGroupClassificationPodium())
+                || Boolean.TRUE.equals(results.isTeamClassificationPodium()));
+    }
+
+    private boolean hasRaceAnalysis(CreateRaceRequest.RaceAnalysisData analysis) {
+        return analysis != null
+                && (hasText(analysis.preRaceConfidence())
+                || hasText(analysis.raceDifficulty())
+                || hasText(analysis.finalSatisfaction())
+                || hasText(analysis.painInjuries())
+                || hasText(analysis.analysisNotes())
+                || analysis.wouldRepeatThisRace() != null);
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
+    }
+
+    private String normalizeOptionalText(String value) {
+        return hasText(value) ? value.trim() : null;
     }
 }

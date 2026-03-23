@@ -65,7 +65,7 @@ These are not backend API endpoints, but they are relevant to the current user f
   Authenticated `Races` entry route in the web app.
 - `/races`
   Alias route that opens the same authenticated `Races` page in the web app.
-  The page now opens in `Table` mode by default, includes a top view switcher for `Calendar` and `Table`, a calendar-mode dropdown for `Monthly` and `Yearly`, a table-scope dropdown for `Current year` and `All years`, a name search field, and a filters button for shared race filters.
+  The page now opens in `Table` mode by default, includes a top view switcher for `Calendar` and `Table`, a calendar-mode dropdown for `Monthly` and `Yearly`, a table-scope dropdown for `Current year` and `All years`, a name search field, a compact add-race action, and a filters button for shared race filters.
 - `/best-efforts`
   Authenticated web section for best efforts.
 - `/profile`
@@ -91,8 +91,10 @@ Authenticated client shell status:
 - web `Races` now has an icon-only switcher that swaps between separate placeholder `Calendar` and `Table` view components
 - web `Races` now renders real monthly and yearly calendar views backed by authenticated race data, with compact monthly day cards and a yearly 12-month overview that uses race-status color cues on the day numbers
 - web `Races` also includes a real card-based table mode grouped by year, with header-level name search, a shared race-filters drawer, a `Coming Up` section for registered races, and row actions split between visible `view` and a three-dot menu for `edit` and `delete`
+- web `Races` now also includes an add-race drawer with three tabs for `Race data`, `Race results`, and `Race analysis`
 - mobile `Races` now mirrors the same top-level switcher pattern and renders real monthly and yearly calendars backed by the same authenticated race data, with a compact per-day monthly summary and a single-column yearly overview adapted for smaller screens
 - mobile `Races` also includes a real table mode with a compact card layout, the same `Coming Up` weekly logic for registered races, a shared race-filters sheet for both table and calendar, and a three-dot action menu on each race card
+- mobile `Races` now also includes an add-race modal with the same three functional tabs, required-field indicators, and guided date/time selection
 - web `Pending Approvals` and `Users` now show real admin data with actions and pagination, while the admin overview section is still a placeholder
 - mobile `Pending Approvals`, `Users`, and `Overview` now also show real admin data with actions and pagination
 
@@ -553,14 +555,84 @@ Expected response example:
 ]
 ```
 
-### `PUT /api/races/table/{raceId}`
+### `POST /api/races`
+
+Creates a new race for the authenticated user and optionally persists linked race results and race analysis in the same request.
+
+Backend behavior:
+
+- creates the base `user_races` row
+- optionally creates or updates the linked `user_race_results` row when any result data is sent
+- optionally creates or updates the linked `user_race_analysis` row when any analysis data is sent
+- validates required race fields such as `raceStatus`, `raceDate`, and `name`
+- validates optional numeric values to prevent negative times, distances, elevations, or invalid classifications
+
+Postman:
+
+- Method: `POST`
+- URL: `{{baseUrl}}/api/races`
+- Header: `Content-Type: application/json`
+- Auth: `Bearer Token`
+- Token: `{{token}}`
+
+Example body:
+
+```json
+{
+  "race": {
+    "raceStatus": "REGISTERED",
+    "raceDate": "2026-03-20",
+    "raceTime": "09:45:00",
+    "name": "Corrida de Hoje 2026",
+    "location": "Coimbra, Portugal",
+    "raceTypeId": "uuid",
+    "realKm": 10.0,
+    "elevation": 90,
+    "isValidForCategoryRanking": true
+  },
+  "results": {
+    "officialTimeSeconds": 2405,
+    "chipTimeSeconds": 2398,
+    "pacePerKmSeconds": 240,
+    "generalClassification": 12,
+    "isGeneralClassificationPodium": false,
+    "ageGroupClassification": 4,
+    "isAgeGroupClassificationPodium": false,
+    "teamClassification": 2,
+    "isTeamClassificationPodium": true
+  },
+  "analysis": {
+    "preRaceConfidence": "HIGH",
+    "raceDifficulty": "MEDIUM",
+    "finalSatisfaction": "HIGH",
+    "painInjuries": "Minor calf tightness in the last 3 km.",
+    "analysisNotes": "Solid pacing and good race management overall.",
+    "wouldRepeatThisRace": true
+  }
+}
+```
+
+Expected response example:
+
+```json
+{
+  "id": "uuid"
+}
+```
+
+Client usage notes:
+
+- web `Races` exposes this endpoint through a right-side creation drawer opened by the orange add button next to the page title
+- mobile `Races` exposes the same endpoint through a dedicated add-race modal with the same three logical tabs
+
+### `PUT /api/races/{raceId}`
 
 Updates a single race from the table editing flow.
 
 Postman:
 
 - Method: `PUT`
-- URL: `{{baseUrl}}/api/races/table/{{raceId}}`
+- URL: `{{baseUrl}}/api/races/{{raceId}}`
 - Header: `Content-Type: application/json`
 - Auth: `Bearer Token`
 - Token: `{{token}}`
@@ -570,7 +642,6 @@ Example body:
 ```json
 {
   "raceDate": "2026-03-20",
-  "raceTime": "09:45:00",
   "name": "Corrida de Hoje 2026",
   "location": "Coimbra, Portugal",
   "raceTypeId": "uuid",
@@ -580,14 +651,14 @@ Example body:
 }
 ```
 
-### `DELETE /api/races/table`
+### `DELETE /api/races/bulk`
 
 Deletes one or more races from the table flow.
 
 Postman:
 
 - Method: `DELETE`
-- URL: `{{baseUrl}}/api/races/table`
+- URL: `{{baseUrl}}/api/races/bulk`
 - Header: `Content-Type: application/json`
 - Auth: `Bearer Token`
 - Token: `{{token}}`
