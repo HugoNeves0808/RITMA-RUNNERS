@@ -812,7 +812,7 @@ export function AddRaceDrawer({ createOptions, onCreated, onCreateOptionsChange 
                         name="raceTime"
                         className={styles.rowItem}
                       >
-                        <TimePicker format="HH:mm:ss" className={styles.fullWidth} />
+                        <TimePicker use12Hours format="hh:mm A" className={styles.fullWidth} />
                       </Form.Item>
                     </div>
 

@@ -26,6 +26,7 @@ import com.ritma.runners.race.dto.DeleteRacesRequest;
 import com.ritma.runners.race.dto.ManageRaceOptionRequest;
 import com.ritma.runners.race.dto.RaceCreateOptionsResponse;
 import com.ritma.runners.race.dto.RaceCalendarDayResponse;
+import com.ritma.runners.race.dto.RaceDetailResponse;
 import com.ritma.runners.race.dto.RaceFilterOptionsResponse;
 import com.ritma.runners.race.dto.RaceCalendarItemResponse;
 import com.ritma.runners.race.dto.RaceCalendarMonthResponse;
@@ -156,6 +157,15 @@ public class RaceService {
                 raceRepository.findCircuits(userId),
                 raceRepository.findShoes(userId)
         );
+    }
+
+    public RaceDetailResponse getRaceDetail(UUID userId, UUID raceId) {
+        RaceDetailResponse raceDetail = raceRepository.findRaceDetail(userId, raceId);
+        if (raceDetail == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Race not found.");
+        }
+
+        return raceDetail;
     }
 
     public RaceFilterOptionsResponse getFilterOptions(UUID userId) {

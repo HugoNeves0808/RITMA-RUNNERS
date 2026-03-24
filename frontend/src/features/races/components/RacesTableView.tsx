@@ -1,6 +1,7 @@
 import { faEllipsisVertical, faEye, faPenToSquare, faTrashCan } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
 import dayjs from 'dayjs'
 import {
   Alert,
@@ -15,16 +16,19 @@ import {
   Select,
   Space,
   Spin,
+  Tooltip,
 } from 'antd'
 import { useAuth } from '../../auth'
 import {
   deleteRaceTableItems,
+  fetchRaceDetail,
   fetchRaceTable,
   fetchRaceTypes,
   updateRaceTableItem,
 } from '../services/racesTableService'
 import type { RaceFilters } from '../types/raceFilters'
-import type { RaceTableItem, RaceTableYearGroup, RaceTypeOption } from '../types/racesTable'
+import type { RaceDetailResponse, RaceTableItem, RaceTableYearGroup, RaceTypeOption } from '../types/racesTable'
+import { RaceDetailsDrawer } from './RaceDetailsDrawer'
 import styles from './RacesTableView.module.css'
 
 type EditRaceFormValues = {
@@ -143,6 +147,35 @@ function formatPace(totalSeconds: number | null) {
   return `${minutes}:${String(seconds).padStart(2, '0')} /km`
 }
 
+function formatDurationText(totalSeconds: number | null) {
+  if (totalSeconds == null) {
+    return '-'
+  }
+
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
+
+function formatPaceText(totalSeconds: number | null) {
+  if (totalSeconds == null) {
+    return '-'
+  }
+
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${minutes}:${String(seconds).padStart(2, '0')} /km`
+}
+
+function renderMetricValueWithTooltip(value: ReactNode, tooltip: string) {
+  return (
+    <Tooltip title={tooltip}>
+      <span className={styles.metricValue}>{value}</span>
+    </Tooltip>
+  )
+}
+
 function formatDurationInput(totalSeconds: number | null) {
   if (totalSeconds == null) {
     return ''
@@ -230,18 +263,22 @@ function isRegisteredRace(race: RaceTableItem) {
 }
 
 function isUpcomingRace(race: RaceTableItem, now: dayjs.Dayjs) {
+  const raceDateTime = getRaceDateTime(race)
+  const startOfToday = now.startOf('day')
+
+  if (raceDateTime.isSame(startOfToday, 'day')) {
+    return true
+  }
+
   if (!isRegisteredRace(race)) {
     return false
   }
 
-  const raceDateTime = getRaceDateTime(race)
-  const startOfToday = now.startOf('day')
   const daysSinceMonday = (startOfToday.day() + 6) % 7
   const startOfWeek = startOfToday.subtract(daysSinceMonday, 'day')
   const endOfWeek = startOfWeek.add(7, 'day')
 
-  return raceDateTime.isSame(startOfToday, 'day')
-    || (raceDateTime.isAfter(now) && raceDateTime.isBefore(endOfWeek))
+  return raceDateTime.isAfter(now) && raceDateTime.isBefore(endOfWeek)
 }
 
 function removeUpcomingRaces(years: RaceTableYearGroup[], upcomingRaceIds: Set<string>) {
@@ -293,6 +330,11 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isSavingEdit, setIsSavingEdit] = useState(false)
   const [editingRace, setEditingRace] = useState<RaceTableItem | null>(null)
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false)
+  const [isDetailsLoading, setIsDetailsLoading] = useState(false)
+  const [raceDetails, setRaceDetails] = useState<RaceDetailResponse | null>(null)
+  const [selectedDetailsRace, setSelectedDetailsRace] = useState<RaceTableItem | null>(null)
+  const [detailsError, setDetailsError] = useState<string | null>(null)
   const [form] = Form.useForm<EditRaceFormValues>()
 
   const visibleYears = showAllYears
@@ -390,6 +432,26 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
         }
       },
     })
+  }
+
+  const handleOpenDetails = async (race: RaceTableItem) => {
+    if (!token) {
+      return
+    }
+
+    try {
+      setIsDetailsOpen(true)
+      setIsDetailsLoading(true)
+      setDetailsError(null)
+      setSelectedDetailsRace(race)
+      const details = await fetchRaceDetail(race.id, token)
+      setRaceDetails(details)
+    } catch (loadError) {
+      setRaceDetails(null)
+      setDetailsError(loadError instanceof Error ? loadError.message : 'Could not load this race right now.')
+    } finally {
+      setIsDetailsLoading(false)
+    }
   }
 
   const handleSubmitEdit = async () => {
@@ -497,6 +559,7 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
                     <article
                       key={race.id}
                       className={`${styles.raceRow} ${styles.raceRowToday}`.trim()}
+                      onClick={() => void handleOpenDetails(race)}
                     >
                       <div className={styles.dateBadge}>
                         <span className={styles.dateBadgeDay}>{getDayLabel(race.raceDate)}</span>
@@ -506,7 +569,9 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
                         <div className={styles.raceContent}>
                           <div className={styles.raceTopRow}>
                             <div className={styles.raceTitleBlock}>
-                              <h4 className={styles.raceCardTitle}>{race.name}</h4>
+                              <Tooltip title={race.name}>
+                                <h4 className={styles.raceCardTitle}>{race.name}</h4>
+                              </Tooltip>
                             </div>
 
                           <div className={styles.raceTopMeta}>
@@ -523,6 +588,7 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
                                 className={styles.moreAction}
                                 aria-label="Race actions"
                                 icon={<FontAwesomeIcon icon={faEllipsisVertical} />}
+                                onClick={(event) => event.stopPropagation()}
                               />
                             </Dropdown>
                           </div>
@@ -532,31 +598,42 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
                           <div className={styles.metricsGrid}>
                             <div className={styles.metricItem}>
                               <span className={styles.metricLabel}>Location</span>
-                              <span className={styles.metricValue}>
-                                {race.location ?? <span className={styles.emptyValue}>-</span>}
-                              </span>
+                              {renderMetricValueWithTooltip(
+                                race.location ?? <span className={styles.emptyValue}>-</span>,
+                                race.location ?? '-',
+                              )}
                             </div>
 
                             <div className={styles.metricItem}>
                               <span className={styles.metricLabel}>Race type</span>
-                              <span className={styles.metricValue}>
-                                {race.raceTypeName ?? <span className={styles.emptyValue}>-</span>}
-                              </span>
+                              {renderMetricValueWithTooltip(
+                                race.raceTypeName ?? <span className={styles.emptyValue}>-</span>,
+                                race.raceTypeName ?? '-',
+                              )}
                             </div>
 
                             <div className={styles.metricItem}>
                               <span className={styles.metricLabel}>Official time</span>
-                              <span className={styles.metricValue}>{formatDuration(race.officialTimeSeconds)}</span>
+                              {renderMetricValueWithTooltip(
+                                formatDuration(race.officialTimeSeconds),
+                                formatDurationText(race.officialTimeSeconds),
+                              )}
                             </div>
 
                             <div className={styles.metricItem}>
                               <span className={styles.metricLabel}>Chip time</span>
-                              <span className={styles.metricValue}>{formatDuration(race.chipTimeSeconds)}</span>
+                              {renderMetricValueWithTooltip(
+                                formatDuration(race.chipTimeSeconds),
+                                formatDurationText(race.chipTimeSeconds),
+                              )}
                             </div>
 
                             <div className={styles.metricItem}>
                               <span className={styles.metricLabel}>Pace per km</span>
-                              <span className={styles.metricValue}>{formatPace(race.pacePerKmSeconds)}</span>
+                              {renderMetricValueWithTooltip(
+                                formatPace(race.pacePerKmSeconds),
+                                formatPaceText(race.pacePerKmSeconds),
+                              )}
                             </div>
                           </div>
 
@@ -567,6 +644,10 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
                               title="View details"
                               aria-label="View details"
                               icon={<FontAwesomeIcon icon={faEye} />}
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                void handleOpenDetails(race)
+                              }}
                             />
                           </div>
                         </div>
@@ -597,6 +678,7 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
                       <article
                         key={race.id}
                         className={isTodayRace ? `${styles.raceRow} ${styles.raceRowToday}` : styles.raceRow}
+                        onClick={() => void handleOpenDetails(race)}
                       >
                         <div className={styles.dateBadge}>
                           <span className={styles.dateBadgeDay}>{getDayLabel(race.raceDate)}</span>
@@ -606,7 +688,9 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
                         <div className={styles.raceContent}>
                           <div className={styles.raceTopRow}>
                             <div className={styles.raceTitleBlock}>
-                              <h4 className={styles.raceCardTitle}>{race.name}</h4>
+                              <Tooltip title={race.name}>
+                                <h4 className={styles.raceCardTitle}>{race.name}</h4>
+                              </Tooltip>
                             </div>
 
                             <div className={styles.raceTopMeta}>
@@ -623,6 +707,7 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
                                   className={styles.moreAction}
                                   aria-label="Race actions"
                                   icon={<FontAwesomeIcon icon={faEllipsisVertical} />}
+                                  onClick={(event) => event.stopPropagation()}
                                 />
                               </Dropdown>
                             </div>
@@ -632,31 +717,42 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
                             <div className={styles.metricsGrid}>
                               <div className={styles.metricItem}>
                                 <span className={styles.metricLabel}>Location</span>
-                                <span className={styles.metricValue}>
-                                  {race.location ?? <span className={styles.emptyValue}>-</span>}
-                                </span>
+                                {renderMetricValueWithTooltip(
+                                  race.location ?? <span className={styles.emptyValue}>-</span>,
+                                  race.location ?? '-',
+                                )}
                               </div>
 
                               <div className={styles.metricItem}>
                                 <span className={styles.metricLabel}>Race type</span>
-                                <span className={styles.metricValue}>
-                                  {race.raceTypeName ?? <span className={styles.emptyValue}>-</span>}
-                                </span>
+                                {renderMetricValueWithTooltip(
+                                  race.raceTypeName ?? <span className={styles.emptyValue}>-</span>,
+                                  race.raceTypeName ?? '-',
+                                )}
                               </div>
 
                               <div className={styles.metricItem}>
                                 <span className={styles.metricLabel}>Official time</span>
-                                <span className={styles.metricValue}>{formatDuration(race.officialTimeSeconds)}</span>
+                                {renderMetricValueWithTooltip(
+                                  formatDuration(race.officialTimeSeconds),
+                                  formatDurationText(race.officialTimeSeconds),
+                                )}
                               </div>
 
                               <div className={styles.metricItem}>
                                 <span className={styles.metricLabel}>Chip time</span>
-                                <span className={styles.metricValue}>{formatDuration(race.chipTimeSeconds)}</span>
+                                {renderMetricValueWithTooltip(
+                                  formatDuration(race.chipTimeSeconds),
+                                  formatDurationText(race.chipTimeSeconds),
+                                )}
                               </div>
 
                               <div className={styles.metricItem}>
                                 <span className={styles.metricLabel}>Pace per km</span>
-                                <span className={styles.metricValue}>{formatPace(race.pacePerKmSeconds)}</span>
+                                {renderMetricValueWithTooltip(
+                                  formatPace(race.pacePerKmSeconds),
+                                  formatPaceText(race.pacePerKmSeconds),
+                                )}
                               </div>
                             </div>
 
@@ -667,6 +763,10 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
                                 title="View details"
                                 aria-label="View details"
                                 icon={<FontAwesomeIcon icon={faEye} />}
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  void handleOpenDetails(race)
+                                }}
                               />
                             </div>
                           </div>
@@ -691,7 +791,7 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
             <div className={styles.monthSection}>
               <div className={styles.raceList}>
                 {filteredUndatedRaces.map((race) => (
-                  <article key={race.id} className={styles.raceRow}>
+                  <article key={race.id} className={styles.raceRow} onClick={() => void handleOpenDetails(race)}>
                     <div className={styles.dateBadge}>
                       <span className={styles.dateBadgeDay}>{getDayLabel(race.raceDate)}</span>
                       <span className={styles.dateBadgeMonth}>{getCompactMonthLabel(race.raceDate)}</span>
@@ -700,7 +800,9 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
                     <div className={styles.raceContent}>
                       <div className={styles.raceTopRow}>
                         <div className={styles.raceTitleBlock}>
-                          <h4 className={styles.raceCardTitle}>{race.name}</h4>
+                          <Tooltip title={race.name}>
+                            <h4 className={styles.raceCardTitle}>{race.name}</h4>
+                          </Tooltip>
                         </div>
 
                         <div className={styles.raceTopMeta}>
@@ -717,6 +819,7 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
                               className={styles.moreAction}
                               aria-label="Race actions"
                               icon={<FontAwesomeIcon icon={faEllipsisVertical} />}
+                              onClick={(event) => event.stopPropagation()}
                             />
                           </Dropdown>
                         </div>
@@ -726,31 +829,42 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
                         <div className={styles.metricsGrid}>
                           <div className={styles.metricItem}>
                             <span className={styles.metricLabel}>Location</span>
-                            <span className={styles.metricValue}>
-                              {race.location ?? <span className={styles.emptyValue}>-</span>}
-                            </span>
+                            {renderMetricValueWithTooltip(
+                              race.location ?? <span className={styles.emptyValue}>-</span>,
+                              race.location ?? '-',
+                            )}
                           </div>
 
                           <div className={styles.metricItem}>
                             <span className={styles.metricLabel}>Race type</span>
-                            <span className={styles.metricValue}>
-                              {race.raceTypeName ?? <span className={styles.emptyValue}>-</span>}
-                            </span>
+                            {renderMetricValueWithTooltip(
+                              race.raceTypeName ?? <span className={styles.emptyValue}>-</span>,
+                              race.raceTypeName ?? '-',
+                            )}
                           </div>
 
                           <div className={styles.metricItem}>
                             <span className={styles.metricLabel}>Official time</span>
-                            <span className={styles.metricValue}>{formatDuration(race.officialTimeSeconds)}</span>
+                            {renderMetricValueWithTooltip(
+                              formatDuration(race.officialTimeSeconds),
+                              formatDurationText(race.officialTimeSeconds),
+                            )}
                           </div>
 
                           <div className={styles.metricItem}>
                             <span className={styles.metricLabel}>Chip time</span>
-                            <span className={styles.metricValue}>{formatDuration(race.chipTimeSeconds)}</span>
+                            {renderMetricValueWithTooltip(
+                              formatDuration(race.chipTimeSeconds),
+                              formatDurationText(race.chipTimeSeconds),
+                            )}
                           </div>
 
                           <div className={styles.metricItem}>
                             <span className={styles.metricLabel}>Pace per km</span>
-                            <span className={styles.metricValue}>{formatPace(race.pacePerKmSeconds)}</span>
+                            {renderMetricValueWithTooltip(
+                              formatPace(race.pacePerKmSeconds),
+                              formatPaceText(race.pacePerKmSeconds),
+                            )}
                           </div>
                         </div>
 
@@ -761,6 +875,10 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
                             title="View details"
                             aria-label="View details"
                             icon={<FontAwesomeIcon icon={faEye} />}
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              void handleOpenDetails(race)
+                            }}
                           />
                         </div>
                       </div>
@@ -830,6 +948,39 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
           </Form.Item>
         </Form>
       </Modal>
+
+      <RaceDetailsDrawer
+        open={isDetailsOpen}
+        race={raceDetails}
+        isLoading={isDetailsLoading}
+        error={detailsError}
+        onEdit={() => {
+          if (!selectedDetailsRace) {
+            return
+          }
+
+          setIsDetailsOpen(false)
+          setRaceDetails(null)
+          setDetailsError(null)
+          handleOpenEdit(selectedDetailsRace)
+        }}
+        onDelete={() => {
+          if (!selectedDetailsRace) {
+            return
+          }
+
+          setIsDetailsOpen(false)
+          setRaceDetails(null)
+          setDetailsError(null)
+          handleDelete(selectedDetailsRace)
+        }}
+        onClose={() => {
+          setIsDetailsOpen(false)
+          setRaceDetails(null)
+          setSelectedDetailsRace(null)
+          setDetailsError(null)
+        }}
+      />
     </Card>
   )
 }

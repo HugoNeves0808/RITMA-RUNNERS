@@ -1,0 +1,330 @@
+.drawer :global(.ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn) {
+  color: #ea580c !important;
+}
+
+.drawer :global(.ant-drawer-header-title) {
+  display: flex;
+  min-width: 0;
+}
+
+.drawer :global(.ant-drawer-title) {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.drawer :global(.ant-drawer-body) {
+  overflow-x: hidden;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.headerAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+  padding: 0 12px !important;
+  border-radius: 999px;
+  border: none;
+  background: rgba(255, 255, 255, 0.92);
+  color: #101828;
+  font-weight: 700;
+}
+
+.headerAction:hover {
+  background: rgba(15, 23, 42, 0.04) !important;
+  color: #101828 !important;
+}
+
+.headerActionDanger:hover {
+  background: rgba(217, 45, 32, 0.08) !important;
+  color: #d92d20 !important;
+}
+
+.drawer :global(.ant-tabs-ink-bar) {
+  background: #ea580c !important;
+}
+
+.tabPane {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.overviewCard {
+  border-radius: 22px;
+  padding: 20px;
+  background:
+    radial-gradient(circle at top left, rgba(251, 146, 60, 0.16), transparent 38%),
+    linear-gradient(180deg, #fffaf5 0%, #ffffff 100%);
+  border: 1px solid rgba(251, 146, 60, 0.18);
+}
+
+.overviewHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.overviewHeader > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.overviewEyebrow {
+  color: #9a3412;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.overviewTitle {
+  margin: 0;
+  color: #101828;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.15;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.statusRegistered {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.statusCompleted {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.statusInList {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.statusNotRegistered {
+  background: #e5e7eb;
+  color: #475467;
+}
+
+.statusCancelled {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.statusDns {
+  background: #fce7f3;
+  color: #be185d;
+}
+
+.statusDnf {
+  background: #ede9fe;
+  color: #7c3aed;
+}
+
+.statusUnknown {
+  background: #e5e7eb;
+  color: #475467;
+}
+
+.summaryRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.summaryItem {
+  min-width: 0;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.88);
+  padding: 14px 16px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.summaryLabel {
+  display: block;
+  color: #98a2b3;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.summaryValue {
+  color: #101828;
+  font-size: 15px;
+  font-weight: 700;
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fieldsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.fieldRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  height: 100%;
+  min-width: 0;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.96) 0%, rgba(255, 255, 255, 1) 100%);
+  padding: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.05);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.04);
+}
+
+.fieldLabel {
+  color: #98a2b3;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.fieldValue {
+  color: #101828;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.4;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.metricsPanel {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.metricCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  border-radius: 20px;
+  padding: 18px 16px;
+  background:
+    radial-gradient(circle at top left, rgba(251, 146, 60, 0.12), transparent 42%),
+    linear-gradient(180deg, #fff 0%, #fffaf5 100%);
+  border: 1px solid rgba(251, 146, 60, 0.14);
+}
+
+.metricCardLabel {
+  color: #9a3412;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.metricCardValue {
+  color: #101828;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notesPanel {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+.noteCard {
+  min-width: 0;
+  border-radius: 20px;
+  padding: 18px;
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.96) 0%, rgba(255, 255, 255, 1) 100%);
+  border: 1px solid rgba(15, 23, 42, 0.05);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.04);
+}
+
+.noteLabel {
+  display: block;
+  color: #98a2b3;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.noteValue {
+  margin: 0;
+  color: #101828;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.6;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+
+.loadingWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 280px;
+}
+
+.emptyState {
+  color: #667085;
+  font-size: 14px;
+}
+
+@media (max-width: 720px) {
+  .summaryRow,
+  .fieldsGrid,
+  .metricsPanel {
+    grid-template-columns: 1fr;
+  }
+
+  .overviewHeader {
+    flex-direction: column;
+  }
+}

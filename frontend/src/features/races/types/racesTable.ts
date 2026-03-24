@@ -103,3 +103,44 @@ export type CreateRacePayload = {
 export type CreateRaceResponse = {
   id: string
 }
+
+export type RaceDetailResponse = {
+  id: string
+  race: {
+    raceStatus: string | null
+    raceDate: string | null
+    raceTime: string | null
+    name: string
+    location: string | null
+    teamId: string | null
+    teamName: string | null
+    circuitId: string | null
+    circuitName: string | null
+    raceTypeId: string | null
+    raceTypeName: string | null
+    realKm: number | null
+    elevation: number | null
+    isValidForCategoryRanking: boolean | null
+  }
+  results: {
+    officialTimeSeconds: number | null
+    chipTimeSeconds: number | null
+    pacePerKmSeconds: number | null
+    shoeId: string | null
+    shoeName: string | null
+    generalClassification: number | null
+    isGeneralClassificationPodium: boolean | null
+    ageGroupClassification: number | null
+    isAgeGroupClassificationPodium: boolean | null
+    teamClassification: number | null
+    isTeamClassificationPodium: boolean | null
+  }
+  analysis: {
+    preRaceConfidence: string | null
+    raceDifficulty: string | null
+    finalSatisfaction: string | null
+    painInjuries: string | null
+    analysisNotes: string | null
+    wouldRepeatThisRace: boolean | null
+  }
+}

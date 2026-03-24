@@ -92,7 +92,9 @@ Authenticated client shell status:
 - web `Races` now renders real monthly and yearly calendar views backed by authenticated race data, with compact monthly day cards and a yearly 12-month overview that uses race-status color cues on the day numbers
 - web `Races` also includes a real card-based table mode grouped by year, with header-level name search, a shared race-filters drawer, a `Coming Up` section for registered races, and row actions split between visible `view` and a three-dot menu for `edit` and `delete`
 - web `Races` now also includes an add-race drawer with three tabs for `Race data`, `Race results`, and `Race analysis`
+- web `Races` now also includes a dedicated race-details drawer opened from the row itself or from the eye action, with the same three tabs plus direct `Edit` and `Delete` actions in the header
 - web `Races` create flows now also let the user manage `race types`, `teams`, `circuits`, and `shoes` directly inside the creation UI, including inline create, edit, delete, usage inspection, and product-native confirmation modals
+- web `Races` time presentation now hides seconds and uses `AM/PM` where race start time is shown in the creation flow and in the race-details drawer
 - mobile `Races` now mirrors the same top-level switcher pattern and renders real monthly and yearly calendars backed by the same authenticated race data, with a compact per-day monthly summary and a single-column yearly overview adapted for smaller screens
 - mobile `Races` also includes a real table mode with a compact card layout, the same `Coming Up` weekly logic for registered races, a shared race-filters sheet for both table and calendar, and a three-dot action menu on each race card
 - mobile `Races` filters now keep `Scope` as a switcher but use dropdowns for `Race status` and `Race types`, with multi-select behavior for both backend-backed filters
@@ -613,6 +615,62 @@ Expected response example:
 }
 ```
 
+### `GET /api/races/{raceId}`
+
+Returns the authenticated user's full detail for a single race, combining race data, race results, and race analysis for the race-details drawer.
+
+Postman:
+
+- Method: `GET`
+- URL: `{{baseUrl}}/api/races/{{raceId}}`
+- Auth: `Bearer Token`
+- Token: `{{token}}`
+
+Expected response example:
+
+```json
+{
+  "id": "uuid",
+  "race": {
+    "raceStatus": "COMPLETED",
+    "raceDate": "2026-03-24",
+    "raceTime": "07:45:30",
+    "name": "Lisbon Spring 10K",
+    "location": "Lisbon, Portugal",
+    "teamId": "uuid-team",
+    "teamName": "RITMA Runners",
+    "circuitId": "uuid-circuit",
+    "circuitName": "National Road Circuit",
+    "raceTypeId": "uuid-race-type",
+    "raceTypeName": "Road 10K",
+    "realKm": 10.0,
+    "elevation": 90,
+    "isValidForCategoryRanking": true
+  },
+  "results": {
+    "officialTimeSeconds": 2405,
+    "chipTimeSeconds": 2398,
+    "pacePerKmSeconds": 240,
+    "shoeId": "uuid-shoe",
+    "shoeName": "Nike Vaporfly 3",
+    "generalClassification": 12,
+    "isGeneralClassificationPodium": false,
+    "ageGroupClassification": 4,
+    "isAgeGroupClassificationPodium": false,
+    "teamClassification": 2,
+    "isTeamClassificationPodium": true
+  },
+  "analysis": {
+    "preRaceConfidence": "HIGH",
+    "raceDifficulty": "MEDIUM",
+    "finalSatisfaction": "HIGH",
+    "painInjuries": "Minor calf tightness in the last 3 km.",
+    "analysisNotes": "Solid pacing and good race management overall.",
+    "wouldRepeatThisRace": true
+  }
+}
+```
+
 ### `POST /api/races`
 
 Creates a new race for the authenticated user and optionally persists linked race results and race analysis in the same request.
@@ -688,6 +746,7 @@ Client usage notes:
 - web `Races` exposes this endpoint through a right-side creation drawer opened by the orange add button next to the page title
 - mobile `Races` exposes the same endpoint through a dedicated add-race modal with the same three logical tabs
 - both clients auto-format manual duration and pace inputs while the user types, calculate `pacePerKm` from `chipTime` and `realKm` when possible, and automatically mark podium checkboxes when the corresponding classification is between `1` and `3`
+- the web create-race drawer now presents `Race time` without seconds and in `AM/PM`, while still persisting the backend-compatible time value
 - both clients now also expose optional selectors for `team`, `circuit`, and `shoe`
 - both clients now also allow managing the underlying selector options in place from the same creation flows
 

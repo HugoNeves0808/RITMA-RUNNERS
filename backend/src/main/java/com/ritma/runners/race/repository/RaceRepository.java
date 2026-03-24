@@ -16,6 +16,7 @@ import org.springframework.stereotype.Repository;
 import com.ritma.runners.race.dto.RaceOptionType;
 import com.ritma.runners.race.dto.RaceOptionUsageItemResponse;
 import com.ritma.runners.race.dto.RaceCalendarItemResponse;
+import com.ritma.runners.race.dto.RaceDetailResponse;
 import com.ritma.runners.race.dto.RaceQueryFilters;
 import com.ritma.runners.race.dto.RaceTableItemResponse;
 import com.ritma.runners.race.dto.RaceTypeOptionResponse;
@@ -492,6 +493,99 @@ public class RaceRepository {
         );
 
         return count != null && count > 0;
+    }
+
+    public RaceDetailResponse findRaceDetail(UUID userId, UUID raceId) {
+        List<RaceDetailResponse> results = jdbcTemplate().query(
+                """
+                        SELECT
+                            ur.id,
+                            ur.race_status::text AS race_status,
+                            ur.race_date,
+                            ur.race_time,
+                            ur.name,
+                            ur.location,
+                            ur.team_id,
+                            ut.name AS team_name,
+                            ur.circuit_id,
+                            uc.name AS circuit_name,
+                            ur.race_type_id,
+                            urt.name AS race_type_name,
+                            ur.real_km,
+                            ur.elevation,
+                            ur.is_valid_for_category_ranking,
+                            urr.official_time,
+                            urr.chip_time,
+                            urr.pace_per_km,
+                            urr.shoe_id,
+                            us.name AS shoe_name,
+                            urr.general_classification,
+                            urr.is_general_classification_podium,
+                            urr.age_group_classification,
+                            urr.is_age_group_classification_podium,
+                            urr.team_classification,
+                            urr.is_team_classification_podium,
+                            ura.pre_race_confidence,
+                            ura.race_difficulty,
+                            ura.final_satisfaction,
+                            ura.pain_injuries,
+                            ura.analysis_notes,
+                            ura.would_repeat_this_race
+                        FROM user_races ur
+                        LEFT JOIN user_teams ut ON ut.id = ur.team_id
+                        LEFT JOIN user_circuits uc ON uc.id = ur.circuit_id
+                        LEFT JOIN user_race_types urt ON urt.id = ur.race_type_id
+                        LEFT JOIN user_race_results urr ON urr.user_race_id = ur.id
+                        LEFT JOIN user_shoes us ON us.id = urr.shoe_id
+                        LEFT JOIN user_race_analysis ura ON ura.user_race_id = ur.id
+                        WHERE ur.user_id = ?
+                          AND ur.id = ?
+                        """,
+                (rs, rowNum) -> new RaceDetailResponse(
+                        rs.getObject("id", UUID.class),
+                        new RaceDetailResponse.RaceData(
+                                rs.getString("race_status"),
+                                rs.getObject("race_date", LocalDate.class),
+                                getNullableLocalTime(rs.getTime("race_time")),
+                                rs.getString("name"),
+                                rs.getString("location"),
+                                rs.getObject("team_id", UUID.class),
+                                rs.getString("team_name"),
+                                rs.getObject("circuit_id", UUID.class),
+                                rs.getString("circuit_name"),
+                                rs.getObject("race_type_id", UUID.class),
+                                rs.getString("race_type_name"),
+                                rs.getBigDecimal("real_km"),
+                                getNullableInteger(rs, "elevation"),
+                                rs.getObject("is_valid_for_category_ranking", Boolean.class)
+                        ),
+                        new RaceDetailResponse.RaceResults(
+                                getNullableInteger(rs, "official_time"),
+                                getNullableInteger(rs, "chip_time"),
+                                getNullableInteger(rs, "pace_per_km"),
+                                rs.getObject("shoe_id", UUID.class),
+                                rs.getString("shoe_name"),
+                                getNullableInteger(rs, "general_classification"),
+                                rs.getObject("is_general_classification_podium", Boolean.class),
+                                getNullableInteger(rs, "age_group_classification"),
+                                rs.getObject("is_age_group_classification_podium", Boolean.class),
+                                getNullableInteger(rs, "team_classification"),
+                                rs.getObject("is_team_classification_podium", Boolean.class)
+                        ),
+                        new RaceDetailResponse.RaceAnalysis(
+                                rs.getString("pre_race_confidence"),
+                                rs.getString("race_difficulty"),
+                                rs.getString("final_satisfaction"),
+                                rs.getString("pain_injuries"),
+                                rs.getString("analysis_notes"),
+                                rs.getObject("would_repeat_this_race", Boolean.class)
+                        )
+                ),
+                userId,
+                raceId
+        );
+
+        return results.isEmpty() ? null : results.get(0);
     }
 
     private List<RaceTypeOptionResponse> findNamedOptions(UUID userId, String tableName) {
