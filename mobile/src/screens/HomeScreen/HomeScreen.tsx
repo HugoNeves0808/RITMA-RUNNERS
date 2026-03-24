@@ -73,6 +73,13 @@ export function HomeScreen({ token }: HomeScreenProps) {
           <AddRaceModal
             token={token}
             createOptions={createOptions}
+            onCreateOptionsChange={(nextOptions) => {
+              setCreateOptions(nextOptions)
+              setFilterOptions((current) => ({
+                ...current,
+                raceTypes: nextOptions.raceTypes,
+              }))
+            }}
             onCreated={() => setRefreshKey((current) => current + 1)}
           />
         </View>

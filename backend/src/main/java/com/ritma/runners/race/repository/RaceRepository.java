@@ -13,6 +13,8 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import com.ritma.runners.race.dto.RaceOptionType;
+import com.ritma.runners.race.dto.RaceOptionUsageItemResponse;
 import com.ritma.runners.race.dto.RaceCalendarItemResponse;
 import com.ritma.runners.race.dto.RaceQueryFilters;
 import com.ritma.runners.race.dto.RaceTableItemResponse;
@@ -154,15 +156,19 @@ public class RaceRepository {
     }
 
     public List<RaceTypeOptionResponse> findTeams(UUID userId) {
-        return findNamedOptions(userId, "user_teams");
+        return findNamedOptions(userId, RaceOptionType.TEAMS.tableName());
     }
 
     public List<RaceTypeOptionResponse> findCircuits(UUID userId) {
-        return findNamedOptions(userId, "user_circuits");
+        return findNamedOptions(userId, RaceOptionType.CIRCUITS.tableName());
     }
 
     public List<RaceTypeOptionResponse> findShoes(UUID userId) {
-        return findNamedOptions(userId, "user_shoes");
+        return findNamedOptions(userId, RaceOptionType.SHOES.tableName());
+    }
+
+    public List<RaceTypeOptionResponse> findManagedOptions(UUID userId, RaceOptionType optionType) {
+        return findNamedOptions(userId, optionType.tableName());
     }
 
     public List<Integer> findAvailableYears(UUID userId) {
@@ -196,19 +202,133 @@ public class RaceRepository {
     }
 
     public boolean raceTypeExists(UUID userId, UUID raceTypeId) {
-        return namedOptionExists(userId, raceTypeId, "user_race_types");
+        return namedOptionExists(userId, raceTypeId, RaceOptionType.RACE_TYPES.tableName());
     }
 
     public boolean teamExists(UUID userId, UUID teamId) {
-        return namedOptionExists(userId, teamId, "user_teams");
+        return namedOptionExists(userId, teamId, RaceOptionType.TEAMS.tableName());
     }
 
     public boolean circuitExists(UUID userId, UUID circuitId) {
-        return namedOptionExists(userId, circuitId, "user_circuits");
+        return namedOptionExists(userId, circuitId, RaceOptionType.CIRCUITS.tableName());
     }
 
     public boolean shoeExists(UUID userId, UUID shoeId) {
-        return namedOptionExists(userId, shoeId, "user_shoes");
+        return namedOptionExists(userId, shoeId, RaceOptionType.SHOES.tableName());
+    }
+
+    public UUID createManagedOption(UUID userId, RaceOptionType optionType, String name) {
+        return jdbcTemplate().queryForObject(
+                "INSERT INTO " + optionType.tableName() + " (user_id, name) VALUES (?, ?) RETURNING id",
+                UUID.class,
+                userId,
+                name
+        );
+    }
+
+    public boolean managedOptionExists(UUID userId, RaceOptionType optionType, UUID optionId) {
+        return namedOptionExists(userId, optionId, optionType.tableName());
+    }
+
+    public void updateManagedOption(UUID userId, RaceOptionType optionType, UUID optionId, String name) {
+        jdbcTemplate().update(
+                "UPDATE " + optionType.tableName() + " SET name = ? WHERE user_id = ? AND id = ?",
+                name,
+                userId,
+                optionId
+        );
+    }
+
+    public int countManagedOptionUsage(UUID userId, RaceOptionType optionType, UUID optionId) {
+        Integer count;
+        if (optionType == RaceOptionType.RACE_TYPES
+                || optionType == RaceOptionType.TEAMS
+                || optionType == RaceOptionType.CIRCUITS) {
+            count = jdbcTemplate().queryForObject(
+                    "SELECT COUNT(*) FROM " + optionType.referenceTableName() + " WHERE user_id = ? AND " + optionType.referenceColumnName() + " = ?",
+                    Integer.class,
+                    userId,
+                    optionId
+            );
+        } else {
+            count = jdbcTemplate().queryForObject(
+                    "SELECT COUNT(*) FROM " + optionType.referenceTableName()
+                            + " ref JOIN user_races ur ON ur.id = ref.user_race_id WHERE ur.user_id = ? AND ref." + optionType.referenceColumnName() + " = ?",
+                    Integer.class,
+                    userId,
+                    optionId
+            );
+        }
+
+        return count == null ? 0 : count;
+    }
+
+    public int deleteManagedOption(UUID userId, RaceOptionType optionType, UUID optionId) {
+        return jdbcTemplate().update(
+                "DELETE FROM " + optionType.tableName() + " WHERE user_id = ? AND id = ?",
+                userId,
+                optionId
+        );
+    }
+
+    public List<RaceOptionUsageItemResponse> findManagedOptionUsage(UUID userId, RaceOptionType optionType, UUID optionId) {
+        if (optionType == RaceOptionType.SHOES) {
+            return jdbcTemplate().query(
+                    """
+                            SELECT ur.id, ur.name, ur.race_date
+                            FROM user_race_results urr
+                            JOIN user_races ur ON ur.id = urr.user_race_id
+                            WHERE ur.user_id = ?
+                              AND urr.shoe_id = ?
+                            ORDER BY ur.race_date DESC NULLS LAST, lower(ur.name) ASC
+                            """,
+                    (rs, rowNum) -> new RaceOptionUsageItemResponse(
+                            rs.getObject("id", UUID.class),
+                            rs.getString("name"),
+                            rs.getObject("race_date", LocalDate.class),
+                            "Race results"
+                    ),
+                    userId,
+                    optionId
+            );
+        }
+
+        return jdbcTemplate().query(
+                "SELECT id, name, race_date FROM user_races WHERE user_id = ? AND " + optionType.referenceColumnName()
+                        + " = ? ORDER BY race_date DESC NULLS LAST, lower(name) ASC",
+                (rs, rowNum) -> new RaceOptionUsageItemResponse(
+                        rs.getObject("id", UUID.class),
+                        rs.getString("name"),
+                        rs.getObject("race_date", LocalDate.class),
+                        "Race data"
+                ),
+                userId,
+                optionId
+        );
+    }
+
+    public int detachManagedOptionUsage(UUID userId, RaceOptionType optionType, UUID optionId) {
+        if (optionType == RaceOptionType.SHOES) {
+            return jdbcTemplate().update(
+                    """
+                            UPDATE user_race_results urr
+                            SET shoe_id = NULL
+                            FROM user_races ur
+                            WHERE ur.id = urr.user_race_id
+                              AND ur.user_id = ?
+                              AND urr.shoe_id = ?
+                            """,
+                    userId,
+                    optionId
+            );
+        }
+
+        return jdbcTemplate().update(
+                "UPDATE user_races SET " + optionType.referenceColumnName() + " = NULL WHERE user_id = ? AND "
+                        + optionType.referenceColumnName() + " = ?",
+                userId,
+                optionId
+        );
     }
 
     public void updateRace(UUID userId, UUID raceId, LocalDate raceDate, String name, String location, UUID raceTypeId) {

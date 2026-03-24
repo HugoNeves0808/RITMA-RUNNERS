@@ -127,6 +127,57 @@
   width: 100%;
 }
 
+.managedField {
+  display: flex;
+  flex-direction: column;
+}
+
+.managedField :global(.ant-form-item) {
+  margin-bottom: 0;
+}
+
+.managedFieldRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.addManagedOptionButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 8px;
+  background: #111827;
+  color: #ffffff;
+  cursor: pointer;
+  min-height: 28px;
+  padding: 0;
+  transition: background-color 0.2s ease;
+}
+
+.addManagedOptionButton:hover,
+.addManagedOptionButton:focus {
+  background: #000000;
+}
+
+.manageInlineButton {
+  align-self: flex-start;
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: #f97316;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.manageInlineButton:hover,
+.manageInlineButton:focus {
+  color: #fb923c;
+}
+
 .classificationBlock {
   display: flex;
   flex-direction: column;
@@ -144,6 +195,156 @@
 .classificationCheckbox :global(.ant-form-item-control-input-content) {
   display: flex;
   align-items: center;
+}
+
+.manageOptionsModal {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.manageOptionsDialog :global(.ant-modal-title) {
+  margin-bottom: 20px;
+}
+
+.manageOptionsHint {
+  margin: 0;
+  color: #667085;
+}
+
+.manageOptionsForm {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.manageInputRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.manageInputActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.cancelEditingIconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(16, 24, 40, 0.08);
+  border-radius: 8px;
+  background: #ffffff;
+  color: #667085;
+  cursor: pointer;
+}
+
+.cancelEditingIconButton:hover,
+.cancelEditingIconButton:focus {
+  color: #111827;
+  border-color: rgba(16, 24, 40, 0.14);
+}
+
+.manageOptionsIntro {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-radius: 12px;
+  background: rgba(16, 24, 40, 0.04);
+  padding: 12px;
+  color: #475467;
+}
+
+.manageOptionsIntro strong {
+  color: #111827;
+}
+
+.manageOptionsList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 280px;
+  overflow-y: auto;
+  margin-top: 4px;
+}
+
+.manageOptionsEmpty {
+  color: #98a2b3;
+  font-size: 14px;
+}
+
+.manageOptionRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(16, 24, 40, 0.08);
+  border-radius: 12px;
+}
+
+.manageOptionName {
+  color: #111827;
+  font-weight: 600;
+}
+
+.manageOptionActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.usageCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border: 1px solid rgba(249, 115, 22, 0.18);
+  border-radius: 14px;
+  background: #fff7ed;
+  padding: 14px;
+}
+
+.usageHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: #9a3412;
+}
+
+.usageList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.usageRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.84);
+  padding: 10px 12px;
+}
+
+.usageRowMain {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.usageRaceName {
+  color: #111827;
+  font-weight: 700;
 }
 
 @media (max-width: 768px) {

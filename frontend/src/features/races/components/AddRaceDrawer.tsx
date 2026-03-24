@@ -1,7 +1,8 @@
-import { faPlus } from '@fortawesome/free-solid-svg-icons'
+import { faEllipsisVertical, faPenToSquare, faPlus, faTrashCan, faXmark } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import dayjs from 'dayjs'
-import { useState } from 'react'
+import type { ReactNode } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Alert,
   Button,
@@ -19,12 +20,26 @@ import {
   Tooltip,
 } from 'antd'
 import { useAuth } from '../../auth'
-import { createRace } from '../services/racesTableService'
+import {
+  createManagedRaceOption,
+  createRace,
+  deleteManagedRaceOption,
+  detachManagedRaceOptionUsage,
+  fetchManagedRaceOptions,
+  fetchManagedRaceOptionUsage,
+  updateManagedRaceOption,
+} from '../services/racesTableService'
 import {
   getRaceStatusColor,
   RACE_STATUS_OPTIONS,
 } from '../types/raceFilters'
-import type { RaceCreateOptions, CreateRacePayload } from '../types/racesTable'
+import type {
+  ManagedRaceOptionType,
+  RaceCreateOptions,
+  CreateRacePayload,
+  RaceOptionUsage,
+  RaceTypeOption,
+} from '../types/racesTable'
 import styles from './AddRaceDrawer.module.css'
 
 const { TextArea } = Input
@@ -32,7 +47,13 @@ const { TextArea } = Input
 type AddRaceDrawerProps = {
   createOptions: RaceCreateOptions
   onCreated: () => void
+  onCreateOptionsChange?: (nextOptions: RaceCreateOptions) => void
 }
+
+type ManagedOptionConfirmState =
+  | { kind: 'delete'; optionType: ManagedRaceOptionType; option: RaceTypeOption }
+  | { kind: 'detach-delete'; optionType: ManagedRaceOptionType; option: RaceTypeOption }
+  | null
 
 type AddRaceFormValues = {
   raceStatus: string
@@ -78,6 +99,45 @@ const INITIAL_FORM_VALUES: Partial<AddRaceFormValues> = {
   isGeneralClassificationPodium: false,
   isAgeGroupClassificationPodium: false,
   isTeamClassificationPodium: false,
+}
+
+const MANAGED_OPTION_CONFIG: Record<ManagedRaceOptionType, {
+  title: string
+  singularLabel: string
+  placeholder: string
+  emptyLabel: string
+}> = {
+  'race-types': {
+    title: 'Race types',
+    singularLabel: 'race type',
+    placeholder: 'Select race type',
+    emptyLabel: 'No race type yet.',
+  },
+  teams: {
+    title: 'Teams',
+    singularLabel: 'team',
+    placeholder: 'Select team',
+    emptyLabel: 'No team yet.',
+  },
+  circuits: {
+    title: 'Circuits',
+    singularLabel: 'circuit',
+    placeholder: 'Select circuit',
+    emptyLabel: 'No circuit yet.',
+  },
+  shoes: {
+    title: 'Shoes',
+    singularLabel: 'shoe',
+    placeholder: 'Select shoe',
+    emptyLabel: 'No shoe yet.',
+  },
+}
+
+const FIELD_OPTION_TYPES: Record<'raceTypeId' | 'teamId' | 'circuitId' | 'shoeId', ManagedRaceOptionType> = {
+  raceTypeId: 'race-types',
+  teamId: 'teams',
+  circuitId: 'circuits',
+  shoeId: 'shoes',
 }
 
 const FIELD_ERROR_PATTERNS: Array<{ pattern: RegExp; field: keyof AddRaceFormValues }> = [
@@ -261,13 +321,96 @@ function renderInfoLabel(label: string, description: string) {
   )
 }
 
-export function AddRaceDrawer({ createOptions, onCreated }: AddRaceDrawerProps) {
+export function AddRaceDrawer({ createOptions, onCreated, onCreateOptionsChange }: AddRaceDrawerProps) {
   const { token } = useAuth()
   const [form] = Form.useForm<AddRaceFormValues>()
   const [isOpen, setIsOpen] = useState(false)
   const [isDiscardModalOpen, setIsDiscardModalOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [localCreateOptions, setLocalCreateOptions] = useState<RaceCreateOptions>(createOptions)
+  const [isManageOptionsModalOpen, setIsManageOptionsModalOpen] = useState(false)
+  const [managedOptionType, setManagedOptionType] = useState<ManagedRaceOptionType>('race-types')
+  const [managedOptionName, setManagedOptionName] = useState('')
+  const [editingManagedOptionId, setEditingManagedOptionId] = useState<string | null>(null)
+  const [managedOptionError, setManagedOptionError] = useState<string | null>(null)
+  const [isManagedOptionSubmitting, setIsManagedOptionSubmitting] = useState(false)
+  const [isManagedOptionLoading, setIsManagedOptionLoading] = useState(false)
+  const [managedOptionUsage, setManagedOptionUsage] = useState<RaceOptionUsage | null>(null)
+  const [pendingDeleteOption, setPendingDeleteOption] = useState<RaceTypeOption | null>(null)
+  const [managedOptionConfirmState, setManagedOptionConfirmState] = useState<ManagedOptionConfirmState>(null)
+
+  useEffect(() => {
+    setLocalCreateOptions(createOptions)
+  }, [createOptions])
+
+  const syncCreateOptions = (nextOptions: RaceCreateOptions) => {
+    setLocalCreateOptions(nextOptions)
+    onCreateOptionsChange?.(nextOptions)
+  }
+
+  const getOptionsForType = (optionType: ManagedRaceOptionType) => {
+    switch (optionType) {
+      case 'race-types':
+        return localCreateOptions.raceTypes
+      case 'teams':
+        return localCreateOptions.teams
+      case 'circuits':
+        return localCreateOptions.circuits
+      case 'shoes':
+        return localCreateOptions.shoes
+      default:
+        return []
+    }
+  }
+
+  const replaceOptionsForType = (optionType: ManagedRaceOptionType, nextValues: RaceTypeOption[]) => {
+    const nextOptions: RaceCreateOptions = {
+      ...localCreateOptions,
+      raceTypes: optionType === 'race-types' ? nextValues : localCreateOptions.raceTypes,
+      teams: optionType === 'teams' ? nextValues : localCreateOptions.teams,
+      circuits: optionType === 'circuits' ? nextValues : localCreateOptions.circuits,
+      shoes: optionType === 'shoes' ? nextValues : localCreateOptions.shoes,
+    }
+    syncCreateOptions(nextOptions)
+  }
+
+  const resetManagedOptionState = () => {
+    setManagedOptionName('')
+    setEditingManagedOptionId(null)
+    setManagedOptionError(null)
+    setManagedOptionUsage(null)
+    setPendingDeleteOption(null)
+    setManagedOptionConfirmState(null)
+    setIsManagedOptionSubmitting(false)
+  }
+
+  const openManageOptionsModal = async (optionType: ManagedRaceOptionType, optionToEdit?: RaceTypeOption) => {
+    setManagedOptionType(optionType)
+    setManagedOptionName(optionToEdit?.name ?? '')
+    setEditingManagedOptionId(optionToEdit?.id ?? null)
+    setManagedOptionError(null)
+    setIsManageOptionsModalOpen(true)
+
+    if (!token) {
+      return
+    }
+
+    try {
+      setIsManagedOptionLoading(true)
+      const latestOptions = await fetchManagedRaceOptions(optionType, token)
+      replaceOptionsForType(optionType, latestOptions)
+    } catch (loadError) {
+      setManagedOptionError(loadError instanceof Error ? loadError.message : 'Could not load these options right now.')
+    } finally {
+      setIsManagedOptionLoading(false)
+    }
+  }
+
+  const closeManageOptionsModal = () => {
+    setIsManageOptionsModalOpen(false)
+    resetManagedOptionState()
+  }
 
   const clearFieldError = (fieldName: keyof AddRaceFormValues) => {
     form.setFields([{ name: fieldName, errors: [] }])
@@ -281,7 +424,159 @@ export function AddRaceDrawer({ createOptions, onCreated }: AddRaceDrawerProps) 
     setIsOpen(false)
     setIsDiscardModalOpen(false)
     setError(null)
+    closeManageOptionsModal()
     form.resetFields()
+  }
+
+  const handleSaveManagedOption = async () => {
+    if (!token) {
+      return
+    }
+
+    try {
+      setIsManagedOptionSubmitting(true)
+      setManagedOptionError(null)
+      setManagedOptionUsage(null)
+      setPendingDeleteOption(null)
+
+      const savedOption = editingManagedOptionId
+        ? await updateManagedRaceOption(managedOptionType, editingManagedOptionId, { name: managedOptionName }, token)
+        : await createManagedRaceOption(managedOptionType, { name: managedOptionName }, token)
+
+      const currentOptions = getOptionsForType(managedOptionType)
+      const nextOptions = editingManagedOptionId
+        ? currentOptions.map((option) => (option.id === savedOption.id ? savedOption : option))
+        : [...currentOptions, savedOption].sort((left, right) => left.name.localeCompare(right.name))
+
+      replaceOptionsForType(managedOptionType, nextOptions)
+
+      const linkedField = Object.entries(FIELD_OPTION_TYPES).find(([, value]) => value === managedOptionType)?.[0] as keyof AddRaceFormValues | undefined
+      if (linkedField) {
+        form.setFieldValue(linkedField, savedOption.id)
+      }
+
+      setManagedOptionName('')
+      setEditingManagedOptionId(null)
+    } catch (saveError) {
+      setManagedOptionError(saveError instanceof Error ? saveError.message : 'Could not save this option right now.')
+    } finally {
+      setIsManagedOptionSubmitting(false)
+    }
+  }
+
+  const handleDeleteManagedOption = async (optionType: ManagedRaceOptionType, option: RaceTypeOption) => {
+    if (!token) {
+      return
+    }
+
+    try {
+      setManagedOptionError(null)
+      setManagedOptionUsage(null)
+      setPendingDeleteOption(null)
+
+      const usage = await fetchManagedRaceOptionUsage(optionType, option.id, token)
+      if (usage.usageCount > 0) {
+        setPendingDeleteOption(option)
+        setManagedOptionUsage(usage)
+        return
+      }
+
+      setManagedOptionConfirmState({ kind: 'delete', optionType, option })
+    } catch (deleteError) {
+      const nextMessage = deleteError instanceof Error ? deleteError.message : 'Could not delete this option right now.'
+
+      if (/cannot be deleted because it is already being used/i.test(nextMessage)) {
+        setPendingDeleteOption(option)
+        try {
+          const usage = await fetchManagedRaceOptionUsage(optionType, option.id, token)
+          setManagedOptionUsage(usage)
+          setManagedOptionError(null)
+        } catch {
+          setManagedOptionUsage(null)
+          setManagedOptionError(nextMessage)
+        }
+      } else {
+        setManagedOptionError(nextMessage)
+      }
+    } finally {
+      setIsManagedOptionSubmitting(false)
+    }
+  }
+
+  const handleConfirmManagedOptionAction = async () => {
+    if (!token || !managedOptionConfirmState) {
+      return
+    }
+
+    try {
+      setIsManagedOptionSubmitting(true)
+      setManagedOptionError(null)
+      const { kind, optionType, option } = managedOptionConfirmState
+
+      if (kind === 'detach-delete') {
+        await detachManagedRaceOptionUsage(optionType, option.id, token)
+      }
+
+      await deleteManagedRaceOption(optionType, option.id, token)
+
+      const nextOptions = getOptionsForType(optionType).filter((currentOption) => currentOption.id !== option.id)
+      replaceOptionsForType(managedOptionType, nextOptions)
+
+      const linkedField = Object.entries(FIELD_OPTION_TYPES).find(([, value]) => value === optionType)?.[0] as keyof AddRaceFormValues | undefined
+      if (linkedField && form.getFieldValue(linkedField) === option.id) {
+        form.setFieldValue(linkedField, undefined)
+      }
+
+      if (editingManagedOptionId === option.id) {
+        setManagedOptionName('')
+        setEditingManagedOptionId(null)
+      }
+
+      setManagedOptionUsage(null)
+      setPendingDeleteOption(null)
+      setManagedOptionConfirmState(null)
+    } catch (detachError) {
+      setManagedOptionError(detachError instanceof Error ? detachError.message : 'Could not remove this option from the related records.')
+    } finally {
+      setIsManagedOptionSubmitting(false)
+    }
+  }
+
+  const renderManagedSelect = (
+    fieldName: 'raceTypeId' | 'teamId' | 'circuitId' | 'shoeId',
+    label: ReactNode,
+    optionType: ManagedRaceOptionType,
+    className?: string,
+  ) => {
+    const config = MANAGED_OPTION_CONFIG[optionType]
+    const options = getOptionsForType(optionType)
+
+    return (
+      <div className={`${styles.managedField} ${className ?? ''}`.trim()}>
+        <Form.Item<AddRaceFormValues> label={label}>
+          <div className={styles.managedFieldRow}>
+            <Form.Item<AddRaceFormValues> name={fieldName} noStyle>
+              <Select
+                allowClear
+                placeholder={config.placeholder}
+                options={options.map((option) => ({
+                  value: option.id,
+                  label: option.name,
+                }))}
+              />
+            </Form.Item>
+            <button
+              type="button"
+              className={styles.addManagedOptionButton}
+              onClick={() => void openManageOptionsModal(optionType)}
+              aria-label={`Create or manage ${config.title.toLowerCase()}`}
+            >
+              <FontAwesomeIcon icon={faEllipsisVertical} />
+            </button>
+          </div>
+        </Form.Item>
+      </div>
+    )
   }
 
   const handleClose = () => {
@@ -534,40 +829,13 @@ export function AddRaceDrawer({ createOptions, onCreated }: AddRaceDrawerProps) 
                         <Input maxLength={150} placeholder="Lisbon" />
                       </Form.Item>
 
-                      <Form.Item<AddRaceFormValues> label="Race type" name="raceTypeId" className={styles.rowItem}>
-                        <Select
-                          allowClear
-                          placeholder="Select race type"
-                          options={createOptions.raceTypes.map((raceType) => ({
-                            value: raceType.id,
-                            label: raceType.name,
-                          }))}
-                        />
-                      </Form.Item>
+                      {renderManagedSelect('raceTypeId', 'Race type', 'race-types', styles.rowItem)}
                     </div>
 
                     <div className={styles.row}>
-                      <Form.Item<AddRaceFormValues> label={renderInfoLabel('Team', 'Optional team linked to this race entry.')} name="teamId" className={styles.rowItem}>
-                        <Select
-                          allowClear
-                          placeholder="Select team"
-                          options={createOptions.teams.map((team) => ({
-                            value: team.id,
-                            label: team.name,
-                          }))}
-                        />
-                      </Form.Item>
+                      {renderManagedSelect('teamId', renderInfoLabel('Team', 'Optional team linked to this race entry.'), 'teams', styles.rowItem)}
 
-                      <Form.Item<AddRaceFormValues> label={renderInfoLabel('Circuit', 'Optional circuit or championship this race belongs to.')} name="circuitId" className={styles.rowItem}>
-                        <Select
-                          allowClear
-                          placeholder="Select circuit"
-                          options={createOptions.circuits.map((circuit) => ({
-                            value: circuit.id,
-                            label: circuit.name,
-                          }))}
-                        />
-                      </Form.Item>
+                      {renderManagedSelect('circuitId', renderInfoLabel('Circuit', 'Optional circuit or championship this race belongs to.'), 'circuits', styles.rowItem)}
                     </div>
 
                     <div className={styles.row}>
@@ -626,16 +894,7 @@ export function AddRaceDrawer({ createOptions, onCreated }: AddRaceDrawerProps) 
                       />
                     </Form.Item>
 
-                    <Form.Item<AddRaceFormValues> label={renderInfoLabel('Shoe', 'Optional shoe used in this race result.')} name="shoeId">
-                      <Select
-                        allowClear
-                        placeholder="Select shoe"
-                        options={createOptions.shoes.map((shoe) => ({
-                          value: shoe.id,
-                          label: shoe.name,
-                        }))}
-                      />
-                    </Form.Item>
+                    {renderManagedSelect('shoeId', renderInfoLabel('Shoe', 'Optional shoe used in this race result.'), 'shoes')}
 
                     <div className={styles.row}>
                       <div className={styles.classificationBlock}>
@@ -741,7 +1000,157 @@ export function AddRaceDrawer({ createOptions, onCreated }: AddRaceDrawerProps) 
         >
           <p>You have unsaved race data. If you leave now, the information you entered will be lost.</p>
         </Modal>
+
+        <Modal
+          className={styles.manageOptionsDialog}
+          title={`Manage ${MANAGED_OPTION_CONFIG[managedOptionType].title}`}
+          open={isManageOptionsModalOpen}
+          footer={null}
+          onCancel={closeManageOptionsModal}
+        >
+          <div className={styles.manageOptionsModal}>
+            {managedOptionError && !managedOptionUsage ? (
+              <Alert
+                type="error"
+                showIcon
+                message={`Could not save ${MANAGED_OPTION_CONFIG[managedOptionType].singularLabel}`}
+                description={managedOptionError}
+              />
+            ) : null}
+
+            <div className={styles.manageOptionsForm}>
+              <div className={styles.manageInputRow}>
+                <Input
+                  value={managedOptionName}
+                  maxLength={100}
+                  placeholder={`Type the ${MANAGED_OPTION_CONFIG[managedOptionType].singularLabel} name here`}
+                  onChange={(event) => setManagedOptionName(event.target.value)}
+                />
+                <div className={styles.manageInputActions}>
+                  {editingManagedOptionId ? (
+                    <button
+                      type="button"
+                      className={styles.cancelEditingIconButton}
+                      onClick={() => {
+                        setManagedOptionName('')
+                        setEditingManagedOptionId(null)
+                        setManagedOptionError(null)
+                        setManagedOptionUsage(null)
+                        setPendingDeleteOption(null)
+                      }}
+                      aria-label="Cancel editing"
+                    >
+                      <FontAwesomeIcon icon={faXmark} />
+                    </button>
+                  ) : null}
+
+                  {!managedOptionUsage || !pendingDeleteOption ? (
+                    <Button
+                      type="primary"
+                      className={styles.saveButton}
+                      loading={isManagedOptionSubmitting}
+                      disabled={managedOptionName.trim().length === 0}
+                      onClick={() => void handleSaveManagedOption()}
+                    >
+                      {editingManagedOptionId ? 'Save changes' : `Create ${MANAGED_OPTION_CONFIG[managedOptionType].singularLabel}`}
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.manageOptionsList}>
+              {isManagedOptionLoading ? (
+                <span className={styles.manageOptionsEmpty}>Loading {MANAGED_OPTION_CONFIG[managedOptionType].title.toLowerCase()}...</span>
+              ) : getOptionsForType(managedOptionType).length === 0 ? (
+                <span className={styles.manageOptionsEmpty}>{MANAGED_OPTION_CONFIG[managedOptionType].emptyLabel}</span>
+              ) : (
+                getOptionsForType(managedOptionType).map((option) => (
+                  <div key={option.id} className={styles.manageOptionRow}>
+                    <span className={styles.manageOptionName}>{option.name}</span>
+                    <div className={styles.manageOptionActions}>
+                      <Button
+                        type="text"
+                        icon={<FontAwesomeIcon icon={faPenToSquare} />}
+                        onClick={() => {
+                          setManagedOptionName(option.name)
+                          setEditingManagedOptionId(option.id)
+                          setManagedOptionError(null)
+                          setManagedOptionUsage(null)
+                          setPendingDeleteOption(null)
+                        }}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        type="text"
+                        danger
+                        icon={<FontAwesomeIcon icon={faTrashCan} />}
+                        onClick={() => void handleDeleteManagedOption(managedOptionType, option)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {managedOptionUsage && pendingDeleteOption ? (
+              <div className={styles.usageCard}>
+                <div className={styles.usageHeader}>
+                  <strong>Used in {managedOptionUsage.usageCount} record{managedOptionUsage.usageCount === 1 ? '' : 's'}</strong>
+                </div>
+
+                <div className={styles.usageList}>
+                  {managedOptionUsage.records.map((record) => (
+                    <div key={`${record.contextLabel}-${record.raceId}`} className={styles.usageRow}>
+                      <div className={styles.usageRowMain}>
+                        <span className={styles.usageRaceName}>{record.raceName}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <Button
+                  danger
+                  loading={isManagedOptionSubmitting}
+                  onClick={() => {
+                    if (pendingDeleteOption) {
+                      setManagedOptionConfirmState({
+                        kind: 'detach-delete',
+                        optionType: managedOptionType,
+                        option: pendingDeleteOption,
+                      })
+                    }
+                  }}
+                >
+                  Remove from these records and delete
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        </Modal>
+
+        <Modal
+          title={managedOptionConfirmState?.kind === 'detach-delete' ? 'Remove associations and delete?' : 'Delete option?'}
+          open={managedOptionConfirmState != null}
+          okText={managedOptionConfirmState?.kind === 'detach-delete' ? 'Remove and delete' : 'Delete'}
+          cancelText="Cancel"
+          okButtonProps={{ danger: true }}
+          cancelButtonProps={{ className: styles.cancelButton }}
+          confirmLoading={isManagedOptionSubmitting}
+          onOk={() => void handleConfirmManagedOptionAction()}
+          onCancel={() => setManagedOptionConfirmState(null)}
+        >
+          <p>
+            {managedOptionConfirmState?.kind === 'detach-delete'
+              ? `This will remove "${managedOptionConfirmState.option.name}" from the listed records and then delete it.`
+              : `Delete "${managedOptionConfirmState?.option.name ?? ''}"? This action cannot be undone.`}
+          </p>
+        </Modal>
       </Drawer>
     </>
   )
 }
+

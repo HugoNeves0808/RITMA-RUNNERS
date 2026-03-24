@@ -123,6 +123,19 @@ export function HomePage() {
             <Title level={1} className={styles.pageTitle}>Races</Title>
             <AddRaceDrawer
               createOptions={createOptions}
+              onCreateOptionsChange={(nextOptions) => {
+                setCreateOptions(nextOptions)
+                setFilterOptions((current) => ({
+                  ...current,
+                  raceTypes: nextOptions.raceTypes,
+                }))
+                setFilters((current) => ({
+                  ...current,
+                  raceTypeIds: current.raceTypeIds.filter((raceTypeId) => (
+                    nextOptions.raceTypes.some((raceType) => raceType.id === raceTypeId)
+                  )),
+                }))
+              }}
               onCreated={() => setRefreshKey((current) => current + 1)}
             />
           </div>

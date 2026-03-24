@@ -1,5 +1,5 @@
 import { FontAwesome6 } from '@expo/vector-icons'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Alert,
   Modal,
@@ -11,14 +11,30 @@ import {
   View,
 } from 'react-native'
 import { colors } from '../../../theme/colors'
-import { createRace } from '../services/racesTableService'
+import {
+  createManagedRaceOption,
+  createRace,
+  deleteManagedRaceOption,
+  detachManagedRaceOptionUsage,
+  fetchManagedRaceOptionUsage,
+  fetchManagedRaceOptions,
+  updateManagedRaceOption,
+} from '../services/racesTableService'
 import { RACE_STATUS_OPTIONS } from '../types/raceFilters'
-import type { CreateRacePayload, RaceCreateOptions, RaceTypeOption } from '../types/racesTable'
+import type {
+  CreateRacePayload,
+  ManageRaceOptionPayload,
+  ManagedRaceOptionType,
+  RaceCreateOptions,
+  RaceOptionUsage,
+  RaceTypeOption,
+} from '../types/racesTable'
 
 type AddRaceModalProps = {
   token: string
   createOptions: RaceCreateOptions
   onCreated: () => void
+  onCreateOptionsChange?: (nextOptions: RaceCreateOptions) => void
 }
 
 type AddRaceTab = 'race' | 'results' | 'analysis'
@@ -59,6 +75,49 @@ type DateDraft = { year: number; month: number; day: number }
 type TimeDraft = { hour: number; minute: number; second: number }
 type FormField = keyof AddRaceFormState
 type FormErrors = Partial<Record<FormField, string>>
+type ManagedOptionConfirmState =
+  | { kind: 'delete'; optionType: ManagedRaceOptionType; option: RaceTypeOption }
+  | { kind: 'detach-delete'; optionType: ManagedRaceOptionType; option: RaceTypeOption }
+  | null
+
+const MANAGED_OPTION_CONFIG: Record<ManagedRaceOptionType, {
+  title: string
+  singularLabel: string
+  placeholder: string
+  emptyLabel: string
+}> = {
+  'race-types': {
+    title: 'Race types',
+    singularLabel: 'race type',
+    placeholder: 'Select race type',
+    emptyLabel: 'No race type yet.',
+  },
+  teams: {
+    title: 'Teams',
+    singularLabel: 'team',
+    placeholder: 'Select team',
+    emptyLabel: 'No team yet.',
+  },
+  circuits: {
+    title: 'Circuits',
+    singularLabel: 'circuit',
+    placeholder: 'Select circuit',
+    emptyLabel: 'No circuit yet.',
+  },
+  shoes: {
+    title: 'Shoes',
+    singularLabel: 'shoe',
+    placeholder: 'Select shoe',
+    emptyLabel: 'No shoe yet.',
+  },
+}
+
+const FIELD_OPTION_TYPES: Record<'raceTypeId' | 'teamId' | 'circuitId' | 'shoeId', ManagedRaceOptionType> = {
+  raceTypeId: 'race-types',
+  teamId: 'teams',
+  circuitId: 'circuits',
+  shoeId: 'shoes',
+}
 
 const ANALYSIS_OPTIONS = [
   { value: 'VERY_LOW', label: 'Very low' },
@@ -370,19 +429,76 @@ function showFieldInfo(label: string, description: string) {
   Alert.alert(label, description)
 }
 
-export function AddRaceModal({ token, createOptions, onCreated }: AddRaceModalProps) {
+export function AddRaceModal({ token, createOptions, onCreated, onCreateOptionsChange }: AddRaceModalProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<AddRaceTab>('race')
   const [formState, setFormState] = useState<AddRaceFormState>(INITIAL_FORM_STATE)
+  const [localCreateOptions, setLocalCreateOptions] = useState<RaceCreateOptions>(createOptions)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isStatusSelectorOpen, setIsStatusSelectorOpen] = useState(false)
   const [selectorField, setSelectorField] = useState<SelectableField | null>(null)
   const [isDateSelectorOpen, setIsDateSelectorOpen] = useState(false)
   const [isTimeSelectorOpen, setIsTimeSelectorOpen] = useState(false)
+  const [isManageOptionsOpen, setIsManageOptionsOpen] = useState(false)
+  const [managedOptionType, setManagedOptionType] = useState<ManagedRaceOptionType>('race-types')
+  const [managedOptionName, setManagedOptionName] = useState('')
+  const [editingManagedOptionId, setEditingManagedOptionId] = useState<string | null>(null)
+  const [managedOptionError, setManagedOptionError] = useState<string | null>(null)
+  const [isManagedOptionSubmitting, setIsManagedOptionSubmitting] = useState(false)
+  const [isManagedOptionLoading, setIsManagedOptionLoading] = useState(false)
+  const [managedOptionUsage, setManagedOptionUsage] = useState<RaceOptionUsage | null>(null)
+  const [pendingDeleteOption, setPendingDeleteOption] = useState<RaceTypeOption | null>(null)
+  const [managedOptionConfirmState, setManagedOptionConfirmState] = useState<ManagedOptionConfirmState>(null)
   const [dateDraft, setDateDraft] = useState<DateDraft>(() => parseDateDraft(''))
   const [timeDraft, setTimeDraft] = useState<TimeDraft>(() => parseTimeDraft(''))
   const [fieldErrors, setFieldErrors] = useState<FormErrors>({})
+
+  useEffect(() => {
+    setLocalCreateOptions(createOptions)
+  }, [createOptions])
+
+  const syncCreateOptions = (nextOptions: RaceCreateOptions) => {
+    setLocalCreateOptions(nextOptions)
+    onCreateOptionsChange?.(nextOptions)
+  }
+
+  const getOptionsForType = (optionType: ManagedRaceOptionType) => {
+    switch (optionType) {
+      case 'race-types':
+        return localCreateOptions.raceTypes
+      case 'teams':
+        return localCreateOptions.teams
+      case 'circuits':
+        return localCreateOptions.circuits
+      case 'shoes':
+        return localCreateOptions.shoes
+      default:
+        return []
+    }
+  }
+
+  const replaceOptionsForType = (optionType: ManagedRaceOptionType, nextValues: RaceTypeOption[]) => {
+    const nextOptions: RaceCreateOptions = {
+      ...localCreateOptions,
+      raceTypes: optionType === 'race-types' ? nextValues : localCreateOptions.raceTypes,
+      teams: optionType === 'teams' ? nextValues : localCreateOptions.teams,
+      circuits: optionType === 'circuits' ? nextValues : localCreateOptions.circuits,
+      shoes: optionType === 'shoes' ? nextValues : localCreateOptions.shoes,
+    }
+    syncCreateOptions(nextOptions)
+  }
+
+  const resetManagedOptionState = () => {
+    setManagedOptionName('')
+    setEditingManagedOptionId(null)
+    setManagedOptionError(null)
+    setIsManagedOptionSubmitting(false)
+    setIsManagedOptionLoading(false)
+    setManagedOptionUsage(null)
+    setPendingDeleteOption(null)
+    setManagedOptionConfirmState(null)
+  }
 
   const setFieldValue = (field: FormField, value: string | boolean) => {
     setFormState((current) => {
@@ -457,7 +573,156 @@ export function AddRaceModal({ token, createOptions, onCreated }: AddRaceModalPr
     setSelectorField(null)
     setIsDateSelectorOpen(false)
     setIsTimeSelectorOpen(false)
+    setIsManageOptionsOpen(false)
     setFieldErrors({})
+    resetManagedOptionState()
+  }
+
+  const openManageOptions = async (optionType: ManagedRaceOptionType) => {
+    setManagedOptionType(optionType)
+    setIsManageOptionsOpen(true)
+    setSelectorField(null)
+    setManagedOptionError(null)
+    setManagedOptionUsage(null)
+    setPendingDeleteOption(null)
+    setManagedOptionConfirmState(null)
+
+    try {
+      setIsManagedOptionLoading(true)
+      const latestOptions = await fetchManagedRaceOptions(optionType, token)
+      replaceOptionsForType(optionType, latestOptions)
+    } catch (loadError) {
+      setManagedOptionError(loadError instanceof Error ? loadError.message : 'Could not load these options right now.')
+    } finally {
+      setIsManagedOptionLoading(false)
+    }
+  }
+
+  const closeManageOptions = () => {
+    setIsManageOptionsOpen(false)
+    resetManagedOptionState()
+  }
+
+  const resetManagedOptionEditing = () => {
+    setManagedOptionName('')
+    setEditingManagedOptionId(null)
+    setManagedOptionError(null)
+    setManagedOptionUsage(null)
+    setPendingDeleteOption(null)
+    setManagedOptionConfirmState(null)
+  }
+
+  const handleSaveManagedOption = async () => {
+    const trimmedName = managedOptionName.trim()
+    if (!trimmedName) {
+      return
+    }
+
+    try {
+      setIsManagedOptionSubmitting(true)
+      setManagedOptionError(null)
+      setManagedOptionUsage(null)
+      setPendingDeleteOption(null)
+      setManagedOptionConfirmState(null)
+
+      const payload: ManageRaceOptionPayload = { name: trimmedName }
+      const savedOption = editingManagedOptionId
+        ? await updateManagedRaceOption(managedOptionType, editingManagedOptionId, payload, token)
+        : await createManagedRaceOption(managedOptionType, payload, token)
+
+      const currentOptions = getOptionsForType(managedOptionType)
+      const nextOptions = editingManagedOptionId
+        ? currentOptions.map((option) => (option.id === savedOption.id ? savedOption : option))
+        : [...currentOptions, savedOption].sort((left, right) => left.name.localeCompare(right.name))
+
+      replaceOptionsForType(managedOptionType, nextOptions)
+
+      const linkedField = Object.entries(FIELD_OPTION_TYPES).find(([, value]) => value === managedOptionType)?.[0] as FormField | undefined
+      if (linkedField) {
+        setFieldValue(linkedField, savedOption.id)
+        clearFieldError(linkedField)
+      }
+
+      setManagedOptionName('')
+      setEditingManagedOptionId(null)
+    } catch (saveError) {
+      setManagedOptionError(saveError instanceof Error ? saveError.message : 'Could not save this option right now.')
+    } finally {
+      setIsManagedOptionSubmitting(false)
+    }
+  }
+
+  const handleDeleteManagedOption = async (optionType: ManagedRaceOptionType, option: RaceTypeOption) => {
+    try {
+      setManagedOptionError(null)
+      setManagedOptionUsage(null)
+      setPendingDeleteOption(null)
+      setManagedOptionConfirmState(null)
+
+      const usage = await fetchManagedRaceOptionUsage(optionType, option.id, token)
+      if (usage.usageCount > 0) {
+        setPendingDeleteOption(option)
+        setManagedOptionUsage(usage)
+        return
+      }
+
+      setManagedOptionConfirmState({ kind: 'delete', optionType, option })
+    } catch (deleteError) {
+      const nextMessage = deleteError instanceof Error ? deleteError.message : 'Could not delete this option right now.'
+
+      if (/cannot be deleted because it is already being used/i.test(nextMessage)) {
+        setPendingDeleteOption(option)
+        try {
+          const usage = await fetchManagedRaceOptionUsage(optionType, option.id, token)
+          setManagedOptionUsage(usage)
+          setManagedOptionError(null)
+        } catch {
+          setManagedOptionUsage(null)
+          setManagedOptionError(nextMessage)
+        }
+      } else {
+        setManagedOptionError(nextMessage)
+      }
+    }
+  }
+
+  const handleConfirmManagedOptionAction = async () => {
+    if (!managedOptionConfirmState) {
+      return
+    }
+
+    try {
+      setIsManagedOptionSubmitting(true)
+      setManagedOptionError(null)
+
+      const { kind, optionType, option } = managedOptionConfirmState
+      if (kind === 'detach-delete') {
+        await detachManagedRaceOptionUsage(optionType, option.id, token)
+      }
+
+      await deleteManagedRaceOption(optionType, option.id, token)
+
+      const nextOptions = getOptionsForType(optionType).filter((currentOption) => currentOption.id !== option.id)
+      replaceOptionsForType(optionType, nextOptions)
+
+      const linkedField = Object.entries(FIELD_OPTION_TYPES).find(([, value]) => value === optionType)?.[0] as FormField | undefined
+      if (linkedField && formState[linkedField] === option.id) {
+        setFieldValue(linkedField, '')
+      }
+
+      if (editingManagedOptionId === option.id) {
+        setManagedOptionName('')
+        setEditingManagedOptionId(null)
+      }
+
+      setManagedOptionUsage(null)
+      setPendingDeleteOption(null)
+      setManagedOptionConfirmState(null)
+    } catch (confirmError) {
+      setManagedOptionError(confirmError instanceof Error ? confirmError.message : 'Could not complete this action right now.')
+    } finally {
+      setIsManagedOptionSubmitting(false)
+    }
   }
 
   const requestClose = () => {
@@ -565,15 +830,17 @@ export function AddRaceModal({ token, createOptions, onCreated }: AddRaceModalPr
 
   const renderLabel = (label: string, options?: { required?: boolean; info?: string }) => (
     <View style={styles.fieldLabelRow}>
-      <Text style={styles.fieldLabel}>
-        {options?.required ? <Text style={styles.requiredMark}>* </Text> : null}
-        {label}
-      </Text>
-      {options?.info ? (
-        <Pressable style={styles.infoButton} onPress={() => showFieldInfo(label, options.info ?? '')}>
-          <FontAwesome6 name="circle-info" size={14} color={colors.textSecondary} />
-        </Pressable>
-      ) : null}
+      <View style={styles.fieldLabelInline}>
+        <Text style={styles.fieldLabel}>
+          {options?.required ? <Text style={styles.requiredMark}>* </Text> : null}
+          {label}
+        </Text>
+        {options?.info ? (
+          <Pressable style={styles.infoButton} onPress={() => showFieldInfo(label, options.info ?? '')}>
+            <FontAwesome6 name="circle-info" size={14} color={colors.textSecondary} />
+          </Pressable>
+        ) : null}
+      </View>
     </View>
   )
 
@@ -628,6 +895,36 @@ export function AddRaceModal({ token, createOptions, onCreated }: AddRaceModalPr
     </View>
   )
 
+  const renderManagedSelectorField = (
+    field: 'raceTypeId' | 'teamId' | 'circuitId' | 'shoeId',
+    label: string,
+    value: string,
+    placeholder: string,
+    options?: { info?: string },
+  ) => (
+    <View style={styles.fieldGroup}>
+      {renderLabel(label, options)}
+      <View style={styles.managedFieldRow}>
+        <Pressable
+          style={[styles.selectTrigger, styles.managedFieldTrigger, fieldErrors[field] ? styles.fieldInputError : null]}
+          onPress={() => setSelectorField(field)}
+        >
+          <Text style={[styles.selectTriggerLabel, !value ? styles.selectTriggerPlaceholder : null]}>
+            {value || placeholder}
+          </Text>
+          <FontAwesome6 name="angle-down" size={16} color={colors.textSecondary} />
+        </Pressable>
+        <Pressable
+          style={styles.manageFieldButton}
+          onPress={() => void openManageOptions(FIELD_OPTION_TYPES[field])}
+        >
+          <FontAwesome6 name="ellipsis-vertical" size={14} color="#ffffff" />
+        </Pressable>
+      </View>
+      {fieldErrors[field] ? <Text style={styles.fieldErrorText}>{fieldErrors[field]}</Text> : null}
+    </View>
+  )
+
   const renderRequiredSelectorField = (
     field: FormField,
     label: string,
@@ -649,7 +946,7 @@ export function AddRaceModal({ token, createOptions, onCreated }: AddRaceModalPr
     </View>
   )
 
-  const selectorValueLabel = getSelectableValueLabel(selectorField, formState, createOptions)
+  const selectorValueLabel = getSelectableValueLabel(selectorField, formState, localCreateOptions)
 
   return (
     <>
@@ -730,26 +1027,23 @@ export function AddRaceModal({ token, createOptions, onCreated }: AddRaceModalPr
                 )}
                 {renderField('name', 'Race name', formState.name, (value) => setFieldValue('name', value), 'Lisbon Half Marathon', { required: true })}
                 {renderField('location', 'Location', formState.location, (value) => setFieldValue('location', value), 'Lisbon')}
-                {renderSelectorField(
+                {renderManagedSelectorField(
                   'raceTypeId',
                   'Race type',
-                  createOptions.raceTypes.find((raceType) => raceType.id === formState.raceTypeId)?.name ?? '',
-                  () => setSelectorField('raceTypeId'),
+                  localCreateOptions.raceTypes.find((raceType) => raceType.id === formState.raceTypeId)?.name ?? '',
                   'Select race type',
                 )}
-                {renderSelectorField(
+                {renderManagedSelectorField(
                   'teamId',
                   'Team',
-                  createOptions.teams.find((team) => team.id === formState.teamId)?.name ?? '',
-                  () => setSelectorField('teamId'),
+                  localCreateOptions.teams.find((team) => team.id === formState.teamId)?.name ?? '',
                   'Select team',
                   { info: 'Optional team linked to this race entry.' },
                 )}
-                {renderSelectorField(
+                {renderManagedSelectorField(
                   'circuitId',
                   'Circuit',
-                  createOptions.circuits.find((circuit) => circuit.id === formState.circuitId)?.name ?? '',
-                  () => setSelectorField('circuitId'),
+                  localCreateOptions.circuits.find((circuit) => circuit.id === formState.circuitId)?.name ?? '',
                   'Select circuit',
                   { info: 'Optional circuit or championship this race belongs to.' },
                 )}
@@ -803,11 +1097,10 @@ export function AddRaceModal({ token, createOptions, onCreated }: AddRaceModalPr
                   'MM:SS',
                   { keyboardType: 'numeric', info: 'Average pace per kilometre. It is calculated automatically from chip time and distance, but you can also adjust it manually.' },
                 )}
-                {renderSelectorField(
+                {renderManagedSelectorField(
                   'shoeId',
                   'Shoe',
-                  createOptions.shoes.find((shoe) => shoe.id === formState.shoeId)?.name ?? '',
-                  () => setSelectorField('shoeId'),
+                  localCreateOptions.shoes.find((shoe) => shoe.id === formState.shoeId)?.name ?? '',
                   'Select shoe',
                   { info: 'Optional shoe used in this race result.' },
                 )}
@@ -1042,7 +1335,7 @@ export function AddRaceModal({ token, createOptions, onCreated }: AddRaceModalPr
                   : 'No selection'}
               </Text>
             </Pressable>
-            {selectorField ? getSelectableOptions(selectorField, createOptions).map((option) => {
+            {selectorField ? getSelectableOptions(selectorField, localCreateOptions).map((option) => {
               const optionValue = 'id' in option ? option.id : option.value
               const optionLabel = 'name' in option ? option.name : option.label
               const isActive = formState[selectorField] === optionValue
@@ -1066,6 +1359,153 @@ export function AddRaceModal({ token, createOptions, onCreated }: AddRaceModalPr
               )
             }) : null}
           </View>
+        </Pressable>
+      </Modal>
+
+      <Modal visible={isManageOptionsOpen} transparent animationType="fade" onRequestClose={closeManageOptions}>
+        <Pressable style={styles.selectorBackdrop} onPress={closeManageOptions}>
+          <Pressable style={styles.manageCard} onPress={() => undefined}>
+            <View style={styles.manageHeader}>
+              <Text style={styles.manageTitle}>Manage {MANAGED_OPTION_CONFIG[managedOptionType].title}</Text>
+              <Pressable style={styles.manageCloseButton} onPress={closeManageOptions}>
+                <FontAwesome6 name="xmark" size={18} color={colors.textSecondary} />
+              </Pressable>
+            </View>
+
+            {managedOptionError && !managedOptionUsage ? (
+              <View style={styles.manageErrorCard}>
+                <Text style={styles.manageErrorTitle}>Could not save {MANAGED_OPTION_CONFIG[managedOptionType].singularLabel}</Text>
+                <Text style={styles.manageErrorText}>{managedOptionError}</Text>
+              </View>
+            ) : null}
+
+            <View style={styles.manageInputRow}>
+              <TextInput
+                value={managedOptionName}
+                onChangeText={setManagedOptionName}
+                placeholder={`Type the ${MANAGED_OPTION_CONFIG[managedOptionType].singularLabel} name here`}
+                placeholderTextColor="#98a2b3"
+                style={styles.manageInput}
+                maxLength={100}
+              />
+              <View style={styles.manageInputActions}>
+                {editingManagedOptionId ? (
+                  <Pressable style={styles.manageCancelEditButton} onPress={resetManagedOptionEditing}>
+                    <FontAwesome6 name="xmark" size={16} color={colors.textSecondary} />
+                  </Pressable>
+                ) : null}
+                {!managedOptionUsage || !pendingDeleteOption ? (
+                  <Pressable
+                    style={[
+                      styles.manageSaveButton,
+                      managedOptionName.trim().length === 0 ? styles.saveActionDisabled : null,
+                    ]}
+                    disabled={managedOptionName.trim().length === 0 || isManagedOptionSubmitting}
+                    onPress={() => void handleSaveManagedOption()}
+                  >
+                    <Text style={styles.manageSaveButtonLabel}>
+                      {editingManagedOptionId ? 'Save changes' : `Create ${MANAGED_OPTION_CONFIG[managedOptionType].singularLabel}`}
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            </View>
+
+            <ScrollView style={styles.manageList} contentContainerStyle={styles.manageListContent} nestedScrollEnabled>
+              {isManagedOptionLoading ? (
+                <Text style={styles.manageEmptyLabel}>Loading {MANAGED_OPTION_CONFIG[managedOptionType].title.toLowerCase()}...</Text>
+              ) : getOptionsForType(managedOptionType).length === 0 ? (
+                <Text style={styles.manageEmptyLabel}>{MANAGED_OPTION_CONFIG[managedOptionType].emptyLabel}</Text>
+              ) : (
+                getOptionsForType(managedOptionType).map((option) => (
+                  <View key={option.id} style={styles.manageRow}>
+                    <Text style={styles.manageRowName}>{option.name}</Text>
+                    <View style={styles.manageRowActions}>
+                      <Pressable
+                        style={styles.manageRowAction}
+                        onPress={() => {
+                          setManagedOptionName(option.name)
+                          setEditingManagedOptionId(option.id)
+                          setManagedOptionError(null)
+                          setManagedOptionUsage(null)
+                          setPendingDeleteOption(null)
+                          setManagedOptionConfirmState(null)
+                        }}
+                      >
+                        <FontAwesome6 name="pen-to-square" size={14} color={colors.textPrimary} />
+                        <Text style={styles.manageRowActionLabel}>Edit</Text>
+                      </Pressable>
+                      <Pressable
+                        style={styles.manageRowAction}
+                        onPress={() => void handleDeleteManagedOption(managedOptionType, option)}
+                      >
+                        <FontAwesome6 name="trash-can" size={14} color={colors.error} />
+                        <Text style={styles.manageRowDeleteLabel}>Delete</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+
+            {managedOptionUsage && pendingDeleteOption ? (
+              <View style={styles.usageCard}>
+                <Text style={styles.usageTitle}>
+                  Used in {managedOptionUsage.usageCount} record{managedOptionUsage.usageCount === 1 ? '' : 's'}
+                </Text>
+                <View style={styles.usageList}>
+                  {managedOptionUsage.records.map((record) => (
+                    <View key={`${record.contextLabel}-${record.raceId}`} style={styles.usageListRow}>
+                      <Text style={styles.usageListName}>{record.raceName}</Text>
+                    </View>
+                  ))}
+                </View>
+                <Pressable
+                  style={styles.usageDeleteButton}
+                  onPress={() => {
+                    if (pendingDeleteOption) {
+                      setManagedOptionConfirmState({
+                        kind: 'detach-delete',
+                        optionType: managedOptionType,
+                        option: pendingDeleteOption,
+                      })
+                    }
+                  }}
+                >
+                  <Text style={styles.usageDeleteButtonLabel}>Remove from these records and delete</Text>
+                </Pressable>
+              </View>
+            ) : null}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal visible={managedOptionConfirmState != null} transparent animationType="fade" onRequestClose={() => setManagedOptionConfirmState(null)}>
+        <Pressable style={styles.selectorBackdrop} onPress={() => setManagedOptionConfirmState(null)}>
+          <Pressable style={styles.confirmCard} onPress={() => undefined}>
+            <Text style={styles.confirmTitle}>
+              {managedOptionConfirmState?.kind === 'detach-delete' ? 'Remove associations and delete?' : 'Delete option?'}
+            </Text>
+            <Text style={styles.confirmText}>
+              {managedOptionConfirmState?.kind === 'detach-delete'
+                ? `This will remove "${managedOptionConfirmState.option.name}" from the listed records and then delete it.`
+                : `Delete "${managedOptionConfirmState?.option.name ?? ''}"? This action cannot be undone.`}
+            </Text>
+            <View style={styles.confirmActions}>
+              <Pressable style={styles.cancelAction} onPress={() => setManagedOptionConfirmState(null)}>
+                <Text style={styles.cancelActionLabel}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.confirmDeleteButton, isManagedOptionSubmitting ? styles.saveActionDisabled : null]}
+                onPress={() => void handleConfirmManagedOptionAction()}
+                disabled={isManagedOptionSubmitting}
+              >
+                <Text style={styles.confirmDeleteButtonLabel}>
+                  {managedOptionConfirmState?.kind === 'detach-delete' ? 'Remove and delete' : 'Delete'}
+                </Text>
+              </Pressable>
+            </View>
+          </Pressable>
         </Pressable>
       </Modal>
     </>
@@ -1196,6 +1636,7 @@ const styles = StyleSheet.create({
   },
   bodyContent: {
     padding: 18,
+    paddingTop: 26,
     paddingBottom: 36,
   },
   formFields: {
@@ -1207,11 +1648,15 @@ const styles = StyleSheet.create({
   fieldLabelRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     gap: 10,
   },
+  fieldLabelInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 1,
+  },
   fieldLabel: {
-    flex: 1,
     color: colors.textPrimary,
     fontSize: 14,
     fontWeight: '700',
@@ -1261,6 +1706,22 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cardBackground,
     paddingHorizontal: 14,
   },
+  managedFieldRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 8,
+  },
+  managedFieldTrigger: {
+    flex: 1,
+  },
+  manageFieldButton: {
+    width: 38,
+    minHeight: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    backgroundColor: colors.textPrimary,
+  },
   selectTriggerLabel: {
     color: colors.textPrimary,
     fontSize: 15,
@@ -1309,6 +1770,216 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: colors.cardBackground,
     padding: 10,
+  },
+  manageCard: {
+    borderRadius: 20,
+    backgroundColor: colors.cardBackground,
+    padding: 18,
+    gap: 18,
+  },
+  manageHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  manageTitle: {
+    flex: 1,
+    color: colors.textPrimary,
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  manageCloseButton: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 999,
+  },
+  manageErrorCard: {
+    gap: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 90, 95, 0.28)',
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 90, 95, 0.06)',
+    padding: 14,
+  },
+  manageErrorTitle: {
+    color: colors.textPrimary,
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  manageErrorText: {
+    color: colors.textPrimary,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  manageInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  manageInput: {
+    flex: 1,
+    minHeight: 50,
+    borderWidth: 1,
+    borderColor: colors.inputBorder,
+    borderRadius: 14,
+    backgroundColor: colors.cardBackground,
+    color: colors.textPrimary,
+    fontSize: 15,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+  },
+  manageInputActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  manageCancelEditButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 24, 40, 0.12)',
+    backgroundColor: colors.cardBackground,
+  },
+  manageSaveButton: {
+    minHeight: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    backgroundColor: colors.textPrimary,
+    paddingHorizontal: 14,
+  },
+  manageSaveButtonLabel: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  manageList: {
+    maxHeight: 280,
+  },
+  manageListContent: {
+    gap: 10,
+  },
+  manageEmptyLabel: {
+    color: '#98a2b3',
+    fontSize: 14,
+  },
+  manageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 24, 40, 0.08)',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  manageRowName: {
+    flex: 1,
+    color: colors.textPrimary,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  manageRowActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  manageRowAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  manageRowActionLabel: {
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  manageRowDeleteLabel: {
+    color: colors.error,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  usageCard: {
+    gap: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(249, 115, 22, 0.22)',
+    borderRadius: 16,
+    backgroundColor: '#fff7ed',
+    padding: 14,
+  },
+  usageTitle: {
+    color: '#9a3412',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  usageList: {
+    gap: 8,
+  },
+  usageListRow: {
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.86)',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  usageListName: {
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  usageDeleteButton: {
+    minHeight: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.error,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+  },
+  usageDeleteButtonLabel: {
+    color: colors.error,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  confirmCard: {
+    borderRadius: 20,
+    backgroundColor: colors.cardBackground,
+    padding: 18,
+    gap: 16,
+  },
+  confirmTitle: {
+    color: colors.textPrimary,
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  confirmText: {
+    color: colors.textPrimary,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  confirmActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 8,
+  },
+  confirmDeleteButton: {
+    minHeight: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    backgroundColor: colors.error,
+    paddingHorizontal: 14,
+  },
+  confirmDeleteButtonLabel: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '700',
   },
   pickerCard: {
     borderRadius: 20,

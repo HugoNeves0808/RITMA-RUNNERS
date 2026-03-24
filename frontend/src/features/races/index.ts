@@ -4,7 +4,18 @@ export { RacesCalendarModeSwitcher } from './components/RacesCalendarModeSwitche
 export { RacesFiltersButton } from './components/RacesFiltersButton'
 export { RacesTableView } from './components/RacesTableView'
 export { RacesViewSwitcher } from './components/RacesViewSwitcher'
-export { fetchRaceTable, fetchRaceTypes, fetchRaceFilterOptions, fetchRaceCreateOptions } from './services/racesTableService'
+export {
+  createManagedRaceOption,
+  deleteManagedRaceOption,
+  detachManagedRaceOptionUsage,
+  fetchManagedRaceOptions,
+  fetchManagedRaceOptionUsage,
+  fetchRaceCreateOptions,
+  fetchRaceFilterOptions,
+  fetchRaceTable,
+  fetchRaceTypes,
+  updateManagedRaceOption,
+} from './services/racesTableService'
 export {
   EMPTY_RACE_FILTERS,
   getRaceStatusBackgroundColor,
@@ -14,7 +25,11 @@ export {
 export type {
   CreateRacePayload,
   CreateRaceResponse,
+  ManageRaceOptionPayload,
+  ManagedRaceOptionType,
   RaceCreateOptions,
+  RaceOptionUsage,
+  RaceOptionUsageItem,
   RaceTableItem,
   RaceTablePayload,
   RaceTableYearGroup,

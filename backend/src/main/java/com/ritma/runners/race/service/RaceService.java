@@ -14,6 +14,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Collectors;
 import java.math.BigDecimal;
 
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -22,11 +23,14 @@ import org.springframework.http.HttpStatus;
 import com.ritma.runners.race.dto.CreateRaceRequest;
 import com.ritma.runners.race.dto.CreateRaceResponse;
 import com.ritma.runners.race.dto.DeleteRacesRequest;
+import com.ritma.runners.race.dto.ManageRaceOptionRequest;
 import com.ritma.runners.race.dto.RaceCreateOptionsResponse;
 import com.ritma.runners.race.dto.RaceCalendarDayResponse;
 import com.ritma.runners.race.dto.RaceFilterOptionsResponse;
 import com.ritma.runners.race.dto.RaceCalendarItemResponse;
 import com.ritma.runners.race.dto.RaceCalendarMonthResponse;
+import com.ritma.runners.race.dto.RaceOptionType;
+import com.ritma.runners.race.dto.RaceOptionUsageResponse;
 import com.ritma.runners.race.dto.RaceQueryFilters;
 import com.ritma.runners.race.dto.RaceTableItemResponse;
 import com.ritma.runners.race.dto.RaceTableResponse;
@@ -41,6 +45,7 @@ import com.ritma.runners.race.repository.RaceRepository;
 public class RaceService {
     private static final int MAX_RACE_NAME_LENGTH = 150;
     private static final int MAX_LOCATION_LENGTH = 150;
+    private static final int MAX_OPTION_NAME_LENGTH = 100;
     private static final BigDecimal MAX_REAL_KM = new BigDecimal("999.99");
     private static final int MAX_ANALYSIS_RATING_LENGTH = 30;
 
@@ -158,6 +163,82 @@ public class RaceService {
                 raceRepository.findAvailableYears(userId),
                 raceRepository.findRaceTypes(userId)
         );
+    }
+
+    public List<RaceTypeOptionResponse> getManagedOptions(UUID userId, RaceOptionType optionType) {
+        return raceRepository.findManagedOptions(userId, optionType);
+    }
+
+    public RaceOptionUsageResponse getManagedOptionUsage(UUID userId, RaceOptionType optionType, UUID optionId) {
+        if (!raceRepository.managedOptionExists(userId, optionType, optionId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, optionType.label() + " not found.");
+        }
+
+        var records = raceRepository.findManagedOptionUsage(userId, optionType, optionId);
+        return new RaceOptionUsageResponse(optionType.pathValue(), records.size(), records);
+    }
+
+    @Transactional
+    public RaceTypeOptionResponse createManagedOption(UUID userId, RaceOptionType optionType, ManageRaceOptionRequest request) {
+        String normalizedName = validateManagedOptionRequest(optionType, request);
+
+        try {
+            UUID optionId = raceRepository.createManagedOption(userId, optionType, normalizedName);
+            return new RaceTypeOptionResponse(optionId, normalizedName);
+        } catch (DuplicateKeyException exception) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    optionType.label() + " already exists."
+            );
+        }
+    }
+
+    @Transactional
+    public RaceTypeOptionResponse updateManagedOption(UUID userId,
+                                                      RaceOptionType optionType,
+                                                      UUID optionId,
+                                                      ManageRaceOptionRequest request) {
+        String normalizedName = validateManagedOptionRequest(optionType, request);
+
+        if (!raceRepository.managedOptionExists(userId, optionType, optionId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, optionType.label() + " not found.");
+        }
+
+        try {
+            raceRepository.updateManagedOption(userId, optionType, optionId, normalizedName);
+            return new RaceTypeOptionResponse(optionId, normalizedName);
+        } catch (DuplicateKeyException exception) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    optionType.label() + " already exists."
+            );
+        }
+    }
+
+    @Transactional
+    public void deleteManagedOption(UUID userId, RaceOptionType optionType, UUID optionId) {
+        if (!raceRepository.managedOptionExists(userId, optionType, optionId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, optionType.label() + " not found.");
+        }
+
+        int usageCount = raceRepository.countManagedOptionUsage(userId, optionType, optionId);
+        if (usageCount > 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    optionType.label() + " cannot be deleted because it is already being used."
+            );
+        }
+
+        raceRepository.deleteManagedOption(userId, optionType, optionId);
+    }
+
+    @Transactional
+    public void detachManagedOptionUsage(UUID userId, RaceOptionType optionType, UUID optionId) {
+        if (!raceRepository.managedOptionExists(userId, optionType, optionId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, optionType.label() + " not found.");
+        }
+
+        raceRepository.detachManagedOptionUsage(userId, optionType, optionId);
     }
 
     @Transactional
@@ -475,6 +556,22 @@ public class RaceService {
 
     private boolean hasText(String value) {
         return value != null && !value.trim().isEmpty();
+    }
+
+    private String validateManagedOptionRequest(RaceOptionType optionType, ManageRaceOptionRequest request) {
+        if (request == null || request.name() == null || request.name().trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, optionType.label() + " name is required.");
+        }
+
+        String normalizedName = request.name().trim();
+        if (normalizedName.length() > MAX_OPTION_NAME_LENGTH) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    optionType.label() + " name must have " + MAX_OPTION_NAME_LENGTH + " characters or fewer."
+            );
+        }
+
+        return normalizedName;
     }
 
     private String normalizeOptionalText(String value) {

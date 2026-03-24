@@ -92,9 +92,11 @@ Authenticated client shell status:
 - web `Races` now renders real monthly and yearly calendar views backed by authenticated race data, with compact monthly day cards and a yearly 12-month overview that uses race-status color cues on the day numbers
 - web `Races` also includes a real card-based table mode grouped by year, with header-level name search, a shared race-filters drawer, a `Coming Up` section for registered races, and row actions split between visible `view` and a three-dot menu for `edit` and `delete`
 - web `Races` now also includes an add-race drawer with three tabs for `Race data`, `Race results`, and `Race analysis`
+- web `Races` create flows now also let the user manage `race types`, `teams`, `circuits`, and `shoes` directly inside the creation UI, including inline create, edit, delete, usage inspection, and product-native confirmation modals
 - mobile `Races` now mirrors the same top-level switcher pattern and renders real monthly and yearly calendars backed by the same authenticated race data, with a compact per-day monthly summary and a single-column yearly overview adapted for smaller screens
 - mobile `Races` also includes a real table mode with a compact card layout, the same `Coming Up` weekly logic for registered races, a shared race-filters sheet for both table and calendar, and a three-dot action menu on each race card
 - mobile `Races` now also includes an add-race modal with the same three functional tabs, required-field indicators, guided date/time selection, and the same optional `team`, `circuit`, and `shoe` selectors used in the web drawer
+- mobile `Races` now also mirrors the managed-option flows for `race types`, `teams`, `circuits`, and `shoes`, including in-place create/edit/delete, linked-record usage previews, and native confirmation modals instead of system dialogs
 - web `Pending Approvals` and `Users` now show real admin data with actions and pagination, while the admin overview section is still a placeholder
 - mobile `Pending Approvals`, `Users`, and `Overview` now also show real admin data with actions and pagination
 
@@ -685,6 +687,149 @@ Client usage notes:
 - mobile `Races` exposes the same endpoint through a dedicated add-race modal with the same three logical tabs
 - both clients auto-format manual duration and pace inputs while the user types, calculate `pacePerKm` from `chipTime` and `realKm` when possible, and automatically mark podium checkboxes when the corresponding classification is between `1` and `3`
 - both clients now also expose optional selectors for `team`, `circuit`, and `shoe`
+- both clients now also allow managing the underlying selector options in place from the same creation flows
+
+### `GET /api/races/options/{optionType}`
+
+Returns the authenticated user's current managed options for one selector family.
+
+Supported `optionType` values:
+
+- `race-types`
+- `teams`
+- `circuits`
+- `shoes`
+
+Postman:
+
+- Method: `GET`
+- URL: `{{baseUrl}}/api/races/options/race-types`
+- Auth: `Bearer Token`
+- Token: `{{token}}`
+
+Expected response example:
+
+```json
+[
+  {
+    "id": "uuid",
+    "name": "Half Marathon"
+  }
+]
+```
+
+### `POST /api/races/options/{optionType}`
+
+Creates a new authenticated user-owned option for the selected family.
+
+Postman:
+
+- Method: `POST`
+- URL: `{{baseUrl}}/api/races/options/teams`
+- Header: `Content-Type: application/json`
+- Auth: `Bearer Token`
+- Token: `{{token}}`
+
+Example body:
+
+```json
+{
+  "name": "RITMA Runners"
+}
+```
+
+Expected response example:
+
+```json
+{
+  "id": "uuid",
+  "name": "RITMA Runners"
+}
+```
+
+### `PUT /api/races/options/{optionType}/{optionId}`
+
+Renames an existing authenticated user-owned option.
+
+Postman:
+
+- Method: `PUT`
+- URL: `{{baseUrl}}/api/races/options/circuits/{{optionId}}`
+- Header: `Content-Type: application/json`
+- Auth: `Bearer Token`
+- Token: `{{token}}`
+
+Example body:
+
+```json
+{
+  "name": "National Road Circuit"
+}
+```
+
+### `DELETE /api/races/options/{optionType}/{optionId}`
+
+Deletes an existing authenticated user-owned option when it is not currently linked to race records.
+
+If the option is still in use, the backend returns a validation error and the client can inspect usage first.
+
+Postman:
+
+- Method: `DELETE`
+- URL: `{{baseUrl}}/api/races/options/shoes/{{optionId}}`
+- Auth: `Bearer Token`
+- Token: `{{token}}`
+
+### `GET /api/races/options/{optionType}/{optionId}/usage`
+
+Returns where a managed option is currently being used so the client can explain the dependency to the user before deletion.
+
+Postman:
+
+- Method: `GET`
+- URL: `{{baseUrl}}/api/races/options/teams/{{optionId}}/usage`
+- Auth: `Bearer Token`
+- Token: `{{token}}`
+
+Expected response example:
+
+```json
+{
+  "optionType": "teams",
+  "usageCount": 2,
+  "records": [
+    {
+      "raceId": "uuid-1",
+      "raceName": "Lisbon Half Marathon",
+      "raceDate": "2026-03-20",
+      "contextLabel": "race"
+    },
+    {
+      "raceId": "uuid-2",
+      "raceName": "Porto 10K",
+      "raceDate": "2026-04-15",
+      "contextLabel": "result"
+    }
+  ]
+}
+```
+
+### `DELETE /api/races/options/{optionType}/{optionId}/detach`
+
+Removes the current option association from the authenticated user's linked records so the option can then be deleted safely.
+
+Current behavior:
+
+- detaches the option from the relevant race or race-result records
+- does not delete the races themselves
+- is typically called by the clients immediately before a follow-up delete
+
+Postman:
+
+- Method: `DELETE`
+- URL: `{{baseUrl}}/api/races/options/race-types/{{optionId}}/detach`
+- Auth: `Bearer Token`
+- Token: `{{token}}`
 
 ### `PUT /api/races/{raceId}`
 

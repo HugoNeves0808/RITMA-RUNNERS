@@ -3,6 +3,9 @@ import type {
   RaceCreateOptions,
   CreateRacePayload,
   CreateRaceResponse,
+  ManageRaceOptionPayload,
+  ManagedRaceOptionType,
+  RaceOptionUsage,
   RaceTableItem,
   RaceTablePayload,
   RaceTypeOption,
@@ -29,6 +32,42 @@ export function fetchRaceTypes(token: string) {
 
 export function fetchRaceCreateOptions(token: string) {
   return apiGet<RaceCreateOptions>('/api/races/create/options', token, {
+    suppressUnauthorized: true,
+  })
+}
+
+export function fetchManagedRaceOptions(optionType: ManagedRaceOptionType, token: string) {
+  return apiGet<RaceTypeOption[]>(`/api/races/options/${optionType}`, token, {
+    suppressUnauthorized: true,
+  })
+}
+
+export function createManagedRaceOption(optionType: ManagedRaceOptionType, payload: ManageRaceOptionPayload, token: string) {
+  return apiPostWithToken<RaceTypeOption>(`/api/races/options/${optionType}`, payload, token, {
+    suppressUnauthorized: true,
+  })
+}
+
+export function updateManagedRaceOption(optionType: ManagedRaceOptionType, optionId: string, payload: ManageRaceOptionPayload, token: string) {
+  return apiPutWithToken<RaceTypeOption>(`/api/races/options/${optionType}/${optionId}`, payload, token, {
+    suppressUnauthorized: true,
+  })
+}
+
+export function deleteManagedRaceOption(optionType: ManagedRaceOptionType, optionId: string, token: string) {
+  return apiDeleteWithToken<void>(`/api/races/options/${optionType}/${optionId}`, token, undefined, {
+    suppressUnauthorized: true,
+  })
+}
+
+export function fetchManagedRaceOptionUsage(optionType: ManagedRaceOptionType, optionId: string, token: string) {
+  return apiGet<RaceOptionUsage>(`/api/races/options/${optionType}/${optionId}/usage`, token, {
+    suppressUnauthorized: true,
+  })
+}
+
+export function detachManagedRaceOptionUsage(optionType: ManagedRaceOptionType, optionId: string, token: string) {
+  return apiDeleteWithToken<void>(`/api/races/options/${optionType}/${optionId}/detach`, token, undefined, {
     suppressUnauthorized: true,
   })
 }

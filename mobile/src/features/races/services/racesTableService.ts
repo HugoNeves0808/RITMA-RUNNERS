@@ -3,6 +3,9 @@ import type {
   RaceCreateOptions,
   CreateRacePayload,
   CreateRaceResponse,
+  ManageRaceOptionPayload,
+  ManagedRaceOptionType,
+  RaceOptionUsage,
   RaceTableItem,
   RaceTablePayload,
   RaceTypeOption,
@@ -29,6 +32,48 @@ export function fetchRaceTypes(token: string) {
 
 export function fetchRaceCreateOptions(token: string) {
   return apiRequest<RaceCreateOptions>('/api/races/create/options', {
+    token,
+  })
+}
+
+export function fetchManagedRaceOptions(optionType: ManagedRaceOptionType, token: string) {
+  return apiRequest<RaceTypeOption[]>(`/api/races/options/${optionType}`, {
+    token,
+  })
+}
+
+export function createManagedRaceOption(optionType: ManagedRaceOptionType, payload: ManageRaceOptionPayload, token: string) {
+  return apiRequest<RaceTypeOption>(`/api/races/options/${optionType}`, {
+    method: 'POST',
+    token,
+    body: payload,
+  })
+}
+
+export function updateManagedRaceOption(optionType: ManagedRaceOptionType, optionId: string, payload: ManageRaceOptionPayload, token: string) {
+  return apiRequest<RaceTypeOption>(`/api/races/options/${optionType}/${optionId}`, {
+    method: 'PUT',
+    token,
+    body: payload,
+  })
+}
+
+export function deleteManagedRaceOption(optionType: ManagedRaceOptionType, optionId: string, token: string) {
+  return apiRequest<void>(`/api/races/options/${optionType}/${optionId}`, {
+    method: 'DELETE',
+    token,
+  })
+}
+
+export function fetchManagedRaceOptionUsage(optionType: ManagedRaceOptionType, optionId: string, token: string) {
+  return apiRequest<RaceOptionUsage>(`/api/races/options/${optionType}/${optionId}/usage`, {
+    token,
+  })
+}
+
+export function detachManagedRaceOptionUsage(optionType: ManagedRaceOptionType, optionId: string, token: string) {
+  return apiRequest<void>(`/api/races/options/${optionType}/${optionId}/detach`, {
+    method: 'DELETE',
     token,
   })
 }

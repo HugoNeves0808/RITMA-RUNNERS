@@ -18,6 +18,9 @@ This file keeps a short, slightly more detailed record of what was done in each 
 - Refined the web add-race drawer with stronger create-time validation, automatic time formatting and pace calculation, status-aware required indicators, field-level validation feedback, inline podium checkbox placement, contextual help for ambiguous fields, and richer filtering/display rules for `IN_LIST` races.
 - Brought the same creation parity to mobile by extending the add-race modal with the same three-tab flow, linked selectors for `team`, `circuit`, and `shoe`, guided date/time input, info helpers, automatic time formatting, and `IN_LIST` behavior aligned with the web client.
 - Updated both web and mobile race-table views so undated `IN_LIST` races no longer behave like missing data, remain hidden by default unless filtered by `IN_LIST`, and use more user-friendly date-badge copy when no race date exists yet.
+- Added authenticated option-management endpoints for user-owned `race types`, `teams`, `circuits`, and `shoes`, including inline create, rename, delete, usage inspection, and detach-then-delete flows when an option is already linked to race records.
+- Reworked the web create-race option pickers so each managed selector now opens lightweight in-context management modals, uses product-native confirmation modals instead of browser dialogs, and keeps the option lists synchronized immediately after changes.
+- Brought the same managed-option flow to mobile by adding inline management actions beside the `race type`, `team`, `circuit`, and `shoe` selectors, native app modals for create/edit/delete confirmation, and live refresh of local create options and race-type filters.
 
 ### `c447603` - Refine races filters, actions, and admin entry cleanup across web and mobile
 

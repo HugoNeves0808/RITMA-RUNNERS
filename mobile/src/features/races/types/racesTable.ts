@@ -28,6 +28,25 @@ export type RaceTypeOption = {
   name: string
 }
 
+export type ManagedRaceOptionType = 'race-types' | 'teams' | 'circuits' | 'shoes'
+
+export type ManageRaceOptionPayload = {
+  name: string
+}
+
+export type RaceOptionUsageItem = {
+  raceId: string
+  raceName: string
+  raceDate: string | null
+  contextLabel: string
+}
+
+export type RaceOptionUsage = {
+  optionType: ManagedRaceOptionType
+  usageCount: number
+  records: RaceOptionUsageItem[]
+}
+
 export type RaceCreateOptions = {
   raceTypes: RaceTypeOption[]
   teams: RaceTypeOption[]

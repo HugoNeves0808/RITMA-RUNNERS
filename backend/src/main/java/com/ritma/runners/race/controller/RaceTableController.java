@@ -22,8 +22,11 @@ import com.ritma.runners.auth.dto.JwtAuthenticatedUser;
 import com.ritma.runners.race.dto.CreateRaceRequest;
 import com.ritma.runners.race.dto.CreateRaceResponse;
 import com.ritma.runners.race.dto.DeleteRacesRequest;
+import com.ritma.runners.race.dto.ManageRaceOptionRequest;
 import com.ritma.runners.race.dto.RaceCreateOptionsResponse;
 import com.ritma.runners.race.dto.RaceFilterOptionsResponse;
+import com.ritma.runners.race.dto.RaceOptionType;
+import com.ritma.runners.race.dto.RaceOptionUsageResponse;
 import com.ritma.runners.race.dto.RaceQueryFilters;
 import com.ritma.runners.race.dto.RaceTableItemResponse;
 import com.ritma.runners.race.dto.RaceTableResponse;
@@ -65,6 +68,51 @@ public class RaceTableController {
     @GetMapping("/filters/options")
     public RaceFilterOptionsResponse getFilterOptions(@AuthenticationPrincipal JwtAuthenticatedUser user) {
         return raceService.getFilterOptions(requireAuthenticatedUserId(user));
+    }
+
+    @GetMapping("/options/{optionType}")
+    public List<RaceTypeOptionResponse> getManagedOptions(@AuthenticationPrincipal JwtAuthenticatedUser user,
+                                                          @PathVariable String optionType) {
+        return raceService.getManagedOptions(requireAuthenticatedUserId(user), RaceOptionType.fromPathValue(optionType));
+    }
+
+    @PostMapping("/options/{optionType}")
+    @ResponseStatus(HttpStatus.CREATED)
+    public RaceTypeOptionResponse createManagedOption(@AuthenticationPrincipal JwtAuthenticatedUser user,
+                                                      @PathVariable String optionType,
+                                                      @RequestBody ManageRaceOptionRequest request) {
+        return raceService.createManagedOption(requireAuthenticatedUserId(user), RaceOptionType.fromPathValue(optionType), request);
+    }
+
+    @PutMapping("/options/{optionType}/{optionId:[0-9a-fA-F\\-]{36}}")
+    public RaceTypeOptionResponse updateManagedOption(@AuthenticationPrincipal JwtAuthenticatedUser user,
+                                                      @PathVariable String optionType,
+                                                      @PathVariable UUID optionId,
+                                                      @RequestBody ManageRaceOptionRequest request) {
+        return raceService.updateManagedOption(requireAuthenticatedUserId(user), RaceOptionType.fromPathValue(optionType), optionId, request);
+    }
+
+    @GetMapping("/options/{optionType}/{optionId:[0-9a-fA-F\\-]{36}}/usage")
+    public RaceOptionUsageResponse getManagedOptionUsage(@AuthenticationPrincipal JwtAuthenticatedUser user,
+                                                         @PathVariable String optionType,
+                                                         @PathVariable UUID optionId) {
+        return raceService.getManagedOptionUsage(requireAuthenticatedUserId(user), RaceOptionType.fromPathValue(optionType), optionId);
+    }
+
+    @DeleteMapping("/options/{optionType}/{optionId:[0-9a-fA-F\\-]{36}}/detach")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void detachManagedOptionUsage(@AuthenticationPrincipal JwtAuthenticatedUser user,
+                                         @PathVariable String optionType,
+                                         @PathVariable UUID optionId) {
+        raceService.detachManagedOptionUsage(requireAuthenticatedUserId(user), RaceOptionType.fromPathValue(optionType), optionId);
+    }
+
+    @DeleteMapping("/options/{optionType}/{optionId:[0-9a-fA-F\\-]{36}}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteManagedOption(@AuthenticationPrincipal JwtAuthenticatedUser user,
+                                    @PathVariable String optionType,
+                                    @PathVariable UUID optionId) {
+        raceService.deleteManagedOption(requireAuthenticatedUserId(user), RaceOptionType.fromPathValue(optionType), optionId);
     }
 
     @PostMapping
