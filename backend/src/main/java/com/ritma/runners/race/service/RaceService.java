@@ -22,6 +22,7 @@ import org.springframework.http.HttpStatus;
 import com.ritma.runners.race.dto.CreateRaceRequest;
 import com.ritma.runners.race.dto.CreateRaceResponse;
 import com.ritma.runners.race.dto.DeleteRacesRequest;
+import com.ritma.runners.race.dto.RaceCreateOptionsResponse;
 import com.ritma.runners.race.dto.RaceCalendarDayResponse;
 import com.ritma.runners.race.dto.RaceFilterOptionsResponse;
 import com.ritma.runners.race.dto.RaceCalendarItemResponse;
@@ -38,6 +39,10 @@ import com.ritma.runners.race.repository.RaceRepository;
 
 @Service
 public class RaceService {
+    private static final int MAX_RACE_NAME_LENGTH = 150;
+    private static final int MAX_LOCATION_LENGTH = 150;
+    private static final BigDecimal MAX_REAL_KM = new BigDecimal("999.99");
+    private static final int MAX_ANALYSIS_RATING_LENGTH = 30;
 
     private static final Set<String> ALLOWED_RACE_STATUSES = Set.of(
             "IN_LIST",
@@ -113,7 +118,10 @@ public class RaceService {
     }
 
     public RaceTableResponse getTableRaces(UUID userId, RaceQueryFilters filters) {
-        List<RaceTableYearResponse> years = raceRepository.findTableRaces(userId, filters).stream()
+        List<RaceTableItemResponse> races = raceRepository.findTableRaces(userId, filters);
+
+        List<RaceTableYearResponse> years = races.stream()
+                .filter(race -> race.raceDate() != null)
                 .collect(Collectors.groupingBy(
                         race -> race.raceDate().getYear(),
                         LinkedHashMap::new,
@@ -125,11 +133,24 @@ public class RaceService {
                 .map(entry -> new RaceTableYearResponse(entry.getKey(), entry.getValue()))
                 .toList();
 
-        return new RaceTableResponse(years);
+        List<RaceTableItemResponse> undatedRaces = races.stream()
+                .filter(race -> race.raceDate() == null)
+                .toList();
+
+        return new RaceTableResponse(years, undatedRaces);
     }
 
     public List<RaceTypeOptionResponse> getRaceTypes(UUID userId) {
         return raceRepository.findRaceTypes(userId);
+    }
+
+    public RaceCreateOptionsResponse getCreateOptions(UUID userId) {
+        return new RaceCreateOptionsResponse(
+                raceRepository.findRaceTypes(userId),
+                raceRepository.findTeams(userId),
+                raceRepository.findCircuits(userId),
+                raceRepository.findShoes(userId)
+        );
     }
 
     public RaceFilterOptionsResponse getFilterOptions(UUID userId) {
@@ -147,6 +168,15 @@ public class RaceService {
         if (raceData.raceTypeId() != null && !raceRepository.raceTypeExists(userId, raceData.raceTypeId())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid race type.");
         }
+        if (raceData.teamId() != null && !raceRepository.teamExists(userId, raceData.teamId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid team.");
+        }
+        if (raceData.circuitId() != null && !raceRepository.circuitExists(userId, raceData.circuitId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid circuit.");
+        }
+        if (request.results() != null && request.results().shoeId() != null && !raceRepository.shoeExists(userId, request.results().shoeId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid shoe.");
+        }
 
         UUID raceId = raceRepository.createRace(
                 userId,
@@ -155,6 +185,8 @@ public class RaceService {
                 raceData.raceTime(),
                 raceData.name().trim(),
                 normalizeOptionalText(raceData.location()),
+                raceData.teamId(),
+                raceData.circuitId(),
                 raceData.raceTypeId(),
                 raceData.realKm(),
                 raceData.elevation(),
@@ -168,6 +200,7 @@ public class RaceService {
                     results.officialTimeSeconds(),
                     results.chipTimeSeconds(),
                     results.pacePerKmSeconds(),
+                    results.shoeId(),
                     results.generalClassification(),
                     results.isGeneralClassificationPodium(),
                     results.ageGroupClassification(),
@@ -327,7 +360,7 @@ public class RaceService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid race status.");
         }
 
-        if (race.raceDate() == null) {
+        if (!"IN_LIST".equals(normalizedStatus) && race.raceDate() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Race date is required.");
         }
 
@@ -335,8 +368,16 @@ public class RaceService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Race name is required.");
         }
 
+        if (race.name().trim().length() > MAX_RACE_NAME_LENGTH) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Race name must have 150 characters or fewer.");
+        }
+
         if (race.location() != null && race.location().trim().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Location cannot be blank.");
+        }
+
+        if (hasText(race.location()) && race.location().trim().length() > MAX_LOCATION_LENGTH) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Location must have 150 characters or fewer.");
         }
 
         BigDecimal realKm = race.realKm();
@@ -344,11 +385,20 @@ public class RaceService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Distance must be zero or greater.");
         }
 
+        if (realKm != null && realKm.compareTo(MAX_REAL_KM) > 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Distance must be 999.99 km or lower.");
+        }
+
+        if (realKm != null && realKm.scale() > 2) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Distance must use no more than 2 decimal places.");
+        }
+
         if (race.elevation() != null && race.elevation() < 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Elevation must be zero or greater.");
         }
 
         validateCreateResults(request.results());
+        validateCreateAnalysis(request.analysis());
     }
 
     private void validateCreateResults(CreateRaceRequest.RaceResultData results) {
@@ -378,6 +428,25 @@ public class RaceService {
 
         if (results.teamClassification() != null && results.teamClassification() <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Team classification must be greater than zero.");
+        }
+    }
+
+    private void validateCreateAnalysis(CreateRaceRequest.RaceAnalysisData analysis) {
+        if (analysis == null) {
+            return;
+        }
+
+        validateMaxLength(analysis.preRaceConfidence(), MAX_ANALYSIS_RATING_LENGTH, "Pre-race confidence");
+        validateMaxLength(analysis.raceDifficulty(), MAX_ANALYSIS_RATING_LENGTH, "Race difficulty");
+        validateMaxLength(analysis.finalSatisfaction(), MAX_ANALYSIS_RATING_LENGTH, "Final satisfaction");
+    }
+
+    private void validateMaxLength(String value, int maxLength, String fieldLabel) {
+        if (hasText(value) && value.trim().length() > maxLength) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    fieldLabel + " must have " + maxLength + " characters or fewer."
+            );
         }
     }
 

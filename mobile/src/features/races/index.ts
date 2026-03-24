@@ -7,6 +7,7 @@ export { EMPTY_RACE_FILTERS, RACE_STATUS_OPTIONS, countActiveRaceFilters, getRac
 export type {
   CreateRacePayload,
   CreateRaceResponse,
+  RaceCreateOptions,
   RaceTableItem,
   RaceTablePayload,
   RaceTableYearGroup,

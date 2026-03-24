@@ -14,9 +14,10 @@ import {
   RacesTableView,
   RacesViewSwitcher,
   EMPTY_RACE_FILTERS,
+  fetchRaceCreateOptions,
   fetchRaceTable,
-  fetchRaceTypes,
   type RaceFilterOptions,
+  type RaceCreateOptions,
   type RaceFilters,
   type RacesCalendarMode,
   type RacesViewMode,
@@ -40,6 +41,7 @@ export function HomePage() {
   const [showAllTableYears, setShowAllTableYears] = useState(false)
   const [filters, setFilters] = useState<RaceFilters>(EMPTY_RACE_FILTERS)
   const [filterOptions, setFilterOptions] = useState<RaceFilterOptions>({ years: [], raceTypes: [] })
+  const [createOptions, setCreateOptions] = useState<RaceCreateOptions>({ raceTypes: [], teams: [], circuits: [], shoes: [] })
   const [isFilterOptionsLoading, setIsFilterOptionsLoading] = useState(true)
   const [refreshKey, setRefreshKey] = useState(0)
 
@@ -87,22 +89,24 @@ export function HomePage() {
     const loadFilterOptions = async () => {
       if (!token) {
         setFilterOptions({ years: [], raceTypes: [] })
+        setCreateOptions({ raceTypes: [], teams: [], circuits: [], shoes: [] })
         setIsFilterOptionsLoading(false)
         return
       }
 
       try {
         setIsFilterOptionsLoading(true)
-        const [tablePayload, raceTypes] = await Promise.all([
+        const [tablePayload, createOptionsPayload] = await Promise.all([
           fetchRaceTable(token),
-          fetchRaceTypes(token),
+          fetchRaceCreateOptions(token),
         ])
 
         const years = tablePayload.years.map((yearGroup) => yearGroup.year)
         setFilterOptions({
           years,
-          raceTypes,
+          raceTypes: createOptionsPayload.raceTypes,
         })
+        setCreateOptions(createOptionsPayload)
       } finally {
         setIsFilterOptionsLoading(false)
       }
@@ -118,7 +122,7 @@ export function HomePage() {
           <div className={styles.titleRow}>
             <Title level={1} className={styles.pageTitle}>Races</Title>
             <AddRaceDrawer
-              raceTypes={filterOptions.raceTypes}
+              createOptions={createOptions}
               onCreated={() => setRefreshKey((current) => current + 1)}
             />
           </div>

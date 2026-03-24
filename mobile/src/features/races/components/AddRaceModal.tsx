@@ -13,11 +13,11 @@ import {
 import { colors } from '../../../theme/colors'
 import { createRace } from '../services/racesTableService'
 import { RACE_STATUS_OPTIONS } from '../types/raceFilters'
-import type { CreateRacePayload, RaceTypeOption } from '../types/racesTable'
+import type { CreateRacePayload, RaceCreateOptions, RaceTypeOption } from '../types/racesTable'
 
 type AddRaceModalProps = {
   token: string
-  raceTypes: RaceTypeOption[]
+  createOptions: RaceCreateOptions
   onCreated: () => void
 }
 
@@ -29,6 +29,8 @@ type AddRaceFormState = {
   raceTime: string
   name: string
   location: string
+  teamId: string
+  circuitId: string
   raceTypeId: string
   realKm: string
   elevation: string
@@ -36,6 +38,7 @@ type AddRaceFormState = {
   officialTime: string
   chipTime: string
   pacePerKm: string
+  shoeId: string
   generalClassification: string
   isGeneralClassificationPodium: boolean
   ageGroupClassification: string
@@ -51,8 +54,11 @@ type AddRaceFormState = {
 }
 
 type AnalysisField = 'preRaceConfidence' | 'raceDifficulty' | 'finalSatisfaction'
+type SelectableField = 'raceTypeId' | 'teamId' | 'circuitId' | 'shoeId' | AnalysisField
 type DateDraft = { year: number; month: number; day: number }
 type TimeDraft = { hour: number; minute: number; second: number }
+type FormField = keyof AddRaceFormState
+type FormErrors = Partial<Record<FormField, string>>
 
 const ANALYSIS_OPTIONS = [
   { value: 'VERY_LOW', label: 'Very low' },
@@ -68,6 +74,8 @@ const INITIAL_FORM_STATE: AddRaceFormState = {
   raceTime: '',
   name: '',
   location: '',
+  teamId: '',
+  circuitId: '',
   raceTypeId: '',
   realKm: '',
   elevation: '',
@@ -75,6 +83,7 @@ const INITIAL_FORM_STATE: AddRaceFormState = {
   officialTime: '',
   chipTime: '',
   pacePerKm: '',
+  shoeId: '',
   generalClassification: '',
   isGeneralClassificationPodium: false,
   ageGroupClassification: '',
@@ -102,6 +111,10 @@ function parseTimeToSeconds(value: string, mode: 'duration' | 'pace') {
       throw new Error('Duration must use HH:MM:SS.')
     }
 
+    if (hours > 23 || minutes > 59 || seconds > 59) {
+      throw new Error('Duration must use valid HH:MM:SS values.')
+    }
+
     return (hours * 3600) + (minutes * 60) + seconds
   }
 
@@ -111,10 +124,88 @@ function parseTimeToSeconds(value: string, mode: 'duration' | 'pace') {
       throw new Error('Pace must use MM:SS.')
     }
 
+    if (minutes > 59 || seconds > 59) {
+      throw new Error('Pace must use valid MM:SS values.')
+    }
+
     return (minutes * 60) + seconds
   }
 
   throw new Error(mode === 'duration' ? 'Duration must use HH:MM:SS.' : 'Pace must use MM:SS.')
+}
+
+function formatDigitTimeInput(rawValue: string, mode: 'duration' | 'pace') {
+  const digits = rawValue.replace(/\D/g, '')
+  const maxDigits = mode === 'duration' ? 6 : 4
+  const trimmedDigits = digits.slice(0, maxDigits)
+
+  if (mode === 'duration') {
+    if (trimmedDigits.length <= 2) {
+      return trimmedDigits
+    }
+
+    if (trimmedDigits.length <= 4) {
+      return `${trimmedDigits.slice(0, 2)}:${trimmedDigits.slice(2)}`
+    }
+
+    return `${trimmedDigits.slice(0, 2)}:${trimmedDigits.slice(2, 4)}:${trimmedDigits.slice(4)}`
+  }
+
+  if (trimmedDigits.length <= 2) {
+    return trimmedDigits
+  }
+
+  return `${trimmedDigits.slice(0, 2)}:${trimmedDigits.slice(2)}`
+}
+
+function getLiveTimeFieldError(value: string, mode: 'duration' | 'pace', fieldLabel: string) {
+  const normalized = value.trim()
+  if (!normalized) {
+    return null
+  }
+
+  const parts = normalized.split(':')
+  if (parts.some((part) => part.length === 0 || Number.isNaN(Number(part)))) {
+    return mode === 'duration'
+      ? `${fieldLabel} must use HH:MM:SS.`
+      : `${fieldLabel} must use MM:SS.`
+  }
+
+  if (mode === 'duration') {
+    if (parts.length !== 3) {
+      return null
+    }
+
+    const [hours, minutes, seconds] = parts.map((part) => Number(part))
+    return hours > 23 || minutes > 59 || seconds > 59
+      ? `${fieldLabel} must use valid HH:MM:SS values.`
+      : null
+  }
+
+  if (parts.length !== 2) {
+    return null
+  }
+
+  const [minutes, seconds] = parts.map((part) => Number(part))
+  return minutes > 59 || seconds > 59
+    ? `${fieldLabel} must use valid MM:SS values.`
+    : null
+}
+
+function normalizeClassificationPodium(value: string) {
+  const numericValue = Number(value)
+  return Number.isInteger(numericValue) && numericValue >= 1 && numericValue <= 3
+}
+
+function isRaceDateRequired(raceStatus: string) {
+  return raceStatus.trim().toUpperCase() !== 'IN_LIST'
+}
+
+function formatSecondsAsPace(totalSeconds: number) {
+  const safeSeconds = Math.max(totalSeconds, 0)
+  const minutes = Math.floor(safeSeconds / 60)
+  const seconds = safeSeconds % 60
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 }
 
 function parseNumber(value: string) {
@@ -190,19 +281,172 @@ function getDaysInMonth(year: number, month: number) {
   return new Date(year, month, 0).getDate()
 }
 
-export function AddRaceModal({ token, raceTypes, onCreated }: AddRaceModalProps) {
+function getFieldNameFromError(message: string): FormField | null {
+  if (/race date/i.test(message)) {
+    return 'raceDate'
+  }
+
+  if (/race name|^name /i.test(message)) {
+    return 'name'
+  }
+
+  if (/official time/i.test(message)) {
+    return 'officialTime'
+  }
+
+  if (/chip time/i.test(message)) {
+    return 'chipTime'
+  }
+
+  if (/pace/i.test(message)) {
+    return 'pacePerKm'
+  }
+
+  if (/team/i.test(message)) {
+    return 'teamId'
+  }
+
+  if (/circuit/i.test(message)) {
+    return 'circuitId'
+  }
+
+  if (/shoe/i.test(message)) {
+    return 'shoeId'
+  }
+
+  if (/race type/i.test(message)) {
+    return 'raceTypeId'
+  }
+
+  return null
+}
+
+function getSelectableOptions(
+  field: SelectableField,
+  createOptions: RaceCreateOptions,
+): Array<RaceTypeOption | { value: string; label: string }> {
+  switch (field) {
+    case 'raceTypeId':
+      return createOptions.raceTypes
+    case 'teamId':
+      return createOptions.teams
+    case 'circuitId':
+      return createOptions.circuits
+    case 'shoeId':
+      return createOptions.shoes
+    case 'preRaceConfidence':
+    case 'raceDifficulty':
+    case 'finalSatisfaction':
+      return ANALYSIS_OPTIONS.map((option) => ({ value: option.value, label: option.label }))
+    default:
+      return []
+  }
+}
+
+function getSelectableValueLabel(
+  field: SelectableField | null,
+  formState: AddRaceFormState,
+  createOptions: RaceCreateOptions,
+) {
+  if (!field) {
+    return ''
+  }
+
+  const options = getSelectableOptions(field, createOptions)
+  const currentValue = formState[field]
+  if (!currentValue) {
+    return ''
+  }
+
+  const matchedOption = options.find((option) => ('id' in option ? option.id : option.value) === currentValue)
+  if (!matchedOption) {
+    return ''
+  }
+
+  return 'name' in matchedOption ? matchedOption.name : matchedOption.label
+}
+
+function showFieldInfo(label: string, description: string) {
+  Alert.alert(label, description)
+}
+
+export function AddRaceModal({ token, createOptions, onCreated }: AddRaceModalProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<AddRaceTab>('race')
   const [formState, setFormState] = useState<AddRaceFormState>(INITIAL_FORM_STATE)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isStatusSelectorOpen, setIsStatusSelectorOpen] = useState(false)
-  const [isRaceTypeSelectorOpen, setIsRaceTypeSelectorOpen] = useState(false)
-  const [selectorField, setSelectorField] = useState<AnalysisField | null>(null)
+  const [selectorField, setSelectorField] = useState<SelectableField | null>(null)
   const [isDateSelectorOpen, setIsDateSelectorOpen] = useState(false)
   const [isTimeSelectorOpen, setIsTimeSelectorOpen] = useState(false)
   const [dateDraft, setDateDraft] = useState<DateDraft>(() => parseDateDraft(''))
   const [timeDraft, setTimeDraft] = useState<TimeDraft>(() => parseTimeDraft(''))
+  const [fieldErrors, setFieldErrors] = useState<FormErrors>({})
+
+  const setFieldValue = (field: FormField, value: string | boolean) => {
+    setFormState((current) => {
+      const nextState = { ...current, [field]: value }
+
+      if (field === 'chipTime' || field === 'realKm') {
+        const chipTimeError = getLiveTimeFieldError(nextState.chipTime, 'duration', 'Chip time')
+        const realKmValue = Number(nextState.realKm.replace(',', '.'))
+
+        if (!chipTimeError && nextState.chipTime.trim() && Number.isFinite(realKmValue) && realKmValue > 0) {
+          try {
+            const chipTimeSeconds = parseTimeToSeconds(nextState.chipTime, 'duration')
+            if (chipTimeSeconds != null) {
+              nextState.pacePerKm = formatSecondsAsPace(Math.round(chipTimeSeconds / realKmValue))
+            }
+          } catch {
+            // Keep current pace when chip time is still incomplete or invalid.
+          }
+        }
+      }
+
+      if (field === 'generalClassification') {
+        nextState.isGeneralClassificationPodium = normalizeClassificationPodium(String(value))
+      }
+
+      if (field === 'ageGroupClassification') {
+        nextState.isAgeGroupClassificationPodium = normalizeClassificationPodium(String(value))
+      }
+
+      if (field === 'teamClassification') {
+        nextState.isTeamClassificationPodium = normalizeClassificationPodium(String(value))
+      }
+
+      return nextState
+    })
+  }
+
+  const clearFieldError = (field: FormField) => {
+    setFieldErrors((current) => {
+      if (!current[field]) {
+        return current
+      }
+
+      const nextErrors = { ...current }
+      delete nextErrors[field]
+      return nextErrors
+    })
+  }
+
+  const setFieldError = (field: FormField, message: string | null) => {
+    setFieldErrors((current) => {
+      if (!message) {
+        if (!current[field]) {
+          return current
+        }
+
+        const nextErrors = { ...current }
+        delete nextErrors[field]
+        return nextErrors
+      }
+
+      return { ...current, [field]: message }
+    })
+  }
 
   const closeModal = () => {
     setIsOpen(false)
@@ -210,10 +454,10 @@ export function AddRaceModal({ token, raceTypes, onCreated }: AddRaceModalProps)
     setFormState(INITIAL_FORM_STATE)
     setErrorMessage(null)
     setIsStatusSelectorOpen(false)
-    setIsRaceTypeSelectorOpen(false)
     setSelectorField(null)
     setIsDateSelectorOpen(false)
     setIsTimeSelectorOpen(false)
+    setFieldErrors({})
   }
 
   const requestClose = () => {
@@ -233,14 +477,16 @@ export function AddRaceModal({ token, raceTypes, onCreated }: AddRaceModalProps)
   }
 
   const handleSubmit = async () => {
-    if (!formState.raceDate.trim()) {
+    if (isRaceDateRequired(formState.raceStatus) && !formState.raceDate.trim()) {
       setErrorMessage('Race date is required.')
+      setFieldError('raceDate', 'Race date is required.')
       setActiveTab('race')
       return
     }
 
     if (!formState.name.trim()) {
       setErrorMessage('Race name is required.')
+      setFieldError('name', 'Race name is required.')
       setActiveTab('race')
       return
     }
@@ -252,10 +498,12 @@ export function AddRaceModal({ token, raceTypes, onCreated }: AddRaceModalProps)
       const payload: CreateRacePayload = {
         race: {
           raceStatus: formState.raceStatus,
-          raceDate: formState.raceDate.trim(),
+          raceDate: formState.raceDate.trim() ? formState.raceDate.trim() : null,
           raceTime: formState.raceTime.trim() ? formState.raceTime.trim() : null,
           name: formState.name.trim(),
           location: formState.location.trim() ? formState.location.trim() : null,
+          teamId: formState.teamId || null,
+          circuitId: formState.circuitId || null,
           raceTypeId: formState.raceTypeId || null,
           realKm: parseNumber(formState.realKm),
           elevation: parseNumber(formState.elevation),
@@ -265,6 +513,7 @@ export function AddRaceModal({ token, raceTypes, onCreated }: AddRaceModalProps)
           officialTimeSeconds: parseTimeToSeconds(formState.officialTime, 'duration'),
           chipTimeSeconds: parseTimeToSeconds(formState.chipTime, 'duration'),
           pacePerKmSeconds: parseTimeToSeconds(formState.pacePerKm, 'pace'),
+          shoeId: formState.shoeId || null,
           generalClassification: parseInteger(formState.generalClassification, 'General classification'),
           isGeneralClassificationPodium: formState.isGeneralClassificationPodium,
           ageGroupClassification: parseInteger(formState.ageGroupClassification, 'Age group classification'),
@@ -286,7 +535,17 @@ export function AddRaceModal({ token, raceTypes, onCreated }: AddRaceModalProps)
       closeModal()
       onCreated()
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Unable to create this race right now.')
+      const nextMessage = error instanceof Error ? error.message : 'Unable to create this race right now.'
+      const fieldName = error instanceof Error ? getFieldNameFromError(error.message) : null
+
+      if (fieldName) {
+        setFieldError(fieldName, nextMessage)
+        if (fieldName === 'officialTime' || fieldName === 'chipTime' || fieldName === 'pacePerKm') {
+          setActiveTab('results')
+        }
+      }
+
+      setErrorMessage(nextMessage)
     } finally {
       setIsSaving(false)
     }
@@ -304,61 +563,93 @@ export function AddRaceModal({ token, raceTypes, onCreated }: AddRaceModalProps)
     </Pressable>
   )
 
-  const renderField = (
-    label: string,
-    value: string,
-    onChangeText: (nextValue: string) => void,
-    placeholder: string,
-    options?: { multiline?: boolean; keyboardType?: 'default' | 'numeric'; required?: boolean }
-  ) => (
-    <View style={styles.fieldGroup}>
+  const renderLabel = (label: string, options?: { required?: boolean; info?: string }) => (
+    <View style={styles.fieldLabelRow}>
       <Text style={styles.fieldLabel}>
         {options?.required ? <Text style={styles.requiredMark}>* </Text> : null}
         {label}
       </Text>
+      {options?.info ? (
+        <Pressable style={styles.infoButton} onPress={() => showFieldInfo(label, options.info ?? '')}>
+          <FontAwesome6 name="circle-info" size={14} color={colors.textSecondary} />
+        </Pressable>
+      ) : null}
+    </View>
+  )
+
+  const renderField = (
+    field: FormField,
+    label: string,
+    value: string,
+    onChangeText: (nextValue: string) => void,
+    placeholder: string,
+    options?: { multiline?: boolean; keyboardType?: 'default' | 'numeric'; required?: boolean; info?: string }
+  ) => (
+    <View style={styles.fieldGroup}>
+      {renderLabel(label, options)}
       <TextInput
         value={value}
-        onChangeText={onChangeText}
+        onChangeText={(nextValue) => {
+          clearFieldError(field)
+          onChangeText(nextValue)
+        }}
         placeholder={placeholder}
         placeholderTextColor="#98a2b3"
-        style={[styles.fieldInput, options?.multiline ? styles.fieldInputMultiline : null]}
+        style={[
+          styles.fieldInput,
+          options?.multiline ? styles.fieldInputMultiline : null,
+          fieldErrors[field] ? styles.fieldInputError : null,
+        ]}
         multiline={options?.multiline}
         keyboardType={options?.keyboardType ?? 'default'}
         autoCapitalize="none"
       />
+      {fieldErrors[field] ? <Text style={styles.fieldErrorText}>{fieldErrors[field]}</Text> : null}
     </View>
   )
 
-  const renderSelectorField = (label: string, value: string, onPress: () => void, placeholder: string) => (
+  const renderSelectorField = (
+    field: FormField,
+    label: string,
+    value: string,
+    onPress: () => void,
+    placeholder: string,
+    options?: { info?: string },
+  ) => (
     <View style={styles.fieldGroup}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      <Pressable style={styles.selectTrigger} onPress={onPress}>
+      {renderLabel(label, options)}
+      <Pressable style={[styles.selectTrigger, fieldErrors[field] ? styles.fieldInputError : null]} onPress={onPress}>
         <Text style={[styles.selectTriggerLabel, !value ? styles.selectTriggerPlaceholder : null]}>
           {value || placeholder}
         </Text>
         <FontAwesome6 name="angle-down" size={16} color={colors.textSecondary} />
       </Pressable>
+      {fieldErrors[field] ? <Text style={styles.fieldErrorText}>{fieldErrors[field]}</Text> : null}
     </View>
   )
 
-  const renderRequiredSelectorField = (label: string, value: string, onPress: () => void, placeholder: string) => (
+  const renderRequiredSelectorField = (
+    field: FormField,
+    label: string,
+    value: string,
+    onPress: () => void,
+    placeholder: string,
+    required = true,
+    info?: string,
+  ) => (
     <View style={styles.fieldGroup}>
-      <Text style={styles.fieldLabel}>
-        <Text style={styles.requiredMark}>* </Text>
-        {label}
-      </Text>
-      <Pressable style={styles.selectTrigger} onPress={onPress}>
+      {renderLabel(label, { required, info })}
+      <Pressable style={[styles.selectTrigger, fieldErrors[field] ? styles.fieldInputError : null]} onPress={onPress}>
         <Text style={[styles.selectTriggerLabel, !value ? styles.selectTriggerPlaceholder : null]}>
           {value || placeholder}
         </Text>
         <FontAwesome6 name="angle-down" size={16} color={colors.textSecondary} />
       </Pressable>
+      {fieldErrors[field] ? <Text style={styles.fieldErrorText}>{fieldErrors[field]}</Text> : null}
     </View>
   )
 
-  const analysisValueLabel = selectorField
-    ? ANALYSIS_OPTIONS.find((option) => option.value === formState[selectorField])?.label ?? ''
-    : ''
+  const selectorValueLabel = getSelectableValueLabel(selectorField, formState, createOptions)
 
   return (
     <>
@@ -408,12 +699,15 @@ export function AddRaceModal({ token, raceTypes, onCreated }: AddRaceModalProps)
             {activeTab === 'race' ? (
               <View style={styles.formFields}>
                 {renderSelectorField(
+                  'raceStatus',
                   'Race status',
                   RACE_STATUS_OPTIONS.find((option) => option.value === formState.raceStatus)?.label ?? '',
                   () => setIsStatusSelectorOpen(true),
                   'Select race status',
+                  { info: 'Use In list for races you want to track before you have a confirmed date. These races stay hidden from the list by default and only appear when you filter by the In list status.' },
                 )}
                 {renderRequiredSelectorField(
+                  'raceDate',
                   'Race date',
                   formState.raceDate,
                   () => {
@@ -421,8 +715,10 @@ export function AddRaceModal({ token, raceTypes, onCreated }: AddRaceModalProps)
                     setIsDateSelectorOpen(true)
                   },
                   'Select date',
+                  isRaceDateRequired(formState.raceStatus),
                 )}
                 {renderSelectorField(
+                  'raceTime',
                   'Race time',
                   formState.raceTime,
                   () => {
@@ -430,17 +726,35 @@ export function AddRaceModal({ token, raceTypes, onCreated }: AddRaceModalProps)
                     setIsTimeSelectorOpen(true)
                   },
                   'Select time',
+                  { info: 'Optional start time of the race. Leave empty if it is not confirmed yet.' },
                 )}
-                {renderField('Race name', formState.name, (value) => setFormState((current) => ({ ...current, name: value })), 'Lisbon Half Marathon', { required: true })}
-                {renderField('Location', formState.location, (value) => setFormState((current) => ({ ...current, location: value })), 'Lisbon')}
+                {renderField('name', 'Race name', formState.name, (value) => setFieldValue('name', value), 'Lisbon Half Marathon', { required: true })}
+                {renderField('location', 'Location', formState.location, (value) => setFieldValue('location', value), 'Lisbon')}
                 {renderSelectorField(
+                  'raceTypeId',
                   'Race type',
-                  raceTypes.find((raceType) => raceType.id === formState.raceTypeId)?.name ?? '',
-                  () => setIsRaceTypeSelectorOpen(true),
+                  createOptions.raceTypes.find((raceType) => raceType.id === formState.raceTypeId)?.name ?? '',
+                  () => setSelectorField('raceTypeId'),
                   'Select race type',
                 )}
-                {renderField('Real KM', formState.realKm, (value) => setFormState((current) => ({ ...current, realKm: value })), '21.10', { keyboardType: 'numeric' })}
-                {renderField('Elevation', formState.elevation, (value) => setFormState((current) => ({ ...current, elevation: value })), '250', { keyboardType: 'numeric' })}
+                {renderSelectorField(
+                  'teamId',
+                  'Team',
+                  createOptions.teams.find((team) => team.id === formState.teamId)?.name ?? '',
+                  () => setSelectorField('teamId'),
+                  'Select team',
+                  { info: 'Optional team linked to this race entry.' },
+                )}
+                {renderSelectorField(
+                  'circuitId',
+                  'Circuit',
+                  createOptions.circuits.find((circuit) => circuit.id === formState.circuitId)?.name ?? '',
+                  () => setSelectorField('circuitId'),
+                  'Select circuit',
+                  { info: 'Optional circuit or championship this race belongs to.' },
+                )}
+                {renderField('realKm', 'Real KM', formState.realKm, (value) => setFieldValue('realKm', value), '21.10', { keyboardType: 'numeric', info: 'Actual race distance in kilometres, using decimals when needed.' })}
+                {renderField('elevation', 'Elevation', formState.elevation, (value) => setFieldValue('elevation', value), '250', { keyboardType: 'numeric', info: 'Total elevation gain of the race, usually in meters.' })}
                 <Pressable style={styles.checkboxRow} onPress={() => setFormState((current) => ({ ...current, isValidForCategoryRanking: !current.isValidForCategoryRanking }))}>
                   <View style={[styles.checkbox, formState.isValidForCategoryRanking ? styles.checkboxCheckedOrange : null]}>
                     {formState.isValidForCategoryRanking ? <FontAwesome6 name="check" size={10} color="#ffffff" /> : null}
@@ -452,24 +766,66 @@ export function AddRaceModal({ token, raceTypes, onCreated }: AddRaceModalProps)
 
             {activeTab === 'results' ? (
               <View style={styles.formFields}>
-                {renderField('Official time', formState.officialTime, (value) => setFormState((current) => ({ ...current, officialTime: value })), 'HH:MM:SS')}
-                {renderField('Chip time', formState.chipTime, (value) => setFormState((current) => ({ ...current, chipTime: value })), 'HH:MM:SS')}
-                {renderField('Pace per KM', formState.pacePerKm, (value) => setFormState((current) => ({ ...current, pacePerKm: value })), 'MM:SS')}
-                {renderField('General classification', formState.generalClassification, (value) => setFormState((current) => ({ ...current, generalClassification: value })), '1', { keyboardType: 'numeric' })}
+                {renderField(
+                  'officialTime',
+                  'Official time',
+                  formState.officialTime,
+                  (value) => {
+                    const formattedValue = formatDigitTimeInput(value, 'duration')
+                    setFieldValue('officialTime', formattedValue)
+                    setFieldError('officialTime', getLiveTimeFieldError(formattedValue, 'duration', 'Official time'))
+                  },
+                  'HH:MM:SS',
+                  { keyboardType: 'numeric', info: 'Official finish time published by the event organization.' },
+                )}
+                {renderField(
+                  'chipTime',
+                  'Chip time',
+                  formState.chipTime,
+                  (value) => {
+                    const formattedValue = formatDigitTimeInput(value, 'duration')
+                    setFieldValue('chipTime', formattedValue)
+                    setFieldError('chipTime', getLiveTimeFieldError(formattedValue, 'duration', 'Chip time'))
+                    setFieldError('pacePerKm', null)
+                  },
+                  'HH:MM:SS',
+                  { keyboardType: 'numeric', info: 'Net finish time measured from crossing the start line to crossing the finish line.' },
+                )}
+                {renderField(
+                  'pacePerKm',
+                  'Pace per KM',
+                  formState.pacePerKm,
+                  (value) => {
+                    const formattedValue = formatDigitTimeInput(value, 'pace')
+                    setFieldValue('pacePerKm', formattedValue)
+                    setFieldError('pacePerKm', getLiveTimeFieldError(formattedValue, 'pace', 'Pace per KM'))
+                  },
+                  'MM:SS',
+                  { keyboardType: 'numeric', info: 'Average pace per kilometre. It is calculated automatically from chip time and distance, but you can also adjust it manually.' },
+                )}
+                {renderSelectorField(
+                  'shoeId',
+                  'Shoe',
+                  createOptions.shoes.find((shoe) => shoe.id === formState.shoeId)?.name ?? '',
+                  () => setSelectorField('shoeId'),
+                  'Select shoe',
+                  { info: 'Optional shoe used in this race result.' },
+                )}
+                {renderField('generalClassification', 'General classification', formState.generalClassification, (value) => setFieldValue('generalClassification', value), '1', { keyboardType: 'numeric', info: 'Overall finishing position in the race. Positions 1 to 3 automatically mark the podium checkbox.' })}
                 <Pressable style={styles.checkboxRow} onPress={() => setFormState((current) => ({ ...current, isGeneralClassificationPodium: !current.isGeneralClassificationPodium }))}>
                   <View style={[styles.checkbox, formState.isGeneralClassificationPodium ? styles.checkboxCheckedBlack : null]}>
                     {formState.isGeneralClassificationPodium ? <FontAwesome6 name="check" size={10} color="#ffffff" /> : null}
                   </View>
                   <Text style={styles.checkboxLabel}>General classification podium</Text>
                 </Pressable>
-                {renderField('Age group classification', formState.ageGroupClassification, (value) => setFormState((current) => ({ ...current, ageGroupClassification: value })), '1', { keyboardType: 'numeric' })}
+                {renderField('ageGroupClassification', 'Age group classification', formState.ageGroupClassification, (value) => setFieldValue('ageGroupClassification', value), '1', { keyboardType: 'numeric', info: 'Finishing position inside your age category. Positions 1 to 3 automatically mark the podium checkbox.' })}
                 <Pressable style={styles.checkboxRow} onPress={() => setFormState((current) => ({ ...current, isAgeGroupClassificationPodium: !current.isAgeGroupClassificationPodium }))}>
                   <View style={[styles.checkbox, formState.isAgeGroupClassificationPodium ? styles.checkboxCheckedBlack : null]}>
                     {formState.isAgeGroupClassificationPodium ? <FontAwesome6 name="check" size={10} color="#ffffff" /> : null}
                   </View>
                   <Text style={styles.checkboxLabel}>Age group podium</Text>
                 </Pressable>
-                {renderField('Team classification', formState.teamClassification, (value) => setFormState((current) => ({ ...current, teamClassification: value })), '1', { keyboardType: 'numeric' })}
+                {renderField('teamClassification', 'Team classification', formState.teamClassification, (value) => setFieldValue('teamClassification', value), '1', { keyboardType: 'numeric', info: 'Team finishing position when the race has a team ranking. Positions 1 to 3 automatically mark the podium checkbox.' })}
                 <Pressable style={styles.checkboxRow} onPress={() => setFormState((current) => ({ ...current, isTeamClassificationPodium: !current.isTeamClassificationPodium }))}>
                   <View style={[styles.checkbox, formState.isTeamClassificationPodium ? styles.checkboxCheckedBlack : null]}>
                     {formState.isTeamClassificationPodium ? <FontAwesome6 name="check" size={10} color="#ffffff" /> : null}
@@ -482,25 +838,31 @@ export function AddRaceModal({ token, raceTypes, onCreated }: AddRaceModalProps)
             {activeTab === 'analysis' ? (
               <View style={styles.formFields}>
                 {renderSelectorField(
+                  'preRaceConfidence',
                   'Pre-race confidence',
                   ANALYSIS_OPTIONS.find((option) => option.value === formState.preRaceConfidence)?.label ?? '',
                   () => setSelectorField('preRaceConfidence'),
                   'Select value',
+                  { info: 'How confident you felt before the race started.' },
                 )}
                 {renderSelectorField(
+                  'raceDifficulty',
                   'Race difficulty',
                   ANALYSIS_OPTIONS.find((option) => option.value === formState.raceDifficulty)?.label ?? '',
                   () => setSelectorField('raceDifficulty'),
                   'Select value',
+                  { info: 'Your perception of how hard the race felt overall.' },
                 )}
                 {renderSelectorField(
+                  'finalSatisfaction',
                   'Final satisfaction',
                   ANALYSIS_OPTIONS.find((option) => option.value === formState.finalSatisfaction)?.label ?? '',
                   () => setSelectorField('finalSatisfaction'),
                   'Select value',
+                  { info: 'Your final satisfaction with the race and your performance.' },
                 )}
-                {renderField('Pain / injuries', formState.painInjuries, (value) => setFormState((current) => ({ ...current, painInjuries: value })), 'Notes about pain or injuries', { multiline: true })}
-                {renderField('Analysis notes', formState.analysisNotes, (value) => setFormState((current) => ({ ...current, analysisNotes: value })), 'Post-race thoughts and notes', { multiline: true })}
+                {renderField('painInjuries', 'Pain / injuries', formState.painInjuries, (value) => setFieldValue('painInjuries', value), 'Notes about pain or injuries', { multiline: true })}
+                {renderField('analysisNotes', 'Analysis notes', formState.analysisNotes, (value) => setFieldValue('analysisNotes', value), 'Post-race thoughts and notes', { multiline: true })}
                 <Pressable style={styles.checkboxRow} onPress={() => setFormState((current) => ({ ...current, wouldRepeatThisRace: !current.wouldRepeatThisRace }))}>
                   <View style={[styles.checkbox, formState.wouldRepeatThisRace ? styles.checkboxCheckedBlack : null]}>
                     {formState.wouldRepeatThisRace ? <FontAwesome6 name="check" size={10} color="#ffffff" /> : null}
@@ -523,7 +885,11 @@ export function AddRaceModal({ token, raceTypes, onCreated }: AddRaceModalProps)
                   key={option.value}
                   style={[styles.selectorOption, isActive ? styles.selectorOptionActive : null]}
                   onPress={() => {
-                    setFormState((current) => ({ ...current, raceStatus: option.value }))
+                    clearFieldError('raceStatus')
+                    if (option.value === 'IN_LIST') {
+                      clearFieldError('raceDate')
+                    }
+                    setFieldValue('raceStatus', option.value)
                     setIsStatusSelectorOpen(false)
                   }}
                 >
@@ -586,7 +952,8 @@ export function AddRaceModal({ token, raceTypes, onCreated }: AddRaceModalProps)
                 <Text style={styles.cancelActionLabel}>Cancel</Text>
               </Pressable>
               <Pressable style={styles.saveAction} onPress={() => {
-                setFormState((current) => ({ ...current, raceDate: formatDateDraft(dateDraft) }))
+                clearFieldError('raceDate')
+                setFieldValue('raceDate', formatDateDraft(dateDraft))
                 setIsDateSelectorOpen(false)
               }}>
                 <Text style={styles.saveActionLabel}>Apply</Text>
@@ -645,7 +1012,8 @@ export function AddRaceModal({ token, raceTypes, onCreated }: AddRaceModalProps)
                 <Text style={styles.cancelActionLabel}>Cancel</Text>
               </Pressable>
               <Pressable style={styles.saveAction} onPress={() => {
-                setFormState((current) => ({ ...current, raceTime: formatTimeDraft(timeDraft) }))
+                clearFieldError('raceTime')
+                setFieldValue('raceTime', formatTimeDraft(timeDraft))
                 setIsTimeSelectorOpen(false)
               }}>
                 <Text style={styles.saveActionLabel}>Apply</Text>
@@ -655,76 +1023,48 @@ export function AddRaceModal({ token, raceTypes, onCreated }: AddRaceModalProps)
         </Pressable>
       </Modal>
 
-      <Modal visible={isRaceTypeSelectorOpen} transparent animationType="fade" onRequestClose={() => setIsRaceTypeSelectorOpen(false)}>
-        <Pressable style={styles.selectorBackdrop} onPress={() => setIsRaceTypeSelectorOpen(false)}>
-          <View style={styles.selectorCard}>
-            <Pressable
-              style={[styles.selectorOption, !formState.raceTypeId ? styles.selectorOptionActive : null]}
-              onPress={() => {
-                setFormState((current) => ({ ...current, raceTypeId: '' }))
-                setIsRaceTypeSelectorOpen(false)
-              }}
-            >
-              <Text style={[styles.selectorOptionLabel, !formState.raceTypeId ? styles.selectorOptionLabelActive : null]}>
-                No race type
-              </Text>
-            </Pressable>
-            {raceTypes.map((raceType) => {
-              const isActive = raceType.id === formState.raceTypeId
-              return (
-                <Pressable
-                  key={raceType.id}
-                  style={[styles.selectorOption, isActive ? styles.selectorOptionActive : null]}
-                  onPress={() => {
-                    setFormState((current) => ({ ...current, raceTypeId: raceType.id }))
-                    setIsRaceTypeSelectorOpen(false)
-                  }}
-                >
-                  <Text style={[styles.selectorOptionLabel, isActive ? styles.selectorOptionLabelActive : null]}>
-                    {raceType.name}
-                  </Text>
-                </Pressable>
-              )
-            })}
-          </View>
-        </Pressable>
-      </Modal>
-
       <Modal visible={selectorField != null} transparent animationType="fade" onRequestClose={() => setSelectorField(null)}>
         <Pressable style={styles.selectorBackdrop} onPress={() => setSelectorField(null)}>
           <View style={styles.selectorCard}>
             <Pressable
-              style={[styles.selectorOption, !analysisValueLabel ? styles.selectorOptionActive : null]}
+              style={[styles.selectorOption, !selectorValueLabel ? styles.selectorOptionActive : null]}
               onPress={() => {
                 if (selectorField) {
-                  setFormState((current) => ({ ...current, [selectorField]: '' }))
+                  clearFieldError(selectorField)
+                  setFieldValue(selectorField, '')
                 }
                 setSelectorField(null)
               }}
             >
-              <Text style={[styles.selectorOptionLabel, !analysisValueLabel ? styles.selectorOptionLabelActive : null]}>
-                No value
+              <Text style={[styles.selectorOptionLabel, !selectorValueLabel ? styles.selectorOptionLabelActive : null]}>
+                {selectorField === 'preRaceConfidence' || selectorField === 'raceDifficulty' || selectorField === 'finalSatisfaction'
+                  ? 'No value'
+                  : 'No selection'}
               </Text>
             </Pressable>
-            {ANALYSIS_OPTIONS.map((option) => {
-              const isActive = selectorField ? formState[selectorField] === option.value : false
+            {selectorField ? getSelectableOptions(selectorField, createOptions).map((option) => {
+              const optionValue = 'id' in option ? option.id : option.value
+              const optionLabel = 'name' in option ? option.name : option.label
+              const isActive = formState[selectorField] === optionValue
+
               return (
                 <Pressable
-                  key={option.value}
+                  key={optionValue}
                   style={[styles.selectorOption, isActive ? styles.selectorOptionActive : null]}
                   onPress={() => {
                     if (selectorField) {
-                      setFormState((current) => ({ ...current, [selectorField]: option.value }))
+                      clearFieldError(selectorField)
+                      setFieldValue(selectorField, optionValue)
                     }
                     setSelectorField(null)
                   }}
                 >
                   <Text style={[styles.selectorOptionLabel, isActive ? styles.selectorOptionLabelActive : null]}>
-                    {option.label}
+                    {optionLabel}
                   </Text>
                 </Pressable>
               )
-            })}
+            }) : null}
           </View>
         </Pressable>
       </Modal>
@@ -830,11 +1170,10 @@ const styles = StyleSheet.create({
   },
   tabsRow: {
     flexDirection: 'row',
+    justifyContent: 'center',
     gap: 18,
     paddingHorizontal: 18,
-    paddingTop: 18,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(16, 24, 40, 0.08)',
+    paddingTop: 24,
   },
   tabButton: {
     paddingBottom: 12,
@@ -865,10 +1204,23 @@ const styles = StyleSheet.create({
   fieldGroup: {
     gap: 8,
   },
+  fieldLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
   fieldLabel: {
+    flex: 1,
     color: colors.textPrimary,
     fontSize: 14,
     fontWeight: '700',
+  },
+  infoButton: {
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   requiredMark: {
     color: colors.error,
@@ -887,6 +1239,15 @@ const styles = StyleSheet.create({
   fieldInputMultiline: {
     minHeight: 110,
     textAlignVertical: 'top',
+  },
+  fieldInputError: {
+    borderColor: colors.error,
+  },
+  fieldErrorText: {
+    color: colors.error,
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 16,
   },
   selectTrigger: {
     minHeight: 50,

@@ -94,7 +94,7 @@ Authenticated client shell status:
 - web `Races` now also includes an add-race drawer with three tabs for `Race data`, `Race results`, and `Race analysis`
 - mobile `Races` now mirrors the same top-level switcher pattern and renders real monthly and yearly calendars backed by the same authenticated race data, with a compact per-day monthly summary and a single-column yearly overview adapted for smaller screens
 - mobile `Races` also includes a real table mode with a compact card layout, the same `Coming Up` weekly logic for registered races, a shared race-filters sheet for both table and calendar, and a three-dot action menu on each race card
-- mobile `Races` now also includes an add-race modal with the same three functional tabs, required-field indicators, and guided date/time selection
+- mobile `Races` now also includes an add-race modal with the same three functional tabs, required-field indicators, guided date/time selection, and the same optional `team`, `circuit`, and `shoe` selectors used in the web drawer
 - web `Pending Approvals` and `Users` now show real admin data with actions and pagination, while the admin overview section is still a placeholder
 - mobile `Pending Approvals`, `Users`, and `Overview` now also show real admin data with actions and pagination
 
@@ -523,6 +523,22 @@ Expected response example:
         }
       ]
     }
+  ],
+  "undatedRaces": [
+    {
+      "id": "uuid",
+      "raceNumber": 9,
+      "raceDate": null,
+      "raceTime": null,
+      "raceStatus": "IN_LIST",
+      "name": "Possible Autumn Half Marathon",
+      "location": "Lisbon, Portugal",
+      "raceTypeId": "uuid",
+      "raceTypeName": "Half Marathon",
+      "officialTimeSeconds": null,
+      "chipTimeSeconds": null,
+      "pacePerKmSeconds": null
+    }
   ]
 }
 ```
@@ -532,6 +548,7 @@ Client usage notes:
 - web `Races` table consumes `/api/races/table`, opens in `Current year` by default, applies race-name search locally, and uses backend filters for selected statuses and race types while rendering a card-style list grouped by year instead of a classic spreadsheet layout
 - mobile `Races` table consumes the same endpoint, also opens in `Current year` by default, applies race-name search locally in table mode, and uses the same backend-backed status and race-type filters in its compact card layout
 - both clients use `raceStatus` and `raceTime` to drive the `Coming Up` section, which only considers `REGISTERED` races in the current Monday-to-Sunday week or, when none exist, the next future registered race
+- races whose status is `IN_LIST` and do not yet have a `raceDate` are returned in `undatedRaces`; both clients keep them hidden by default and only show them when the user filters by the `IN_LIST` status
 
 ### `GET /api/races/types`
 
@@ -555,6 +572,43 @@ Expected response example:
 ]
 ```
 
+### `GET /api/races/create/options`
+
+Returns the authenticated user's available selector options for the create-race flows in web and mobile.
+
+This endpoint bundles the options required by the creation UI:
+
+- `raceTypes`
+- `teams`
+- `circuits`
+- `shoes`
+
+Postman:
+
+- Method: `GET`
+- URL: `{{baseUrl}}/api/races/create/options`
+- Auth: `Bearer Token`
+- Token: `{{token}}`
+
+Expected response example:
+
+```json
+{
+  "raceTypes": [
+    { "id": "uuid-race-type", "name": "Half Marathon" }
+  ],
+  "teams": [
+    { "id": "uuid-team", "name": "RITMA Runners" }
+  ],
+  "circuits": [
+    { "id": "uuid-circuit", "name": "National Road Circuit" }
+  ],
+  "shoes": [
+    { "id": "uuid-shoe", "name": "Nike Vaporfly 3" }
+  ]
+}
+```
+
 ### `POST /api/races`
 
 Creates a new race for the authenticated user and optionally persists linked race results and race analysis in the same request.
@@ -564,8 +618,10 @@ Backend behavior:
 - creates the base `user_races` row
 - optionally creates or updates the linked `user_race_results` row when any result data is sent
 - optionally creates or updates the linked `user_race_analysis` row when any analysis data is sent
-- validates required race fields such as `raceStatus`, `raceDate`, and `name`
+- validates required race fields such as `raceStatus`, `name`, and `raceDate` when the status is not `IN_LIST`
+- allows `raceDate = null` only when `raceStatus = IN_LIST`
 - validates optional numeric values to prevent negative times, distances, elevations, or invalid classifications
+- validates maximum lengths and ownership for optional linked `raceType`, `team`, `circuit`, and `shoe`
 
 Postman:
 
@@ -585,6 +641,8 @@ Example body:
     "raceTime": "09:45:00",
     "name": "Corrida de Hoje 2026",
     "location": "Coimbra, Portugal",
+    "teamId": "uuid-team",
+    "circuitId": "uuid-circuit",
     "raceTypeId": "uuid",
     "realKm": 10.0,
     "elevation": 90,
@@ -594,6 +652,7 @@ Example body:
     "officialTimeSeconds": 2405,
     "chipTimeSeconds": 2398,
     "pacePerKmSeconds": 240,
+    "shoeId": "uuid-shoe",
     "generalClassification": 12,
     "isGeneralClassificationPodium": false,
     "ageGroupClassification": 4,
@@ -624,6 +683,8 @@ Client usage notes:
 
 - web `Races` exposes this endpoint through a right-side creation drawer opened by the orange add button next to the page title
 - mobile `Races` exposes the same endpoint through a dedicated add-race modal with the same three logical tabs
+- both clients auto-format manual duration and pace inputs while the user types, calculate `pacePerKm` from `chipTime` and `realKm` when possible, and automatically mark podium checkboxes when the corresponding classification is between `1` and `3`
+- both clients now also expose optional selectors for `team`, `circuit`, and `shoe`
 
 ### `PUT /api/races/{raceId}`
 
@@ -921,4 +982,5 @@ Expected response:
 - the admin `Overview` is now focused on metrics and pending approvals only; it no longer includes embedded technical diagnostics or recent-activity tracking
 - the older admin diagnostics page and backend system-health endpoint have been removed from the product
 - `/api/races` is still a technical preview endpoint and should later be restricted by authenticated user context.
+- `/api/races/create/options` now exists to keep create-race dropdown data aligned between backend, web, and mobile.
 - The login and account-request frontend now use more user-friendly validation and error messages than the raw HTTP responses.

@@ -102,12 +102,16 @@ public class RaceRepository {
                 LEFT JOIN user_race_types urt ON urt.id = ur.race_type_id
                 LEFT JOIN user_race_results urr ON urr.user_race_id = ur.id
                 WHERE ur.user_id = ?
-                  AND ur.race_date IS NOT NULL
                 """);
         List<Object> args = new ArrayList<>(List.of(userId));
         appendRaceFilters(sql, args, filters);
         sql.append("""
-                ORDER BY EXTRACT(YEAR FROM ur.race_date) DESC, ur.race_date DESC, ur.race_time DESC NULLS LAST, lower(ur.name) ASC
+                ORDER BY
+                    CASE WHEN ur.race_date IS NULL THEN 1 ELSE 0 END,
+                    EXTRACT(YEAR FROM ur.race_date) DESC NULLS LAST,
+                    ur.race_date DESC NULLS LAST,
+                    ur.race_time DESC NULLS LAST,
+                    lower(ur.name) ASC
                 """);
 
         return jdbcTemplate().query(
@@ -149,6 +153,18 @@ public class RaceRepository {
         );
     }
 
+    public List<RaceTypeOptionResponse> findTeams(UUID userId) {
+        return findNamedOptions(userId, "user_teams");
+    }
+
+    public List<RaceTypeOptionResponse> findCircuits(UUID userId) {
+        return findNamedOptions(userId, "user_circuits");
+    }
+
+    public List<RaceTypeOptionResponse> findShoes(UUID userId) {
+        return findNamedOptions(userId, "user_shoes");
+    }
+
     public List<Integer> findAvailableYears(UUID userId) {
         return jdbcTemplate().query(
                 """
@@ -180,19 +196,19 @@ public class RaceRepository {
     }
 
     public boolean raceTypeExists(UUID userId, UUID raceTypeId) {
-        Integer count = jdbcTemplate().queryForObject(
-                """
-                        SELECT COUNT(*)
-                        FROM user_race_types
-                        WHERE user_id = ?
-                          AND id = ?
-                        """,
-                Integer.class,
-                userId,
-                raceTypeId
-        );
+        return namedOptionExists(userId, raceTypeId, "user_race_types");
+    }
 
-        return count != null && count > 0;
+    public boolean teamExists(UUID userId, UUID teamId) {
+        return namedOptionExists(userId, teamId, "user_teams");
+    }
+
+    public boolean circuitExists(UUID userId, UUID circuitId) {
+        return namedOptionExists(userId, circuitId, "user_circuits");
+    }
+
+    public boolean shoeExists(UUID userId, UUID shoeId) {
+        return namedOptionExists(userId, shoeId, "user_shoes");
     }
 
     public void updateRace(UUID userId, UUID raceId, LocalDate raceDate, String name, String location, UUID raceTypeId) {
@@ -252,6 +268,8 @@ public class RaceRepository {
                            LocalTime raceTime,
                            String name,
                            String location,
+                           UUID teamId,
+                           UUID circuitId,
                            UUID raceTypeId,
                            BigDecimal realKm,
                            Integer elevation,
@@ -265,12 +283,14 @@ public class RaceRepository {
                             race_time,
                             name,
                             location,
+                            team_id,
+                            circuit_id,
                             race_type_id,
                             real_km,
                             elevation,
                             is_valid_for_category_ranking
                         )
-                        VALUES (?, ?::race_status, ?, ?, ?, ?, ?, ?, ?, ?)
+                        VALUES (?, ?::race_status, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         RETURNING id
                         """,
                 UUID.class,
@@ -280,6 +300,8 @@ public class RaceRepository {
                 raceTime,
                 name,
                 location,
+                teamId,
+                circuitId,
                 raceTypeId,
                 realKm,
                 elevation,
@@ -291,6 +313,7 @@ public class RaceRepository {
                                         Integer officialTimeSeconds,
                                         Integer chipTimeSeconds,
                                         Integer pacePerKmSeconds,
+                                        UUID shoeId,
                                         Integer generalClassification,
                                         Boolean isGeneralClassificationPodium,
                                         Integer ageGroupClassification,
@@ -304,6 +327,7 @@ public class RaceRepository {
                             official_time,
                             chip_time,
                             pace_per_km,
+                            shoe_id,
                             general_classification,
                             is_general_classification_podium,
                             age_group_classification,
@@ -311,12 +335,13 @@ public class RaceRepository {
                             team_classification,
                             is_team_classification_podium
                         )
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ON CONFLICT (user_race_id)
                         DO UPDATE
                         SET official_time = EXCLUDED.official_time,
                             chip_time = EXCLUDED.chip_time,
                             pace_per_km = EXCLUDED.pace_per_km,
+                            shoe_id = EXCLUDED.shoe_id,
                             general_classification = EXCLUDED.general_classification,
                             is_general_classification_podium = EXCLUDED.is_general_classification_podium,
                             age_group_classification = EXCLUDED.age_group_classification,
@@ -328,12 +353,35 @@ public class RaceRepository {
                 officialTimeSeconds,
                 chipTimeSeconds,
                 pacePerKmSeconds,
+                shoeId,
                 generalClassification,
                 isGeneralClassificationPodium != null && isGeneralClassificationPodium,
                 ageGroupClassification,
                 isAgeGroupClassificationPodium != null && isAgeGroupClassificationPodium,
                 teamClassification,
                 isTeamClassificationPodium != null && isTeamClassificationPodium
+        );
+    }
+
+    private boolean namedOptionExists(UUID userId, UUID optionId, String tableName) {
+        Integer count = jdbcTemplate().queryForObject(
+                "SELECT COUNT(*) FROM " + tableName + " WHERE user_id = ? AND id = ?",
+                Integer.class,
+                userId,
+                optionId
+        );
+
+        return count != null && count > 0;
+    }
+
+    private List<RaceTypeOptionResponse> findNamedOptions(UUID userId, String tableName) {
+        return jdbcTemplate().query(
+                "SELECT id, name FROM " + tableName + " WHERE user_id = ? ORDER BY lower(name) ASC",
+                (rs, rowNum) -> new RaceTypeOptionResponse(
+                        rs.getObject("id", UUID.class),
+                        rs.getString("name")
+                ),
+                userId
         );
     }
 

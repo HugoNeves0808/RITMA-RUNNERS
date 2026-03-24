@@ -32,7 +32,11 @@ type EditFormState = {
   pacePerKm: string
 }
 
-function getDayLabel(value: string) {
+function getDayLabel(value: string | null) {
+  if (!value) {
+    return 'No'
+  }
+
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) {
     return '--'
@@ -41,7 +45,11 @@ function getDayLabel(value: string) {
   return String(date.getDate()).padStart(2, '0')
 }
 
-function getCompactMonthLabel(value: string) {
+function getCompactMonthLabel(value: string | null) {
+  if (!value) {
+    return 'date'
+  }
+
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) {
     return '---'
@@ -169,7 +177,7 @@ function parseTimeToSeconds(value: string, mode: 'duration' | 'pace') {
 }
 
 function getRaceDateTime(race: RaceTableItem) {
-  return parseRaceDateTime(race.raceDate, race.raceTime)
+  return parseRaceDateTime(race.raceDate ?? '9999-12-31', race.raceTime)
 }
 
 function isRegisteredRace(race: RaceTableItem) {
@@ -240,7 +248,7 @@ function filterYearsByRaceName(years: RaceTableYearGroup[], search: string) {
 
 function createEditFormState(race: RaceTableItem): EditFormState {
   return {
-    raceDate: race.raceDate,
+    raceDate: race.raceDate ?? '',
     name: race.name,
     location: race.location ?? '',
     raceTypeId: race.raceTypeId ?? '',
@@ -254,6 +262,7 @@ export function RacesTableView({ token, showAllYears, filters, refreshKey = 0 }:
   const currentYear = new Date().getFullYear()
   const [now, setNow] = useState(() => new Date())
   const [years, setYears] = useState<RaceTableYearGroup[]>([])
+  const [undatedRaces, setUndatedRaces] = useState<RaceTableItem[]>([])
   const [raceTypes, setRaceTypes] = useState<RaceTypeOption[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -272,6 +281,17 @@ export function RacesTableView({ token, showAllYears, filters, refreshKey = 0 }:
     () => filterYearsByRaceName(visibleYears, filters.search),
     [filters.search, visibleYears],
   )
+
+  const filteredUndatedRaces = useMemo(() => {
+    if (!filters.statuses.includes('IN_LIST')) {
+      return []
+    }
+
+    const normalizedSearch = filters.search.trim().toLowerCase()
+    return normalizedSearch
+      ? undatedRaces.filter((race) => race.name.toLowerCase().includes(normalizedSearch))
+      : undatedRaces
+  }, [filters.search, filters.statuses, undatedRaces])
 
   const visibleRaces = useMemo(
     () => filteredVisibleYears.flatMap((yearGroup) => yearGroup.races),
@@ -310,7 +330,8 @@ export function RacesTableView({ token, showAllYears, filters, refreshKey = 0 }:
           fetchRaceTypes(token),
         ])
 
-        setYears(tablePayload.years)
+        setYears(tablePayload.years ?? [])
+        setUndatedRaces(tablePayload.undatedRaces ?? [])
         setRaceTypes(raceTypesPayload)
         setErrorMessage(null)
       } catch (error) {
@@ -327,7 +348,8 @@ export function RacesTableView({ token, showAllYears, filters, refreshKey = 0 }:
     try {
       setIsLoading(true)
       const tablePayload = await fetchRaceTable(token, filters)
-      setYears(tablePayload.years)
+      setYears(tablePayload.years ?? [])
+      setUndatedRaces(tablePayload.undatedRaces ?? [])
       setErrorMessage(null)
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Unable to load races right now.')
@@ -409,15 +431,6 @@ export function RacesTableView({ token, showAllYears, filters, refreshKey = 0 }:
         <View style={styles.raceMain}>
           <View style={styles.raceHeaderRow}>
             <View style={styles.raceTitleBlock}>
-              <View style={styles.raceMetaRow}>
-                <Text style={styles.raceNumber}>#{race.raceNumber}</Text>
-                <View style={[styles.statusBadge, { backgroundColor: statusPalette.backgroundColor }]}>
-                  <Text style={[styles.statusBadgeText, { color: statusPalette.color }]}>
-                    {getRaceStatusLabel(race.raceStatus)}
-                  </Text>
-                </View>
-                <View style={styles.raceMetaSpacer} />
-              </View>
               <Text style={styles.raceTitle} numberOfLines={1} ellipsizeMode="tail">{race.name}</Text>
             </View>
           </View>
@@ -428,15 +441,24 @@ export function RacesTableView({ token, showAllYears, filters, refreshKey = 0 }:
             </View>
           </View>
 
-          <View style={styles.cardActions}>
-            <Pressable
-              style={styles.moreAction}
-              accessibilityRole="button"
-              accessibilityLabel="More actions"
-              onPress={() => setActionRace(race)}
-            >
-              <FontAwesome6 name="ellipsis-vertical" size={16} color={colors.textSecondary} />
-            </Pressable>
+          <View style={styles.statusActionsRow}>
+            <View style={styles.metricItem}>
+              <View style={[styles.statusBadge, { backgroundColor: statusPalette.backgroundColor }]}>
+                <Text style={[styles.statusBadgeText, { color: statusPalette.color }]}>
+                  {getRaceStatusLabel(race.raceStatus)}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.cardActions}>
+              <Pressable
+                style={styles.moreAction}
+                accessibilityRole="button"
+                accessibilityLabel="More actions"
+                onPress={() => setActionRace(race)}
+              >
+                <FontAwesome6 name="ellipsis-vertical" size={16} color={colors.textSecondary} />
+              </Pressable>
+            </View>
           </View>
         </View>
       </View>
@@ -461,15 +483,15 @@ export function RacesTableView({ token, showAllYears, filters, refreshKey = 0 }:
     )
   }
 
-  if (years.length === 0) {
+  if (years.length === 0 && undatedRaces.length === 0) {
     return (
       <View style={styles.stateCard}>
-        <Text style={styles.stateText}>No dated races available.</Text>
+        <Text style={styles.stateText}>No races available.</Text>
       </View>
     )
   }
 
-  if (visibleYears.length === 0) {
+  if (visibleYears.length === 0 && filteredUndatedRaces.length === 0) {
     return (
       <View style={styles.stateCard}>
         <Text style={styles.stateText}>No races available for {currentYear}.</Text>
@@ -477,7 +499,7 @@ export function RacesTableView({ token, showAllYears, filters, refreshKey = 0 }:
     )
   }
 
-  if (filteredVisibleYears.length === 0) {
+  if (filteredVisibleYears.length === 0 && filteredUndatedRaces.length === 0) {
     return (
       <View style={styles.stateCard}>
         <Text style={styles.stateText}>No races match the current filters.</Text>
@@ -517,6 +539,19 @@ export function RacesTableView({ token, showAllYears, filters, refreshKey = 0 }:
           </View>
         </View>
       ))}
+
+      {filteredUndatedRaces.length > 0 ? (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>In List</Text>
+            <View style={styles.sectionRule} />
+          </View>
+
+          <View style={styles.sectionBody}>
+            {filteredUndatedRaces.map((race) => renderRaceCard(race))}
+          </View>
+        </View>
+      ) : null}
 
       <Modal
         visible={actionRace != null}
@@ -817,22 +852,8 @@ const styles = StyleSheet.create({
   raceTitleBlock: {
     gap: 2,
   },
-  raceMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  raceMetaSpacer: {
-    flex: 1,
-  },
-  raceNumber: {
-    color: colors.teal,
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 0.72,
-    textTransform: 'uppercase',
-  },
   statusBadge: {
+    alignSelf: 'flex-start',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,
@@ -852,6 +873,12 @@ const styles = StyleSheet.create({
   metricsGrid: {
     gap: 4,
   },
+  statusActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
   metricItem: {
     gap: 4,
   },
@@ -869,7 +896,6 @@ const styles = StyleSheet.create({
   },
   cardActions: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
     gap: 8,
   },
   moreAction: {

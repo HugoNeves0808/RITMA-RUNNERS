@@ -11,12 +11,13 @@ This file keeps a short, slightly more detailed record of what was done in each 
 
 ## Entries
 
-### `current` - Add race creation flow across backend, web, and mobile
+### `current` - Expand race creation and in-list handling across backend, web, and mobile
 
-- Added an authenticated `POST /api/races` backend flow that creates the base race row plus optional `user_race_results` and `user_race_analysis` data in a single request, with validation for required race fields, numeric values, and optional race-type ownership.
-- Extended the web `Races` header with a compact orange add button that opens a right-side creation drawer with `Race data`, `Race results`, and `Race analysis` tabs, plus confirmation before closing with unsaved changes and styling aligned to the product's orange-and-black race management accents.
-- Brought the same add-race capability to mobile through a dedicated `Add race` modal with the same three tabs, unsaved-changes confirmation, required-field indicators, and guided date/time selection instead of free-text entry.
-- Wired both clients so creating a race refreshes the current `Table` or `Calendar` view immediately after save, keeping newly created races visible without a manual reload.
+- Extended the authenticated `POST /api/races` backend flow so race creation now supports optional `team`, `circuit`, and `shoe` relations, validates ownership for those linked entities, and allows `raceDate` to stay empty only when the selected `raceStatus` is `IN_LIST`.
+- Added a new authenticated `GET /api/races/create/options` backend endpoint that returns the race-creation selectors needed by the clients in a single response, including available `raceTypes`, `teams`, `circuits`, and `shoes`.
+- Refined the web add-race drawer with stronger create-time validation, automatic time formatting and pace calculation, status-aware required indicators, field-level validation feedback, inline podium checkbox placement, contextual help for ambiguous fields, and richer filtering/display rules for `IN_LIST` races.
+- Brought the same creation parity to mobile by extending the add-race modal with the same three-tab flow, linked selectors for `team`, `circuit`, and `shoe`, guided date/time input, info helpers, automatic time formatting, and `IN_LIST` behavior aligned with the web client.
+- Updated both web and mobile race-table views so undated `IN_LIST` races no longer behave like missing data, remain hidden by default unless filtered by `IN_LIST`, and use more user-friendly date-badge copy when no race date exists yet.
 
 ### `c447603` - Refine races filters, actions, and admin entry cleanup across web and mobile
 

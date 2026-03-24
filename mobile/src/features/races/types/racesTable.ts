@@ -1,7 +1,7 @@
 export type RaceTableItem = {
   id: string
   raceNumber: number
-  raceDate: string
+  raceDate: string | null
   raceTime: string | null
   raceStatus?: string | null
   name: string
@@ -20,11 +20,19 @@ export type RaceTableYearGroup = {
 
 export type RaceTablePayload = {
   years: RaceTableYearGroup[]
+  undatedRaces: RaceTableItem[]
 }
 
 export type RaceTypeOption = {
   id: string
   name: string
+}
+
+export type RaceCreateOptions = {
+  raceTypes: RaceTypeOption[]
+  teams: RaceTypeOption[]
+  circuits: RaceTypeOption[]
+  shoes: RaceTypeOption[]
 }
 
 export type UpdateRaceTableItemPayload = {
@@ -40,10 +48,12 @@ export type UpdateRaceTableItemPayload = {
 export type CreateRacePayload = {
   race: {
     raceStatus: string
-    raceDate: string
+    raceDate: string | null
     raceTime: string | null
     name: string
     location: string | null
+    teamId: string | null
+    circuitId: string | null
     raceTypeId: string | null
     realKm: number | null
     elevation: number | null
@@ -53,6 +63,7 @@ export type CreateRacePayload = {
     officialTimeSeconds: number | null
     chipTimeSeconds: number | null
     pacePerKmSeconds: number | null
+    shoeId: string | null
     generalClassification: number | null
     isGeneralClassificationPodium: boolean
     ageGroupClassification: number | null

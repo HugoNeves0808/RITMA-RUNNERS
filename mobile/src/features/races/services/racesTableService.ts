@@ -1,5 +1,6 @@
 import { apiRequest } from '../../../services/apiClient'
 import type {
+  RaceCreateOptions,
   CreateRacePayload,
   CreateRaceResponse,
   RaceTableItem,
@@ -22,6 +23,12 @@ export function fetchRaceTable(token: string, filters?: RaceFilters) {
 
 export function fetchRaceTypes(token: string) {
   return apiRequest<RaceTypeOption[]>('/api/races/types', {
+    token,
+  })
+}
+
+export function fetchRaceCreateOptions(token: string) {
+  return apiRequest<RaceCreateOptions>('/api/races/create/options', {
     token,
   })
 }

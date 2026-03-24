@@ -28,7 +28,7 @@ import type { RaceTableItem, RaceTableYearGroup, RaceTypeOption } from '../types
 import styles from './RacesTableView.module.css'
 
 type EditRaceFormValues = {
-  raceDate: dayjs.Dayjs
+  raceDate?: dayjs.Dayjs
   name: string
   location?: string
   raceTypeId?: string
@@ -37,7 +37,11 @@ type EditRaceFormValues = {
   pacePerKm?: string
 }
 
-function getDayLabel(value: string) {
+function getDayLabel(value: string | null) {
+  if (!value) {
+    return 'No'
+  }
+
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) {
     return '--'
@@ -46,7 +50,11 @@ function getDayLabel(value: string) {
   return String(date.getDate()).padStart(2, '0')
 }
 
-function getCompactMonthLabel(value: string) {
+function getCompactMonthLabel(value: string | null) {
+  if (!value) {
+    return 'date'
+  }
+
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) {
     return '---'
@@ -188,6 +196,10 @@ function groupRacesByMonth(races: RaceTableItem[]) {
   const monthMap = new Map<string, RaceTableItem[]>()
 
   races.forEach((race) => {
+    if (!race.raceDate) {
+      return
+    }
+
     const key = race.raceDate.slice(0, 7)
     const currentMonthRaces = monthMap.get(key)
     if (currentMonthRaces) {
@@ -288,6 +300,7 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
   const currentYear = dayjs().year()
   const [now, setNow] = useState(() => dayjs())
   const [years, setYears] = useState<RaceTableYearGroup[]>([])
+  const [undatedRaces, setUndatedRaces] = useState<RaceTableItem[]>([])
   const [raceTypes, setRaceTypes] = useState<RaceTypeOption[]>([])
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -300,6 +313,12 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
     ? years
     : years.filter((yearGroup) => yearGroup.year === currentYear)
   const filteredVisibleYears = filterYearsByRaceName(visibleYears, filters.search)
+  const normalizedSearch = filters.search.trim().toLowerCase()
+  const filteredUndatedRaces = !filters.statuses.includes('IN_LIST')
+    ? []
+    : normalizedSearch
+      ? undatedRaces.filter((race) => race.name.toLowerCase().includes(normalizedSearch))
+      : undatedRaces
   const visibleRaces = filteredVisibleYears.flatMap((yearGroup) => yearGroup.races)
   const weekUpcomingRaces = visibleRaces
     .filter((race) => isUpcomingRace(race, now))
@@ -312,6 +331,7 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
   const loadTableData = async () => {
     if (!token) {
       setYears([])
+      setUndatedRaces([])
       setRaceTypes([])
       setIsLoading(false)
       return
@@ -324,7 +344,8 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
         fetchRaceTypes(token),
       ])
 
-      setYears(tablePayload.years)
+      setYears(tablePayload.years ?? [])
+      setUndatedRaces(tablePayload.undatedRaces ?? [])
       setRaceTypes(raceTypePayload)
       setError(null)
     } catch (loadError) {
@@ -349,7 +370,7 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
   const handleOpenEdit = (race: RaceTableItem) => {
     setEditingRace(race)
     form.setFieldsValue({
-      raceDate: dayjs(race.raceDate),
+      raceDate: race.raceDate ? dayjs(race.raceDate) : undefined,
       name: race.name,
       location: race.location ?? '',
       raceTypeId: race.raceTypeId ?? undefined,
@@ -394,7 +415,7 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
       await updateRaceTableItem(
         editingRace.id,
         {
-          raceDate: values.raceDate.format('YYYY-MM-DD'),
+          raceDate: values.raceDate!.format('YYYY-MM-DD'),
           name: values.name.trim(),
           location: values.location?.trim() ? values.location.trim() : null,
           raceTypeId: values.raceTypeId ?? null,
@@ -455,19 +476,19 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
         <Alert type="error" showIcon message="Could not load the race table" description={error} />
       ) : null}
 
-      {!isLoading && years.length === 0 ? (
+      {!isLoading && years.length === 0 && undatedRaces.length === 0 ? (
         <div className={styles.emptyWrap}>
-          <Empty description="No dated races available." />
+          <Empty description="No races available." />
         </div>
       ) : null}
 
-      {!isLoading && years.length > 0 && visibleYears.length === 0 ? (
+      {!isLoading && years.length > 0 && visibleYears.length === 0 && filteredUndatedRaces.length === 0 ? (
         <div className={styles.emptyWrap}>
           <Empty description={`No races available for ${currentYear}.`} />
         </div>
       ) : null}
 
-      {!isLoading && visibleYears.length > 0 && filteredVisibleYears.length === 0 ? (
+      {!isLoading && filteredVisibleYears.length === 0 && filteredUndatedRaces.length === 0 && (visibleYears.length > 0 || undatedRaces.length > 0) ? (
         <div className={styles.emptyWrap}>
           <Empty description="No races match the current filters." />
         </div>
@@ -495,20 +516,17 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
                         <span className={styles.dateBadgeMonth}>{getCompactMonthLabel(race.raceDate)}</span>
                       </div>
 
-                      <div className={styles.raceContent}>
-                        <div className={styles.raceTopRow}>
-                          <div className={styles.raceTitleBlock}>
-                            <div className={styles.raceMetaRow}>
-                              <span className={styles.raceNumber}>#{race.raceNumber}</span>
-                              <span className={`${styles.raceStatusBadge} ${getRaceStatusClassName(race.raceStatus)}`.trim()}>
-                                {getRaceStatusLabel(race.raceStatus)}
-                              </span>
+                        <div className={styles.raceContent}>
+                          <div className={styles.raceTopRow}>
+                            <div className={styles.raceTitleBlock}>
+                              <h4 className={styles.raceCardTitle}>{race.name}</h4>
                             </div>
-                            <h4 className={styles.raceCardTitle}>{race.name}</h4>
-                          </div>
 
                           <div className={styles.raceTopMeta}>
                             {countdown ? <span className={styles.countdownBadge}>{countdown}</span> : null}
+                            <span className={`${styles.raceStatusBadge} ${getRaceStatusClassName(race.raceStatus)}`.trim()}>
+                              {getRaceStatusLabel(race.raceStatus)}
+                            </span>
                             <Dropdown
                               menu={getRaceActionsMenu(race)}
                               trigger={['click']}
@@ -603,17 +621,14 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
                         <div className={styles.raceContent}>
                           <div className={styles.raceTopRow}>
                             <div className={styles.raceTitleBlock}>
-                              <div className={styles.raceMetaRow}>
-                                <span className={styles.raceNumber}>#{race.raceNumber}</span>
-                                <span className={`${styles.raceStatusBadge} ${getRaceStatusClassName(race.raceStatus)}`.trim()}>
-                                  {getRaceStatusLabel(race.raceStatus)}
-                                </span>
-                              </div>
                               <h4 className={styles.raceCardTitle}>{race.name}</h4>
                             </div>
 
                             <div className={styles.raceTopMeta}>
                               {isUpcomingRace(race, now) && countdown ? <span className={styles.countdownBadge}>{countdown}</span> : null}
+                              <span className={`${styles.raceStatusBadge} ${getRaceStatusClassName(race.raceStatus)}`.trim()}>
+                                {getRaceStatusLabel(race.raceStatus)}
+                              </span>
                               <Dropdown
                                 menu={getRaceActionsMenu(race)}
                                 trigger={['click']}
@@ -681,6 +696,98 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
           </div>
         </section>
       )) : null}
+
+      {!isLoading && filteredUndatedRaces.length > 0 ? (
+        <section className={styles.yearSection}>
+          <div className={styles.yearHeader}>
+            <h3 className={styles.yearTitle}>In List</h3>
+          </div>
+
+          <div className={styles.yearCard}>
+            <div className={styles.monthSection}>
+              <div className={styles.raceList}>
+                {filteredUndatedRaces.map((race) => (
+                  <article key={race.id} className={styles.raceRow}>
+                    <div className={styles.dateBadge}>
+                      <span className={styles.dateBadgeDay}>{getDayLabel(race.raceDate)}</span>
+                      <span className={styles.dateBadgeMonth}>{getCompactMonthLabel(race.raceDate)}</span>
+                    </div>
+
+                    <div className={styles.raceContent}>
+                      <div className={styles.raceTopRow}>
+                        <div className={styles.raceTitleBlock}>
+                          <h4 className={styles.raceCardTitle}>{race.name}</h4>
+                        </div>
+
+                        <div className={styles.raceTopMeta}>
+                          <span className={`${styles.raceStatusBadge} ${getRaceStatusClassName(race.raceStatus)}`.trim()}>
+                            {getRaceStatusLabel(race.raceStatus)}
+                          </span>
+                          <Dropdown
+                            menu={getRaceActionsMenu(race)}
+                            trigger={['click']}
+                            placement="bottomRight"
+                          >
+                            <Button
+                              type="text"
+                              className={styles.moreAction}
+                              aria-label="Race actions"
+                              icon={<FontAwesomeIcon icon={faEllipsisVertical} />}
+                            />
+                          </Dropdown>
+                        </div>
+                      </div>
+
+                      <div className={styles.raceBottomRow}>
+                        <div className={styles.metricsGrid}>
+                          <div className={styles.metricItem}>
+                            <span className={styles.metricLabel}>Location</span>
+                            <span className={styles.metricValue}>
+                              {race.location ?? <span className={styles.emptyValue}>-</span>}
+                            </span>
+                          </div>
+
+                          <div className={styles.metricItem}>
+                            <span className={styles.metricLabel}>Race type</span>
+                            <span className={styles.metricValue}>
+                              {race.raceTypeName ?? <span className={styles.emptyValue}>-</span>}
+                            </span>
+                          </div>
+
+                          <div className={styles.metricItem}>
+                            <span className={styles.metricLabel}>Official time</span>
+                            <span className={styles.metricValue}>{formatDuration(race.officialTimeSeconds)}</span>
+                          </div>
+
+                          <div className={styles.metricItem}>
+                            <span className={styles.metricLabel}>Chip time</span>
+                            <span className={styles.metricValue}>{formatDuration(race.chipTimeSeconds)}</span>
+                          </div>
+
+                          <div className={styles.metricItem}>
+                            <span className={styles.metricLabel}>Pace per km</span>
+                            <span className={styles.metricValue}>{formatPace(race.pacePerKmSeconds)}</span>
+                          </div>
+                        </div>
+
+                        <div className={styles.cardActions}>
+                          <Button
+                            type="text"
+                            className={styles.iconAction}
+                            title="View details"
+                            aria-label="View details"
+                            icon={<FontAwesomeIcon icon={faEye} />}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <Modal
         title="Edit race"

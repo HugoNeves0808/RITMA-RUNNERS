@@ -129,7 +129,7 @@
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
   min-width: 0;
 }
 
@@ -155,23 +155,8 @@
   min-width: 0;
 }
 
-.raceMetaRow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.raceNumber {
-  color: #0f766e;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
 .raceCardTitle {
-  margin: 0;
+  margin: 4px 0 0;
   color: #101828;
   font-size: 20px;
   font-weight: 900;
@@ -251,6 +236,7 @@
   align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
+  margin-bottom: 4px;
 }
 
 .metricsGrid {

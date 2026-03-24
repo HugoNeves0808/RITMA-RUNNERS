@@ -22,6 +22,7 @@ import com.ritma.runners.auth.dto.JwtAuthenticatedUser;
 import com.ritma.runners.race.dto.CreateRaceRequest;
 import com.ritma.runners.race.dto.CreateRaceResponse;
 import com.ritma.runners.race.dto.DeleteRacesRequest;
+import com.ritma.runners.race.dto.RaceCreateOptionsResponse;
 import com.ritma.runners.race.dto.RaceFilterOptionsResponse;
 import com.ritma.runners.race.dto.RaceQueryFilters;
 import com.ritma.runners.race.dto.RaceTableItemResponse;
@@ -54,6 +55,11 @@ public class RaceTableController {
     @GetMapping("/types")
     public java.util.List<RaceTypeOptionResponse> getRaceTypes(@AuthenticationPrincipal JwtAuthenticatedUser user) {
         return raceService.getRaceTypes(requireAuthenticatedUserId(user));
+    }
+
+    @GetMapping("/create/options")
+    public RaceCreateOptionsResponse getCreateOptions(@AuthenticationPrincipal JwtAuthenticatedUser user) {
+        return raceService.getCreateOptions(requireAuthenticatedUserId(user));
     }
 
     @GetMapping("/filters/options")

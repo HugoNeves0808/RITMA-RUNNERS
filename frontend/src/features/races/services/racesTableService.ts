@@ -1,5 +1,6 @@
 import { apiDeleteWithToken, apiGet, apiPostWithToken, apiPutWithToken } from '../../../services/apiClient'
 import type {
+  RaceCreateOptions,
   CreateRacePayload,
   CreateRaceResponse,
   RaceTableItem,
@@ -22,6 +23,12 @@ export function fetchRaceTable(token: string, filters?: RaceFilters) {
 
 export function fetchRaceTypes(token: string) {
   return apiGet<RaceTypeOption[]>('/api/races/types', token, {
+    suppressUnauthorized: true,
+  })
+}
+
+export function fetchRaceCreateOptions(token: string) {
+  return apiGet<RaceCreateOptions>('/api/races/create/options', token, {
     suppressUnauthorized: true,
   })
 }

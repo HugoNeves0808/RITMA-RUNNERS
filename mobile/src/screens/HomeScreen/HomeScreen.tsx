@@ -13,11 +13,12 @@ import {
   getRaceStatusColor,
   type RaceFilterOptions,
   type RaceFilters,
+  type RaceCreateOptions,
   type RacesCalendarMode,
   type RacesViewMode,
 } from '../../features/races'
 import { colors } from '../../theme/colors'
-import { fetchRaceTable, fetchRaceTypes } from '../../features/races/services/racesTableService'
+import { fetchRaceCreateOptions, fetchRaceTable } from '../../features/races/services/racesTableService'
 
 type HomeScreenProps = {
   token: string
@@ -30,22 +31,30 @@ export function HomeScreen({ token }: HomeScreenProps) {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false)
   const [filters, setFilters] = useState<RaceFilters>(EMPTY_RACE_FILTERS)
   const [filterOptions, setFilterOptions] = useState<RaceFilterOptions>({ years: [], raceTypes: [] })
+  const [createOptions, setCreateOptions] = useState<RaceCreateOptions>({
+    raceTypes: [],
+    teams: [],
+    circuits: [],
+    shoes: [],
+  })
   const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
     const loadFilterOptions = async () => {
       try {
-        const [tablePayload, raceTypes] = await Promise.all([
+        const [tablePayload, nextCreateOptions] = await Promise.all([
           fetchRaceTable(token),
-          fetchRaceTypes(token),
+          fetchRaceCreateOptions(token),
         ])
 
         setFilterOptions({
           years: tablePayload.years.map((yearGroup) => yearGroup.year),
-          raceTypes,
+          raceTypes: nextCreateOptions.raceTypes,
         })
+        setCreateOptions(nextCreateOptions)
       } catch {
         setFilterOptions({ years: [], raceTypes: [] })
+        setCreateOptions({ raceTypes: [], teams: [], circuits: [], shoes: [] })
       }
     }
 
@@ -63,7 +72,7 @@ export function HomeScreen({ token }: HomeScreenProps) {
           <Text style={styles.title}>Races</Text>
           <AddRaceModal
             token={token}
-            raceTypes={filterOptions.raceTypes}
+            createOptions={createOptions}
             onCreated={() => setRefreshKey((current) => current + 1)}
           />
         </View>
