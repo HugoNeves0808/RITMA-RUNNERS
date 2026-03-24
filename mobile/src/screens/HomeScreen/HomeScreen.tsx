@@ -38,6 +38,7 @@ export function HomeScreen({ token }: HomeScreenProps) {
     shoes: [],
   })
   const [refreshKey, setRefreshKey] = useState(0)
+  const [openFilterDropdown, setOpenFilterDropdown] = useState<'statuses' | 'raceTypes' | null>(null)
 
   useEffect(() => {
     const loadFilterOptions = async () => {
@@ -115,9 +116,15 @@ export function HomeScreen({ token }: HomeScreenProps) {
         visible={isFiltersOpen}
         transparent
         animationType="fade"
-        onRequestClose={() => setIsFiltersOpen(false)}
+        onRequestClose={() => {
+          setIsFiltersOpen(false)
+          setOpenFilterDropdown(null)
+        }}
       >
-        <Pressable style={styles.modalBackdrop} onPress={() => setIsFiltersOpen(false)}>
+        <Pressable style={styles.modalBackdrop} onPress={() => {
+          setIsFiltersOpen(false)
+          setOpenFilterDropdown(null)
+        }}>
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{selectedView === 'calendar' ? 'Races calendar filters' : 'Races table filters'}</Text>
@@ -198,59 +205,132 @@ export function HomeScreen({ token }: HomeScreenProps) {
 
             <View style={styles.filterGroup}>
               <Text style={styles.filterLabel}>Race status</Text>
-              <View style={styles.filterOptionsWrap}>
-                {RACE_STATUS_OPTIONS.map((statusOption) => {
-                  const isActive = filters.statuses.includes(statusOption.value)
-                  const color = getRaceStatusColor(statusOption.value)
-                  const backgroundColor = getRaceStatusBackgroundColor(statusOption.value)
+              <View style={styles.dropdownWrap}>
+                <Pressable
+                  style={styles.dropdownTrigger}
+                  onPress={() => setOpenFilterDropdown((current) => (current === 'statuses' ? null : 'statuses'))}
+                >
+                  <View style={styles.dropdownTriggerContent}>
+                    {filters.statuses[0] ? (
+                      <View style={[styles.filterOptionDot, { backgroundColor: getRaceStatusColor(filters.statuses[0]) }]} />
+                    ) : null}
+                    <Text style={[styles.dropdownTriggerLabel, filters.statuses.length === 0 ? styles.dropdownTriggerPlaceholder : null]}>
+                      {filters.statuses.length === 1
+                        ? (RACE_STATUS_OPTIONS.find((option) => option.value === filters.statuses[0])?.label ?? 'Race status')
+                        : filters.statuses.length > 1
+                          ? `${filters.statuses.length} statuses`
+                        : 'All statuses'}
+                    </Text>
+                  </View>
+                  <FontAwesome6 name={openFilterDropdown === 'statuses' ? 'angle-up' : 'angle-down'} size={16} color={colors.textSecondary} />
+                </Pressable>
 
-                  return (
+                {openFilterDropdown === 'statuses' ? (
+                  <View style={styles.dropdownMenu}>
                     <Pressable
-                      key={statusOption.value}
-                      style={[
-                        styles.filterOptionChip,
-                        isActive ? { backgroundColor, borderColor: backgroundColor } : null,
-                      ]}
-                      onPress={() => setFilters((current) => ({
-                        ...current,
-                        statuses: current.statuses.includes(statusOption.value)
-                          ? current.statuses.filter((value) => value !== statusOption.value)
-                          : [...current.statuses, statusOption.value],
-                      }))}
+                      style={[styles.dropdownOption, filters.statuses.length === 0 ? styles.dropdownOptionActive : null]}
+                      onPress={() => {
+                        setFilters((current) => ({ ...current, statuses: [] }))
+                        setOpenFilterDropdown(null)
+                      }}
                     >
-                      <View style={[styles.filterOptionDot, { backgroundColor: color }]} />
-                      <Text style={[styles.filterOptionLabel, isActive ? { color } : null]}>
-                        {statusOption.label}
+                      <Text style={[styles.dropdownOptionLabel, filters.statuses.length === 0 ? styles.dropdownOptionLabelActive : null]}>
+                        All statuses
                       </Text>
                     </Pressable>
-                  )
-                })}
+                    {RACE_STATUS_OPTIONS.map((statusOption) => {
+                      const isActive = filters.statuses.includes(statusOption.value)
+                      const color = getRaceStatusColor(statusOption.value)
+
+                      return (
+                        <Pressable
+                          key={statusOption.value}
+                          style={[styles.dropdownOption, isActive ? styles.dropdownOptionActive : null]}
+                          onPress={() => {
+                            setFilters((current) => ({
+                              ...current,
+                              statuses: current.statuses.includes(statusOption.value)
+                                ? current.statuses.filter((value) => value !== statusOption.value)
+                                : [...current.statuses, statusOption.value],
+                            }))
+                          }}
+                        >
+                          <View style={styles.dropdownOptionContent}>
+                            <View style={[styles.filterOptionDot, { backgroundColor: color }]} />
+                            <Text style={[styles.dropdownOptionLabel, isActive ? styles.dropdownOptionLabelActive : null]}>
+                              {statusOption.label}
+                            </Text>
+                            {isActive ? (
+                              <FontAwesome6 name="check" size={12} color={colors.textPrimary} style={styles.dropdownOptionCheck} />
+                            ) : null}
+                          </View>
+                        </Pressable>
+                      )
+                    })}
+                  </View>
+                ) : null}
               </View>
             </View>
 
             <View style={styles.filterGroup}>
               <Text style={styles.filterLabel}>Race types</Text>
-              <View style={styles.filterOptionsWrap}>
-                {filterOptions.raceTypes.map((raceType) => {
-                  const isActive = filters.raceTypeIds.includes(raceType.id)
+              <View style={styles.dropdownWrap}>
+                <Pressable
+                  style={styles.dropdownTrigger}
+                  onPress={() => setOpenFilterDropdown((current) => (current === 'raceTypes' ? null : 'raceTypes'))}
+                >
+                  <Text style={[styles.dropdownTriggerLabel, filters.raceTypeIds.length === 0 ? styles.dropdownTriggerPlaceholder : null]}>
+                    {filters.raceTypeIds.length === 1
+                      ? (filterOptions.raceTypes.find((raceType) => raceType.id === filters.raceTypeIds[0])?.name ?? 'Race type')
+                      : filters.raceTypeIds.length > 1
+                        ? `${filters.raceTypeIds.length} race types`
+                      : 'All race types'}
+                  </Text>
+                  <FontAwesome6 name={openFilterDropdown === 'raceTypes' ? 'angle-up' : 'angle-down'} size={16} color={colors.textSecondary} />
+                </Pressable>
 
-                  return (
+                {openFilterDropdown === 'raceTypes' ? (
+                  <View style={styles.dropdownMenu}>
                     <Pressable
-                      key={raceType.id}
-                      style={[styles.filterOptionChip, isActive ? styles.raceTypeChipActive : null]}
-                      onPress={() => setFilters((current) => ({
-                        ...current,
-                        raceTypeIds: current.raceTypeIds.includes(raceType.id)
-                          ? current.raceTypeIds.filter((value) => value !== raceType.id)
-                          : [...current.raceTypeIds, raceType.id],
-                      }))}
+                      style={[styles.dropdownOption, filters.raceTypeIds.length === 0 ? styles.dropdownOptionActive : null]}
+                      onPress={() => {
+                        setFilters((current) => ({ ...current, raceTypeIds: [] }))
+                        setOpenFilterDropdown(null)
+                      }}
                     >
-                      <Text style={[styles.filterOptionLabel, isActive ? styles.raceTypeChipLabelActive : null]}>
-                        {raceType.name}
+                      <Text style={[styles.dropdownOptionLabel, filters.raceTypeIds.length === 0 ? styles.dropdownOptionLabelActive : null]}>
+                        All race types
                       </Text>
                     </Pressable>
-                  )
-                })}
+                    {filterOptions.raceTypes.map((raceType) => {
+                      const isActive = filters.raceTypeIds.includes(raceType.id)
+
+                      return (
+                        <Pressable
+                          key={raceType.id}
+                          style={[styles.dropdownOption, isActive ? styles.dropdownOptionActive : null]}
+                          onPress={() => {
+                            setFilters((current) => ({
+                              ...current,
+                              raceTypeIds: current.raceTypeIds.includes(raceType.id)
+                                ? current.raceTypeIds.filter((value) => value !== raceType.id)
+                                : [...current.raceTypeIds, raceType.id],
+                            }))
+                          }}
+                        >
+                          <View style={styles.dropdownOptionContent}>
+                            <Text style={[styles.dropdownOptionLabel, isActive ? styles.dropdownOptionLabelActive : null]}>
+                              {raceType.name}
+                            </Text>
+                            {isActive ? (
+                              <FontAwesome6 name="check" size={12} color={colors.textPrimary} style={styles.dropdownOptionCheck} />
+                            ) : null}
+                          </View>
+                        </Pressable>
+                      )
+                    })}
+                  </View>
+                ) : null}
               </View>
             </View>
           </View>
@@ -392,6 +472,68 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+  },
+  dropdownWrap: {
+    gap: 8,
+  },
+  dropdownTrigger: {
+    minHeight: 46,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 24, 40, 0.08)',
+    borderRadius: 14,
+    backgroundColor: colors.cardBackground,
+    paddingHorizontal: 14,
+  },
+  dropdownTriggerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexShrink: 1,
+  },
+  dropdownTriggerLabel: {
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  dropdownTriggerPlaceholder: {
+    color: '#98a2b3',
+  },
+  dropdownMenu: {
+    borderWidth: 1,
+    borderColor: 'rgba(16, 24, 40, 0.08)',
+    borderRadius: 14,
+    backgroundColor: colors.cardBackground,
+    padding: 6,
+    gap: 2,
+  },
+  dropdownOption: {
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  dropdownOptionActive: {
+    backgroundColor: 'rgba(16, 24, 40, 0.06)',
+  },
+  dropdownOptionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dropdownOptionCheck: {
+    marginLeft: 'auto',
+  },
+  dropdownOptionLabel: {
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  dropdownOptionLabelActive: {
+    color: colors.textPrimary,
+    fontWeight: '800',
   },
   filterOptionChip: {
     flexDirection: 'row',

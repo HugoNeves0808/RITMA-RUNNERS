@@ -87,21 +87,21 @@ function getRaceStatusLabel(status: string | null | undefined) {
 function getStatusPalette(status: string | null | undefined) {
   switch (status) {
     case 'REGISTERED':
-      return { backgroundColor: 'rgba(37, 99, 235, 0.12)', color: '#1d4ed8' }
+      return { backgroundColor: 'rgba(37, 99, 235, 0.2)', color: '#1d4ed8' }
     case 'COMPLETED':
-      return { backgroundColor: 'rgba(22, 163, 74, 0.12)', color: '#15803d' }
+      return { backgroundColor: 'rgba(22, 163, 74, 0.2)', color: '#15803d' }
     case 'IN_LIST':
-      return { backgroundColor: 'rgba(245, 158, 11, 0.14)', color: '#b45309' }
+      return { backgroundColor: 'rgba(245, 158, 11, 0.24)', color: '#b45309' }
     case 'NOT_REGISTERED':
-      return { backgroundColor: 'rgba(107, 114, 128, 0.14)', color: '#4b5563' }
+      return { backgroundColor: 'rgba(107, 114, 128, 0.2)', color: '#4b5563' }
     case 'CANCELLED':
-      return { backgroundColor: 'rgba(220, 38, 38, 0.12)', color: '#b91c1c' }
+      return { backgroundColor: 'rgba(220, 38, 38, 0.2)', color: '#b91c1c' }
     case 'DID_NOT_FINISH':
-      return { backgroundColor: 'rgba(124, 58, 237, 0.12)', color: '#6d28d9' }
+      return { backgroundColor: 'rgba(124, 58, 237, 0.2)', color: '#6d28d9' }
     case 'DID_NOT_START':
-      return { backgroundColor: 'rgba(190, 24, 93, 0.12)', color: '#be185d' }
+      return { backgroundColor: 'rgba(190, 24, 93, 0.2)', color: '#be185d' }
     default:
-      return { backgroundColor: 'rgba(16, 24, 40, 0.06)', color: '#475467' }
+      return { backgroundColor: 'rgba(16, 24, 40, 0.12)', color: '#475467' }
   }
 }
 
@@ -201,20 +201,6 @@ function isUpcomingRace(race: RaceTableItem, now: Date) {
     || (raceDateTime.getTime() > now.getTime() && raceDateTime.getTime() < endOfWeek.getTime())
 }
 
-function formatCountdown(race: RaceTableItem, now: Date) {
-  const raceDateTime = getRaceDateTime(race)
-  if (raceDateTime.getTime() <= now.getTime()) {
-    return null
-  }
-
-  const diffMinutes = Math.max(Math.floor((raceDateTime.getTime() - now.getTime()) / 60000), 0)
-  const days = Math.floor(diffMinutes / (60 * 24))
-  const hours = Math.floor((diffMinutes % (60 * 24)) / 60)
-  const minutes = diffMinutes % 60
-
-  return `starts in ${String(days).padStart(2, '0')}d ${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m`
-}
-
 function getFallbackUpcomingRaces(races: RaceTableItem[], now: Date) {
   const nextRace = races
     .filter((race) => isRegisteredRace(race) && getRaceDateTime(race).getTime() > now.getTime())
@@ -281,32 +267,44 @@ export function RacesTableView({ token, showAllYears, filters, refreshKey = 0 }:
     () => filterYearsByRaceName(visibleYears, filters.search),
     [filters.search, visibleYears],
   )
+  const normalizedSearch = filters.search.trim().toLowerCase()
 
   const filteredUndatedRaces = useMemo(() => {
     if (!filters.statuses.includes('IN_LIST')) {
       return []
     }
 
-    const normalizedSearch = filters.search.trim().toLowerCase()
     return normalizedSearch
       ? undatedRaces.filter((race) => race.name.toLowerCase().includes(normalizedSearch))
       : undatedRaces
-  }, [filters.search, filters.statuses, undatedRaces])
+  }, [filters.statuses, normalizedSearch, undatedRaces])
+
+  const allVisibleRaces = useMemo(
+    () => visibleYears.flatMap((yearGroup) => yearGroup.races),
+    [visibleYears],
+  )
 
   const visibleRaces = useMemo(
     () => filteredVisibleYears.flatMap((yearGroup) => yearGroup.races),
     [filteredVisibleYears],
   )
 
-  const upcomingRaces = useMemo(() => {
-    const weekUpcomingRaces = visibleRaces
+  const baseUpcomingRaces = useMemo(() => {
+    const weekUpcomingRaces = allVisibleRaces
       .filter((race) => isUpcomingRace(race, now))
       .sort((left, right) => getRaceDateTime(left).getTime() - getRaceDateTime(right).getTime())
 
     return weekUpcomingRaces.length > 0
       ? weekUpcomingRaces
-      : getFallbackUpcomingRaces(visibleRaces, now)
-  }, [now, visibleRaces])
+      : getFallbackUpcomingRaces(allVisibleRaces, now)
+  }, [allVisibleRaces, now])
+
+  const upcomingRaces = useMemo(
+    () => (normalizedSearch
+      ? baseUpcomingRaces.filter((race) => race.name.toLowerCase().includes(normalizedSearch))
+      : baseUpcomingRaces),
+    [baseUpcomingRaces, normalizedSearch],
+  )
 
   const regularYears = useMemo(
     () => removeUpcomingRaces(filteredVisibleYears, new Set(upcomingRaces.map((race) => race.id))),
@@ -422,7 +420,7 @@ export function RacesTableView({ token, showAllYears, filters, refreshKey = 0 }:
     const statusPalette = getStatusPalette(race.raceStatus)
 
     return (
-      <View key={race.id} style={[styles.raceCard, highlighted ? styles.raceCardHighlighted : null]}>
+      <View key={race.id} style={[styles.raceCard, { backgroundColor: statusPalette.backgroundColor }, highlighted ? styles.raceCardHighlighted : null]}>
         <View style={styles.dateBadge}>
           <Text style={styles.dateBadgeDay}>{getDayLabel(race.raceDate)}</Text>
           <Text style={styles.dateBadgeMonth}>{getCompactMonthLabel(race.raceDate)}</Text>
@@ -512,13 +510,8 @@ export function RacesTableView({ token, showAllYears, filters, refreshKey = 0 }:
       {upcomingRaces.length > 0 ? (
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Coming Up</Text>
+            <Text style={[styles.sectionTitle, styles.highlightSectionTitle]}>Coming Up</Text>
             <View style={styles.sectionRule} />
-            {formatCountdown(upcomingRaces[0], now) ? (
-              <Text style={styles.sectionCountdown}>
-                {formatCountdown(upcomingRaces[0], now)}
-              </Text>
-            ) : null}
           </View>
 
           <View style={styles.sectionBody}>
@@ -530,7 +523,7 @@ export function RacesTableView({ token, showAllYears, filters, refreshKey = 0 }:
       {regularYears.map((yearGroup) => (
         <View key={yearGroup.year} style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>{yearGroup.year}</Text>
+            <Text style={[styles.sectionTitle, styles.yearSectionTitle]}>{yearGroup.year}</Text>
             <View style={styles.sectionRule} />
           </View>
 
@@ -543,7 +536,7 @@ export function RacesTableView({ token, showAllYears, filters, refreshKey = 0 }:
       {filteredUndatedRaces.length > 0 ? (
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>In List</Text>
+            <Text style={[styles.sectionTitle, styles.yearSectionTitle]}>In List</Text>
             <View style={styles.sectionRule} />
           </View>
 
@@ -757,17 +750,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-  sectionCountdown: {
-    marginLeft: 'auto',
-    color: '#c2410c',
-    fontSize: 11,
-    fontWeight: '800',
-    textTransform: 'lowercase',
-  },
   sectionTitle: {
     color: colors.textPrimary,
-    fontSize: 26,
+    fontSize: 18,
     fontWeight: '800',
+    lineHeight: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+  highlightSectionTitle: {
+    backgroundColor: 'rgba(249, 115, 22, 0.14)',
+  },
+  yearSectionTitle: {
+    backgroundColor: 'rgba(16, 24, 40, 0.06)',
   },
   sectionRule: {
     flex: 1,
@@ -810,13 +807,10 @@ const styles = StyleSheet.create({
     gap: 10,
     padding: 14,
     borderRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(16, 24, 40, 0.08)',
     backgroundColor: colors.cardBackground,
   },
   raceCardHighlighted: {
-    borderColor: 'rgba(249, 115, 22, 0.22)',
-    backgroundColor: 'rgba(255, 249, 244, 0.98)',
+    backgroundColor: 'rgba(255, 237, 213, 0.98)',
   },
   dateBadge: {
     width: 74,
@@ -824,8 +818,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 2,
     borderRadius: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(16, 24, 40, 0.08)',
     backgroundColor: 'rgba(248, 250, 252, 0.98)',
     paddingVertical: 12,
     paddingHorizontal: 6,

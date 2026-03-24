@@ -21,6 +21,8 @@ This file keeps a short, slightly more detailed record of what was done in each 
 - Added authenticated option-management endpoints for user-owned `race types`, `teams`, `circuits`, and `shoes`, including inline create, rename, delete, usage inspection, and detach-then-delete flows when an option is already linked to race records.
 - Reworked the web create-race option pickers so each managed selector now opens lightweight in-context management modals, uses product-native confirmation modals instead of browser dialogs, and keeps the option lists synchronized immediately after changes.
 - Brought the same managed-option flow to mobile by adding inline management actions beside the `race type`, `team`, `circuit`, and `shoe` selectors, native app modals for create/edit/delete confirmation, and live refresh of local create options and race-type filters.
+- Refined both web and mobile `Races` table presentation by removing leftover timer noise from `Coming Up`, improving section hierarchy between `Coming Up`, yearly groups, and `In List`, and simplifying card chrome by dropping borders and relying more on status-driven fills.
+- Updated the mobile `Races` filters sheet so `Race status` and `Race types` now use dropdown-based selection instead of chip walls, while keeping `Scope` as the existing switcher and preserving multi-select behavior for both dropdown filters.
 
 ### `c447603` - Refine races filters, actions, and admin entry cleanup across web and mobile
 

@@ -95,6 +95,7 @@ Authenticated client shell status:
 - web `Races` create flows now also let the user manage `race types`, `teams`, `circuits`, and `shoes` directly inside the creation UI, including inline create, edit, delete, usage inspection, and product-native confirmation modals
 - mobile `Races` now mirrors the same top-level switcher pattern and renders real monthly and yearly calendars backed by the same authenticated race data, with a compact per-day monthly summary and a single-column yearly overview adapted for smaller screens
 - mobile `Races` also includes a real table mode with a compact card layout, the same `Coming Up` weekly logic for registered races, a shared race-filters sheet for both table and calendar, and a three-dot action menu on each race card
+- mobile `Races` filters now keep `Scope` as a switcher but use dropdowns for `Race status` and `Race types`, with multi-select behavior for both backend-backed filters
 - mobile `Races` now also includes an add-race modal with the same three functional tabs, required-field indicators, guided date/time selection, and the same optional `team`, `circuit`, and `shoe` selectors used in the web drawer
 - mobile `Races` now also mirrors the managed-option flows for `race types`, `teams`, `circuits`, and `shoes`, including in-place create/edit/delete, linked-record usage previews, and native confirmation modals instead of system dialogs
 - web `Pending Approvals` and `Users` now show real admin data with actions and pagination, while the admin overview section is still a placeholder
@@ -550,6 +551,7 @@ Client usage notes:
 - web `Races` table consumes `/api/races/table`, opens in `Current year` by default, applies race-name search locally, and uses backend filters for selected statuses and race types while rendering a card-style list grouped by year instead of a classic spreadsheet layout
 - mobile `Races` table consumes the same endpoint, also opens in `Current year` by default, applies race-name search locally in table mode, and uses the same backend-backed status and race-type filters in its compact card layout
 - both clients use `raceStatus` and `raceTime` to drive the `Coming Up` section, which only considers `REGISTERED` races in the current Monday-to-Sunday week or, when none exist, the next future registered race
+- both clients now keep `Coming Up` logically independent from local race-name search, so typing into search no longer redefines which race counts as upcoming; it only filters what is shown
 - races whose status is `IN_LIST` and do not yet have a `raceDate` are returned in `undatedRaces`; both clients keep them hidden by default and only show them when the user filters by the `IN_LIST` status
 
 ### `GET /api/races/types`

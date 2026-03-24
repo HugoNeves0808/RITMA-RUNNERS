@@ -33,6 +33,31 @@
   font-weight: 800;
 }
 
+.sectionTitle {
+  border-radius: 999px;
+  background: rgba(249, 115, 22, 0.14);
+  padding: 8px 14px;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+
+.yearNumberTitle {
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.06);
+  padding: 8px 14px;
+  color: #101828;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+
+.yearNumberTitle::before {
+  content: none;
+}
+
 .yearCount {
   color: #475467;
   font-size: 13px;
@@ -74,11 +99,8 @@
   align-items: stretch;
   gap: 16px;
   padding: 16px 18px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 22px;
-  background:
-    radial-gradient(circle at top left, rgba(15, 118, 110, 0.06), transparent 35%),
-    rgba(255, 255, 255, 0.96);
+  background: rgba(248, 250, 252, 0.96);
   transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
 }
 
@@ -88,15 +110,43 @@
 }
 
 .raceRowToday {
-  border-color: rgba(249, 115, 22, 0.24);
-  background:
-    linear-gradient(90deg, rgba(249, 115, 22, 0.12) 0%, rgba(249, 115, 22, 0.04) 38%, rgba(255, 255, 255, 0.98) 100%),
-    radial-gradient(circle at top left, rgba(249, 115, 22, 0.12), transparent 42%),
-    rgba(255, 255, 255, 0.98);
+  background: rgba(255, 237, 213, 0.96);
 }
 
 .raceRowToday:hover {
   box-shadow: none;
+}
+
+.raceRowRegistered {
+  background: rgba(219, 234, 254, 0.96);
+}
+
+.raceRowCompleted {
+  background: rgba(220, 252, 231, 0.96);
+}
+
+.raceRowInList {
+  background: rgba(254, 243, 199, 0.96);
+}
+
+.raceRowNotRegistered {
+  background: rgba(229, 231, 235, 0.96);
+}
+
+.raceRowCancelled {
+  background: rgba(254, 226, 226, 0.96);
+}
+
+.raceRowDns {
+  background: rgba(251, 207, 232, 0.96);
+}
+
+.raceRowDnf {
+  background: rgba(237, 233, 254, 0.96);
+}
+
+.raceRowUnknown {
+  background: rgba(241, 245, 249, 0.96);
 }
 
 .dateBadge {
@@ -107,7 +157,7 @@
   justify-content: center;
   gap: 4px;
   border-radius: 18px;
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.04) 0%, rgba(255, 255, 255, 0.98) 100%);
+  background: rgba(255, 255, 255, 0.72);
   border: 1px solid rgba(15, 23, 42, 0.08);
 }
 

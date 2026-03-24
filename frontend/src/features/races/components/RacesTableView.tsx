@@ -244,20 +244,6 @@ function isUpcomingRace(race: RaceTableItem, now: dayjs.Dayjs) {
     || (raceDateTime.isAfter(now) && raceDateTime.isBefore(endOfWeek))
 }
 
-function formatCountdown(race: RaceTableItem, now: dayjs.Dayjs) {
-  const raceDateTime = getRaceDateTime(race)
-  if (!raceDateTime.isAfter(now)) {
-    return null
-  }
-
-  const diffMinutes = Math.max(raceDateTime.diff(now, 'minute'), 0)
-  const days = Math.floor(diffMinutes / (60 * 24))
-  const hours = Math.floor((diffMinutes % (60 * 24)) / 60)
-  const minutes = diffMinutes % 60
-
-  return `starts in ${String(days).padStart(2, '0')}d ${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m`
-}
-
 function removeUpcomingRaces(years: RaceTableYearGroup[], upcomingRaceIds: Set<string>) {
   return years
     .map((yearGroup) => ({
@@ -319,13 +305,16 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
     : normalizedSearch
       ? undatedRaces.filter((race) => race.name.toLowerCase().includes(normalizedSearch))
       : undatedRaces
-  const visibleRaces = filteredVisibleYears.flatMap((yearGroup) => yearGroup.races)
-  const weekUpcomingRaces = visibleRaces
+  const allVisibleRaces = visibleYears.flatMap((yearGroup) => yearGroup.races)
+  const weekUpcomingRaces = allVisibleRaces
     .filter((race) => isUpcomingRace(race, now))
     .sort((left, right) => getRaceDateTime(left).diff(getRaceDateTime(right)))
-  const upcomingRaces = weekUpcomingRaces.length > 0
+  const baseUpcomingRaces = weekUpcomingRaces.length > 0
     ? weekUpcomingRaces
-    : getFallbackUpcomingRaces(visibleRaces, now)
+    : getFallbackUpcomingRaces(allVisibleRaces, now)
+  const upcomingRaces = normalizedSearch
+    ? baseUpcomingRaces.filter((race) => race.name.toLowerCase().includes(normalizedSearch))
+    : baseUpcomingRaces
   const regularYears = removeUpcomingRaces(filteredVisibleYears, new Set(upcomingRaces.map((race) => race.id)))
 
   const loadTableData = async () => {
@@ -497,15 +486,13 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
       {!isLoading && filteredVisibleYears.length > 0 && upcomingRaces.length > 0 ? (
         <section className={styles.yearSection}>
           <div className={styles.yearHeader}>
-            <h3 className={styles.yearTitle}>Coming Up</h3>
+            <h3 className={`${styles.yearTitle} ${styles.sectionTitle}`.trim()}>Coming Up</h3>
           </div>
 
           <div className={styles.yearCard}>
             <div className={styles.monthSection}>
               <div className={styles.raceList}>
                 {upcomingRaces.map((race) => {
-                  const countdown = formatCountdown(race, now)
-
                   return (
                     <article
                       key={race.id}
@@ -523,7 +510,6 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
                             </div>
 
                           <div className={styles.raceTopMeta}>
-                            {countdown ? <span className={styles.countdownBadge}>{countdown}</span> : null}
                             <span className={`${styles.raceStatusBadge} ${getRaceStatusClassName(race.raceStatus)}`.trim()}>
                               {getRaceStatusLabel(race.raceStatus)}
                             </span>
@@ -597,7 +583,7 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
       {!isLoading && filteredVisibleYears.length > 0 ? regularYears.map((yearGroup) => (
         <section key={yearGroup.year} className={styles.yearSection}>
           <div className={styles.yearHeader}>
-            <h3 className={styles.yearTitle}>{yearGroup.year}</h3>
+            <h3 className={`${styles.yearTitle} ${styles.yearNumberTitle}`.trim()}>{yearGroup.year}</h3>
           </div>
 
           <div className={styles.yearCard}>
@@ -606,7 +592,6 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
                 <div className={styles.raceList}>
                   {monthGroup.races.map((race) => {
                     const isTodayRace = race.raceDate === now.format('YYYY-MM-DD')
-                    const countdown = formatCountdown(race, now)
 
                     return (
                       <article
@@ -625,7 +610,6 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
                             </div>
 
                             <div className={styles.raceTopMeta}>
-                              {isUpcomingRace(race, now) && countdown ? <span className={styles.countdownBadge}>{countdown}</span> : null}
                               <span className={`${styles.raceStatusBadge} ${getRaceStatusClassName(race.raceStatus)}`.trim()}>
                                 {getRaceStatusLabel(race.raceStatus)}
                               </span>
@@ -700,7 +684,7 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
       {!isLoading && filteredUndatedRaces.length > 0 ? (
         <section className={styles.yearSection}>
           <div className={styles.yearHeader}>
-            <h3 className={styles.yearTitle}>In List</h3>
+            <h3 className={`${styles.yearTitle} ${styles.sectionTitle}`.trim()}>In List</h3>
           </div>
 
           <div className={styles.yearCard}>
