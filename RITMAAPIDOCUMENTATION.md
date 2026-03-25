@@ -96,6 +96,7 @@ Authenticated client shell status:
 - web `Races` now renders real monthly and yearly calendar views backed by authenticated race data, with compact monthly day cards and a yearly 12-month overview that uses race-status color cues on the day numbers
 - web `Races` also includes a real card-based table mode grouped by year, with header-level name search, a shared race-filters drawer, a `Coming Up` section for registered races, and row actions split between visible `view` and a three-dot menu that now includes both `edit` and `delete`
 - web `Races` now also includes an add-race drawer with three tabs for `Race data`, `Race results`, and `Race analysis`
+- web `Races` now reuses that same three-tab drawer for editing, with prefilled values, full-field editing parity with create, and access from both the card menu and the race-details drawer
 - web `Races` now also includes a dedicated race-details drawer opened from the row itself or from the eye action, with the same three tabs plus direct `Edit` and `Delete` actions in the header
 - web `Races` create flows now also let the user manage `race types`, `teams`, `circuits`, and `shoes` directly inside the creation UI, including inline create, edit, delete, usage inspection, and product-native confirmation modals
 - web `Races` time presentation now hides seconds and uses `AM/PM` where race start time is shown in the creation flow and in the race-details drawer
@@ -898,7 +899,15 @@ Postman:
 
 ### `PUT /api/races/{raceId}`
 
-Updates a single race from the table editing flow.
+Updates a single authenticated user's race using the same full payload shape as race creation.
+
+Backend behavior:
+
+- validates that the race belongs to the authenticated user
+- accepts the same `race`, `results`, and `analysis` payload sections used by `POST /api/races`
+- applies the same validation rules as creation for required fields, ownership checks, numeric constraints, and optional linked `raceType`, `team`, `circuit`, and `shoe`
+- updates the flattened `user_races` row in place, including race status, date/time, linked selectors, results, and analysis
+- returns the refreshed table-row response for the updated race
 
 Postman:
 
@@ -912,15 +921,47 @@ Example body:
 
 ```json
 {
-  "raceDate": "2026-03-20",
-  "name": "Corrida de Hoje 2026",
-  "location": "Coimbra, Portugal",
-  "raceTypeId": "uuid",
-  "officialTimeSeconds": 2405,
-  "chipTimeSeconds": 2398,
-  "pacePerKmSeconds": 240
+  "race": {
+    "raceStatus": "CANCELLED",
+    "raceDate": "2026-02-16",
+    "raceTime": "08:45:00",
+    "name": "Sintra Hills Trail 1234 Teste",
+    "location": "Sintra 123",
+    "teamId": "uuid-team",
+    "circuitId": "uuid-circuit",
+    "raceTypeId": "uuid-race-type",
+    "realKm": 18.4,
+    "elevation": 640,
+    "isValidForCategoryRanking": false
+  },
+  "results": {
+    "officialTimeSeconds": 7200,
+    "chipTimeSeconds": 7150,
+    "pacePerKmSeconds": 389,
+    "shoeId": "uuid-shoe",
+    "generalClassification": 20,
+    "isGeneralClassificationPodium": false,
+    "ageGroupClassification": 5,
+    "isAgeGroupClassificationPodium": false,
+    "teamClassification": 2,
+    "isTeamClassificationPodium": true
+  },
+  "analysis": {
+    "preRaceConfidence": "MEDIUM",
+    "raceDifficulty": "HIGH",
+    "finalSatisfaction": "LOW",
+    "painInjuries": "Tight calves after km 12.",
+    "analysisNotes": "Weather and terrain made the race tougher than expected.",
+    "wouldRepeatThisRace": false
+  }
 }
 ```
+
+Current client usage:
+
+- web `Races` uses this endpoint through the same right-side drawer used for creation, now opened in edit mode with the selected race prefilled
+- the edit action is available from the card three-dot menu and from the race-details drawer header
+- when edit is opened from the race-details drawer and the user closes the edit drawer without saving, the details drawer opens again so the previous context is preserved
 
 ### `DELETE /api/races/{raceId}`
 

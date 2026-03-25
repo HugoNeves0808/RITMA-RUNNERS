@@ -214,7 +214,27 @@ export function HomePage() {
 
       {selectedView === 'calendar'
         ? <RacesCalendarView selectedMode={selectedCalendarMode} onModeChange={setSelectedCalendarMode} filters={filters} refreshKey={refreshKey} />
-        : <RacesTableView showAllYears={showAllTableYears} filters={filters} refreshKey={refreshKey} />}
+        : (
+          <RacesTableView
+            showAllYears={showAllTableYears}
+            filters={filters}
+            refreshKey={refreshKey}
+            createOptions={createOptions}
+            onCreateOptionsChange={(nextOptions) => {
+              setCreateOptions(nextOptions)
+              setFilterOptions((current) => ({
+                ...current,
+                raceTypes: nextOptions.raceTypes,
+              }))
+              setFilters((current) => ({
+                ...current,
+                raceTypeIds: current.raceTypeIds.filter((raceTypeId) => (
+                  nextOptions.raceTypes.some((raceType) => raceType.id === raceTypeId)
+                )),
+              }))
+            }}
+          />
+        )}
     </div>
   )
 }

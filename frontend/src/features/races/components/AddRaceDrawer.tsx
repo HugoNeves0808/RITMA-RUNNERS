@@ -2,7 +2,7 @@ import { faEllipsisVertical, faPenToSquare, faPlus, faTrashCan, faXmark } from '
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import dayjs from 'dayjs'
 import type { ReactNode } from 'react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Alert,
   Button,
@@ -27,6 +27,7 @@ import {
   detachManagedRaceOptionUsage,
   fetchManagedRaceOptions,
   fetchManagedRaceOptionUsage,
+  updateRaceTableItem,
   updateManagedRaceOption,
 } from '../services/racesTableService'
 import {
@@ -37,6 +38,7 @@ import type {
   ManagedRaceOptionType,
   RaceCreateOptions,
   CreateRacePayload,
+  RaceDetailResponse,
   RaceOptionUsage,
   RaceTypeOption,
 } from '../types/racesTable'
@@ -46,8 +48,13 @@ const { TextArea } = Input
 
 type AddRaceDrawerProps = {
   createOptions: RaceCreateOptions
-  onCreated: () => void
+  onCreated: () => void | Promise<void>
   onCreateOptionsChange?: (nextOptions: RaceCreateOptions) => void
+  mode?: 'create' | 'edit'
+  open?: boolean
+  raceId?: string | null
+  initialRace?: RaceDetailResponse | null
+  onClose?: () => void
 }
 
 type ManagedOptionConfirmState =
@@ -84,6 +91,8 @@ type AddRaceFormValues = {
   analysisNotes?: string
   wouldRepeatThisRace?: boolean
 }
+
+type DrawerInitialValues = Partial<AddRaceFormValues>
 
 const ANALYSIS_SELECT_OPTIONS = [
   { value: 'VERY_LOW', label: 'Very low' },
@@ -239,6 +248,27 @@ function formatSecondsAsPace(totalSeconds: number) {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 }
 
+function formatDurationInput(totalSeconds: number | null | undefined) {
+  if (totalSeconds == null) {
+    return undefined
+  }
+
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
+
+function formatPaceInput(totalSeconds: number | null | undefined) {
+  if (totalSeconds == null) {
+    return undefined
+  }
+
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
+
 function getLiveTimeFieldError(
   value: string | undefined,
   mode: 'duration' | 'pace',
@@ -295,17 +325,98 @@ function normalizeValue(value: unknown): unknown {
   return value ?? null
 }
 
-function hasUnsavedChanges(values: AddRaceFormValues) {
+function hasUnsavedChanges(values: AddRaceFormValues, initialValues: DrawerInitialValues) {
   const allKeys = new Set([
-    ...Object.keys(INITIAL_FORM_VALUES),
+    ...Object.keys(initialValues),
     ...Object.keys(values),
   ])
 
   return Array.from(allKeys).some((key) => {
     const currentValue = normalizeValue(values[key as keyof AddRaceFormValues])
-    const initialValue = normalizeValue(INITIAL_FORM_VALUES[key as keyof AddRaceFormValues])
+    const initialValue = normalizeValue(initialValues[key as keyof AddRaceFormValues])
     return currentValue !== initialValue
   })
+}
+
+function buildDrawerInitialValues(race: RaceDetailResponse | null | undefined): DrawerInitialValues {
+  if (!race) {
+    return INITIAL_FORM_VALUES
+  }
+
+  return {
+    raceStatus: race.race.raceStatus ?? 'REGISTERED',
+    raceDate: race.race.raceDate ? dayjs(race.race.raceDate) : undefined,
+    raceTime: race.race.raceTime ? dayjs(`2000-01-01T${race.race.raceTime}`) : undefined,
+    name: race.race.name,
+    location: race.race.location ?? undefined,
+    teamId: race.race.teamId ?? undefined,
+    circuitId: race.race.circuitId ?? undefined,
+    raceTypeId: race.race.raceTypeId ?? undefined,
+    realKm: race.race.realKm ?? undefined,
+    elevation: race.race.elevation ?? undefined,
+    isValidForCategoryRanking: race.race.isValidForCategoryRanking ?? true,
+    officialTime: formatDurationInput(race.results.officialTimeSeconds),
+    chipTime: formatDurationInput(race.results.chipTimeSeconds),
+    pacePerKm: formatPaceInput(race.results.pacePerKmSeconds),
+    shoeId: race.results.shoeId ?? undefined,
+    generalClassification: race.results.generalClassification ?? undefined,
+    isGeneralClassificationPodium: race.results.isGeneralClassificationPodium ?? false,
+    ageGroupClassification: race.results.ageGroupClassification ?? undefined,
+    isAgeGroupClassificationPodium: race.results.isAgeGroupClassificationPodium ?? false,
+    teamClassification: race.results.teamClassification ?? undefined,
+    isTeamClassificationPodium: race.results.isTeamClassificationPodium ?? false,
+    preRaceConfidence: race.analysis.preRaceConfidence ?? undefined,
+    raceDifficulty: race.analysis.raceDifficulty ?? undefined,
+    finalSatisfaction: race.analysis.finalSatisfaction ?? undefined,
+    painInjuries: race.analysis.painInjuries ?? undefined,
+    analysisNotes: race.analysis.analysisNotes ?? undefined,
+    wouldRepeatThisRace: race.analysis.wouldRepeatThisRace ?? false,
+  }
+}
+
+function buildRacePayload(values: AddRaceFormValues, fallbackRace?: RaceDetailResponse | null): CreateRacePayload {
+  const officialTimeSeconds = parseTimeToSeconds(values.officialTime, 'duration', 'Official time')
+  const chipTimeSeconds = parseTimeToSeconds(values.chipTime, 'duration', 'Chip time')
+  const pacePerKmSeconds = parseTimeToSeconds(values.pacePerKm, 'pace', 'Pace per KM')
+  const normalizedStatus = values.raceStatus.trim().toUpperCase()
+  const effectiveRaceDate = values.raceDate
+    ?? (normalizedStatus !== 'IN_LIST' && fallbackRace?.race.raceDate ? dayjs(fallbackRace.race.raceDate) : undefined)
+
+  return {
+    race: {
+      raceStatus: values.raceStatus,
+      raceDate: effectiveRaceDate ? effectiveRaceDate.format('YYYY-MM-DD') : null,
+      raceTime: values.raceTime ? values.raceTime.format('HH:mm:ss') : null,
+      name: values.name.trim(),
+      location: values.location?.trim() ? values.location.trim() : null,
+      teamId: values.teamId ?? null,
+      circuitId: values.circuitId ?? null,
+      raceTypeId: values.raceTypeId ?? null,
+      realKm: values.realKm ?? null,
+      elevation: values.elevation ?? null,
+      isValidForCategoryRanking: values.isValidForCategoryRanking ?? true,
+    },
+    results: {
+      officialTimeSeconds,
+      chipTimeSeconds,
+      pacePerKmSeconds,
+      shoeId: values.shoeId ?? null,
+      generalClassification: values.generalClassification ?? null,
+      isGeneralClassificationPodium: values.isGeneralClassificationPodium ?? false,
+      ageGroupClassification: values.ageGroupClassification ?? null,
+      isAgeGroupClassificationPodium: values.isAgeGroupClassificationPodium ?? false,
+      teamClassification: values.teamClassification ?? null,
+      isTeamClassificationPodium: values.isTeamClassificationPodium ?? false,
+    },
+    analysis: {
+      preRaceConfidence: values.preRaceConfidence ?? null,
+      raceDifficulty: values.raceDifficulty ?? null,
+      finalSatisfaction: values.finalSatisfaction ?? null,
+      painInjuries: values.painInjuries?.trim() ? values.painInjuries.trim() : null,
+      analysisNotes: values.analysisNotes?.trim() ? values.analysisNotes.trim() : null,
+      wouldRepeatThisRace: values.wouldRepeatThisRace ?? null,
+    },
+  }
 }
 
 function renderInfoLabel(label: string, description: string) {
@@ -321,10 +432,19 @@ function renderInfoLabel(label: string, description: string) {
   )
 }
 
-export function AddRaceDrawer({ createOptions, onCreated, onCreateOptionsChange }: AddRaceDrawerProps) {
+export function AddRaceDrawer({
+  createOptions,
+  onCreated,
+  onCreateOptionsChange,
+  mode = 'create',
+  open,
+  raceId = null,
+  initialRace = null,
+  onClose,
+}: AddRaceDrawerProps) {
   const { token } = useAuth()
   const [form] = Form.useForm<AddRaceFormValues>()
-  const [isOpen, setIsOpen] = useState(false)
+  const [internalOpen, setInternalOpen] = useState(false)
   const [isDiscardModalOpen, setIsDiscardModalOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -339,10 +459,24 @@ export function AddRaceDrawer({ createOptions, onCreated, onCreateOptionsChange 
   const [managedOptionUsage, setManagedOptionUsage] = useState<RaceOptionUsage | null>(null)
   const [pendingDeleteOption, setPendingDeleteOption] = useState<RaceTypeOption | null>(null)
   const [managedOptionConfirmState, setManagedOptionConfirmState] = useState<ManagedOptionConfirmState>(null)
+  const isControlled = open !== undefined
+  const isOpen = isControlled ? open : internalOpen
+  const initialFormValues = useMemo(() => buildDrawerInitialValues(initialRace), [initialRace])
+  const isEditMode = mode === 'edit'
 
   useEffect(() => {
     setLocalCreateOptions(createOptions)
   }, [createOptions])
+
+  useEffect(() => {
+    if (!isOpen) {
+      return
+    }
+
+    form.resetFields()
+    form.setFieldsValue(initialFormValues)
+    setError(null)
+  }, [form, initialFormValues, isOpen])
 
   const syncCreateOptions = (nextOptions: RaceCreateOptions) => {
     setLocalCreateOptions(nextOptions)
@@ -421,11 +555,16 @@ export function AddRaceDrawer({ createOptions, onCreated, onCreateOptionsChange 
   }
 
   const closeDrawer = () => {
-    setIsOpen(false)
+    if (!isControlled) {
+      setInternalOpen(false)
+    }
+
+    onClose?.()
     setIsDiscardModalOpen(false)
     setError(null)
     closeManageOptionsModal()
     form.resetFields()
+    form.setFieldsValue(initialFormValues)
   }
 
   const handleSaveManagedOption = async () => {
@@ -581,7 +720,7 @@ export function AddRaceDrawer({ createOptions, onCreated, onCreateOptionsChange 
 
   const handleClose = () => {
     const values = form.getFieldsValue(true) as AddRaceFormValues
-    if (!hasUnsavedChanges(values)) {
+    if (!hasUnsavedChanges(values, initialFormValues)) {
       closeDrawer()
       return
     }
@@ -590,7 +729,7 @@ export function AddRaceDrawer({ createOptions, onCreated, onCreateOptionsChange 
   }
 
   const handleSubmit = async () => {
-    if (!token) {
+    if (!token || (isEditMode && !raceId)) {
       return
     }
 
@@ -599,49 +738,16 @@ export function AddRaceDrawer({ createOptions, onCreated, onCreateOptionsChange 
       setIsSubmitting(true)
       setError(null)
 
-      const officialTimeSeconds = parseTimeToSeconds(values.officialTime, 'duration', 'Official time')
-      const chipTimeSeconds = parseTimeToSeconds(values.chipTime, 'duration', 'Chip time')
-      const pacePerKmSeconds = parseTimeToSeconds(values.pacePerKm, 'pace', 'Pace per KM')
+      const payload = buildRacePayload(values, isEditMode ? initialRace : null)
 
-      const payload: CreateRacePayload = {
-        race: {
-          raceStatus: values.raceStatus,
-          raceDate: values.raceDate ? values.raceDate.format('YYYY-MM-DD') : null,
-          raceTime: values.raceTime ? values.raceTime.format('HH:mm:ss') : null,
-          name: values.name.trim(),
-          location: values.location?.trim() ? values.location.trim() : null,
-          teamId: values.teamId ?? null,
-          circuitId: values.circuitId ?? null,
-          raceTypeId: values.raceTypeId ?? null,
-          realKm: values.realKm ?? null,
-          elevation: values.elevation ?? null,
-          isValidForCategoryRanking: values.isValidForCategoryRanking ?? true,
-        },
-        results: {
-          officialTimeSeconds,
-          chipTimeSeconds,
-          pacePerKmSeconds,
-          shoeId: values.shoeId ?? null,
-          generalClassification: values.generalClassification ?? null,
-          isGeneralClassificationPodium: values.isGeneralClassificationPodium ?? false,
-          ageGroupClassification: values.ageGroupClassification ?? null,
-          isAgeGroupClassificationPodium: values.isAgeGroupClassificationPodium ?? false,
-          teamClassification: values.teamClassification ?? null,
-          isTeamClassificationPodium: values.isTeamClassificationPodium ?? false,
-        },
-        analysis: {
-          preRaceConfidence: values.preRaceConfidence ?? null,
-          raceDifficulty: values.raceDifficulty ?? null,
-          finalSatisfaction: values.finalSatisfaction ?? null,
-          painInjuries: values.painInjuries?.trim() ? values.painInjuries.trim() : null,
-          analysisNotes: values.analysisNotes?.trim() ? values.analysisNotes.trim() : null,
-          wouldRepeatThisRace: values.wouldRepeatThisRace ?? null,
-        },
+      if (isEditMode && raceId) {
+        await updateRaceTableItem(raceId, payload, token)
+      } else {
+        await createRace(payload, token)
       }
 
-      await createRace(payload, token)
       closeDrawer()
-      onCreated()
+      await onCreated()
     } catch (submitError) {
       if (submitError instanceof Error && !('errorFields' in submitError)) {
         const fieldName = getFieldNameFromError(submitError.message)
@@ -657,16 +763,18 @@ export function AddRaceDrawer({ createOptions, onCreated, onCreateOptionsChange 
 
   return (
     <>
-      <Button
-        type="primary"
-        className={styles.trigger}
-        icon={<FontAwesomeIcon icon={faPlus} />}
-        aria-label="Add race"
-        onClick={() => setIsOpen(true)}
-      />
+      {!isEditMode ? (
+        <Button
+          type="primary"
+          className={styles.trigger}
+          icon={<FontAwesomeIcon icon={faPlus} />}
+          aria-label="Add race"
+          onClick={() => setInternalOpen(true)}
+        />
+      ) : null}
 
       <Drawer
-        title="Add race"
+        title={isEditMode ? 'Edit race' : 'Add race'}
         placement="right"
         width={560}
         open={isOpen}
@@ -677,7 +785,7 @@ export function AddRaceDrawer({ createOptions, onCreated, onCreateOptionsChange 
           <Space>
             <Button className={styles.cancelButton} onClick={handleClose}>Cancel</Button>
             <Button className={styles.saveButton} type="primary" loading={isSubmitting} onClick={() => void handleSubmit()}>
-              Save race
+              {isEditMode ? 'Save changes' : 'Save race'}
             </Button>
           </Space>
         )}
@@ -686,7 +794,7 @@ export function AddRaceDrawer({ createOptions, onCreated, onCreateOptionsChange 
           <Alert
             type="error"
             showIcon
-            message="Could not create the race"
+            message={isEditMode ? 'Could not update the race' : 'Could not create the race'}
             description={error}
             className={styles.alert}
           />
@@ -695,7 +803,7 @@ export function AddRaceDrawer({ createOptions, onCreated, onCreateOptionsChange 
         <Form
           form={form}
           layout="vertical"
-          initialValues={INITIAL_FORM_VALUES}
+          initialValues={initialFormValues}
           onValuesChange={(changedValues) => {
             Object.keys(changedValues).forEach((fieldName) => {
               clearFieldError(fieldName as keyof AddRaceFormValues)

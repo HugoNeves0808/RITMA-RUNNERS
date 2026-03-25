@@ -31,7 +31,6 @@ import com.ritma.runners.race.dto.RaceQueryFilters;
 import com.ritma.runners.race.dto.RaceTableItemResponse;
 import com.ritma.runners.race.dto.RaceTableResponse;
 import com.ritma.runners.race.dto.RaceTypeOptionResponse;
-import com.ritma.runners.race.dto.UpdateRaceTableItemRequest;
 import com.ritma.runners.race.service.RaceService;
 
 @RestController
@@ -132,9 +131,9 @@ public class RaceTableController {
     public RaceTableItemResponse updateRace(
             @AuthenticationPrincipal JwtAuthenticatedUser user,
             @PathVariable UUID raceId,
-            @RequestBody UpdateRaceTableItemRequest request
+            @RequestBody CreateRaceRequest request
     ) {
-        return raceService.updateTableRace(requireAuthenticatedUserId(user), raceId, request);
+        return raceService.updateRace(requireAuthenticatedUserId(user), raceId, request);
     }
 
     @DeleteMapping("/{raceId:[0-9a-fA-F\\-]{36}}")

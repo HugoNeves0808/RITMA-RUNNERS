@@ -15,6 +15,10 @@ This file keeps a short, slightly more detailed record of what was done in each 
 
 - Merged the old `user_race_results` and `user_race_analysis` data into `user_races` through a new Flyway migration, so race result and analysis fields now live directly on the base race row and no longer depend on per-race child tables.
 - Updated backend race reads and writes to use the flattened `user_races` structure for race tables, race details, race creation, race updates, shoe usage lookups, and managed-option detach flows, while keeping the public API payloads stable for the clients.
+- Expanded the authenticated `PUT /api/races/{raceId}` flow so race editing now accepts the same full payload as race creation, including `race`, `results`, and `analysis`, instead of the older table-only subset of fields.
+- Reworked the web race-edit experience to reuse the same multi-tab drawer used by `Add race`, prefilled with the selected race data and available from both the card three-dot menu and the race-details drawer header.
+- Refined the web edit-navigation flow so closing the edit drawer reopens the race-details drawer when the edit was launched from the race view, keeping the user in the same context.
+- Added a defensive fallback for preloaded race dates in the web edit flow so an already saved date is not lost if the form momentarily clears the date field during submission.
 - Restored authenticated single-race deletion through `DELETE /api/races/{raceId}` in the backend, with ownership checks and a `404` response when the requested race does not exist.
 - Reintroduced the web race-deletion flow in the `Races` table, including a `Delete race` option in the three-dot card menu, a matching delete action in the race-details drawer, and a confirmation modal before the request is sent.
 - Kept the web `races` feature on local unauthorized-error handling instead of automatic logout, so an expired session now surfaces as an in-page error state instead of kicking the user out while they are working.

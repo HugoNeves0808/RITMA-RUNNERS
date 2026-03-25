@@ -7,14 +7,10 @@ import {
   Alert,
   Button,
   Card,
-  DatePicker,
   Dropdown,
   Empty,
-  Form,
-  Input,
   type MenuProps,
   Modal,
-  Select,
   Space,
   Spin,
   Tooltip,
@@ -23,24 +19,13 @@ import { useAuth } from '../../auth'
 import {
   fetchRaceDetail,
   fetchRaceTable,
-  fetchRaceTypes,
   deleteRace,
-  updateRaceTableItem,
 } from '../services/racesTableService'
 import type { RaceFilters } from '../types/raceFilters'
-import type { RaceDetailResponse, RaceTableItem, RaceTableYearGroup, RaceTypeOption } from '../types/racesTable'
+import type { RaceCreateOptions, RaceDetailResponse, RaceTableItem, RaceTableYearGroup } from '../types/racesTable'
+import { AddRaceDrawer } from './AddRaceDrawer'
 import { RaceDetailsDrawer } from './RaceDetailsDrawer'
 import styles from './RacesTableView.module.css'
-
-type EditRaceFormValues = {
-  raceDate?: dayjs.Dayjs
-  name: string
-  location?: string
-  raceTypeId?: string
-  officialTime?: string
-  chipTime?: string
-  pacePerKm?: string
-}
 
 function getDayLabel(value: string | null) {
   if (!value) {
@@ -177,55 +162,6 @@ function renderMetricValueWithTooltip(value: ReactNode, tooltip: string) {
   )
 }
 
-function formatDurationInput(totalSeconds: number | null) {
-  if (totalSeconds == null) {
-    return ''
-  }
-
-  const hours = Math.floor(totalSeconds / 3600)
-  const minutes = Math.floor((totalSeconds % 3600) / 60)
-  const seconds = totalSeconds % 60
-  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-}
-
-function formatPaceInput(totalSeconds: number | null) {
-  if (totalSeconds == null) {
-    return ''
-  }
-
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-  return `${minutes}:${String(seconds).padStart(2, '0')}`
-}
-
-function parseTimeToSeconds(value: string | undefined, mode: 'duration' | 'pace') {
-  const normalized = value?.trim()
-  if (!normalized) {
-    return null
-  }
-
-  const parts = normalized.split(':')
-  if (mode === 'duration' && parts.length === 3) {
-    const [hours, minutes, seconds] = parts.map((part) => Number(part))
-    if ([hours, minutes, seconds].some((part) => Number.isNaN(part) || part < 0)) {
-      throw new Error('Chip time must use HH:MM:SS.')
-    }
-
-    return (hours * 3600) + (minutes * 60) + seconds
-  }
-
-  if (parts.length === 2) {
-    const [minutes, seconds] = parts.map((part) => Number(part))
-    if ([minutes, seconds].some((part) => Number.isNaN(part) || part < 0)) {
-      throw new Error(mode === 'duration' ? 'Chip time must use HH:MM:SS.' : 'Pace must use MM:SS.')
-    }
-
-    return (minutes * 60) + seconds
-  }
-
-  throw new Error(mode === 'duration' ? 'Chip time must use HH:MM:SS.' : 'Pace must use MM:SS.')
-}
-
 function groupRacesByMonth(races: RaceTableItem[]) {
   const monthMap = new Map<string, RaceTableItem[]>()
 
@@ -317,20 +253,28 @@ type RacesTableViewProps = {
   showAllYears: boolean
   filters: RaceFilters
   refreshKey?: number
+  createOptions: RaceCreateOptions
+  onCreateOptionsChange?: (nextOptions: RaceCreateOptions) => void
 }
 
-export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesTableViewProps) {
+export function RacesTableView({
+  showAllYears,
+  filters,
+  refreshKey = 0,
+  createOptions,
+  onCreateOptionsChange,
+}: RacesTableViewProps) {
   const { token } = useAuth()
   const currentYear = dayjs().year()
   const [now, setNow] = useState(() => dayjs())
   const [years, setYears] = useState<RaceTableYearGroup[]>([])
   const [undatedRaces, setUndatedRaces] = useState<RaceTableItem[]>([])
-  const [raceTypes, setRaceTypes] = useState<RaceTypeOption[]>([])
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-  const [isSavingEdit, setIsSavingEdit] = useState(false)
-  const [editingRace, setEditingRace] = useState<RaceTableItem | null>(null)
+  const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false)
+  const [isPreparingEdit, setIsPreparingEdit] = useState(false)
+  const [editingRace, setEditingRace] = useState<RaceDetailResponse | null>(null)
+  const [returnToDetailsAfterEditClose, setReturnToDetailsAfterEditClose] = useState(false)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [isDetailsLoading, setIsDetailsLoading] = useState(false)
   const [raceDetails, setRaceDetails] = useState<RaceDetailResponse | null>(null)
@@ -338,7 +282,6 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
   const [detailsError, setDetailsError] = useState<string | null>(null)
   const [racePendingDelete, setRacePendingDelete] = useState<RaceTableItem | null>(null)
   const [isDeletingRace, setIsDeletingRace] = useState(false)
-  const [form] = Form.useForm<EditRaceFormValues>()
 
   const visibleYears = showAllYears
     ? years
@@ -366,21 +309,16 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
     if (!token) {
       setYears([])
       setUndatedRaces([])
-      setRaceTypes([])
       setIsLoading(false)
       return
     }
 
     try {
       setIsLoading(true)
-      const [tablePayload, raceTypePayload] = await Promise.all([
-        fetchRaceTable(token, filters),
-        fetchRaceTypes(token),
-      ])
+      const tablePayload = await fetchRaceTable(token, filters)
 
       setYears(tablePayload.years ?? [])
       setUndatedRaces(tablePayload.undatedRaces ?? [])
-      setRaceTypes(raceTypePayload)
       setError(null)
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Unknown error')
@@ -401,18 +339,23 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
     return () => window.clearInterval(intervalId)
   }, [])
 
-  const handleOpenEdit = (race: RaceTableItem) => {
-    setEditingRace(race)
-    form.setFieldsValue({
-      raceDate: race.raceDate ? dayjs(race.raceDate) : undefined,
-      name: race.name,
-      location: race.location ?? '',
-      raceTypeId: race.raceTypeId ?? undefined,
-      officialTime: formatDurationInput(race.officialTimeSeconds),
-      chipTime: formatDurationInput(race.chipTimeSeconds),
-      pacePerKm: formatPaceInput(race.pacePerKmSeconds),
-    })
-    setIsEditModalOpen(true)
+  const handleOpenEdit = async (race: RaceTableItem) => {
+    if (!token) {
+      return
+    }
+
+    try {
+      setIsPreparingEdit(true)
+      setError(null)
+      setReturnToDetailsAfterEditClose(false)
+      const details = await fetchRaceDetail(race.id, token)
+      setEditingRace(details)
+      setIsEditDrawerOpen(true)
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Could not load this race for editing right now.')
+    } finally {
+      setIsPreparingEdit(false)
+    }
   }
 
   const handleOpenDetails = async (race: RaceTableItem) => {
@@ -461,41 +404,6 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
     }
   }
 
-  const handleSubmitEdit = async () => {
-    if (!token || !editingRace) {
-      return
-    }
-
-    try {
-      const values = await form.validateFields()
-      setIsSavingEdit(true)
-
-      await updateRaceTableItem(
-        editingRace.id,
-        {
-          raceDate: values.raceDate!.format('YYYY-MM-DD'),
-          name: values.name.trim(),
-          location: values.location?.trim() ? values.location.trim() : null,
-          raceTypeId: values.raceTypeId ?? null,
-          officialTimeSeconds: parseTimeToSeconds(values.officialTime, 'duration'),
-          chipTimeSeconds: parseTimeToSeconds(values.chipTime, 'duration'),
-          pacePerKmSeconds: parseTimeToSeconds(values.pacePerKm, 'pace'),
-        },
-        token,
-      )
-
-      setIsEditModalOpen(false)
-      setEditingRace(null)
-      await loadTableData()
-    } catch (submitError) {
-      if (submitError instanceof Error && !('errorFields' in submitError)) {
-        setError(submitError.message)
-      }
-    } finally {
-      setIsSavingEdit(false)
-    }
-  }
-
   const getRaceActionsMenu = (race: RaceTableItem) => ({
     items: [
       {
@@ -515,7 +423,7 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
       domEvent.stopPropagation()
 
       if (key === 'edit') {
-        handleOpenEdit(race)
+        void handleOpenEdit(race)
         return
       }
 
@@ -527,10 +435,10 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
 
   return (
     <Card className={styles.pageCard} variant="borderless">
-      {isLoading ? (
+      {isLoading || isPreparingEdit ? (
         <Space>
           <Spin size="small" />
-          <span>Loading races</span>
+          <span>{isPreparingEdit ? 'Loading race editor' : 'Loading races'}</span>
         </Space>
       ) : null}
 
@@ -902,63 +810,28 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
         </section>
       ) : null}
 
-      <Modal
-        title="Edit race"
-        open={isEditModalOpen}
-        okText="Save"
-        cancelText="Cancel"
-        confirmLoading={isSavingEdit}
-        onOk={() => void handleSubmitEdit()}
-        onCancel={() => {
-          setIsEditModalOpen(false)
+      <AddRaceDrawer
+        mode="edit"
+        open={isEditDrawerOpen}
+        raceId={editingRace?.id ?? null}
+        initialRace={editingRace}
+        createOptions={createOptions}
+        onCreateOptionsChange={onCreateOptionsChange}
+        onClose={() => {
+          setIsEditDrawerOpen(false)
           setEditingRace(null)
-          form.resetFields()
+          if (returnToDetailsAfterEditClose) {
+            setIsDetailsOpen(true)
+            setReturnToDetailsAfterEditClose(false)
+          }
         }}
-      >
-        <p className={styles.modalHint}>Only one selected race can be edited at a time.</p>
-
-        <Form form={form} layout="vertical">
-          <Form.Item<EditRaceFormValues>
-            label="race_date"
-            name="raceDate"
-            rules={[{ required: true, message: 'Race date is required.' }]}
-          >
-            <DatePicker format="YYYY-MM-DD" className={styles.datePicker} />
-          </Form.Item>
-
-          <Form.Item<EditRaceFormValues>
-            label="name"
-            name="name"
-            rules={[{ required: true, message: 'Race name is required.' }]}
-          >
-            <Input />
-          </Form.Item>
-
-          <Form.Item<EditRaceFormValues> label="location" name="location">
-            <Input placeholder="Race location" />
-          </Form.Item>
-
-          <Form.Item<EditRaceFormValues> label="race_type" name="raceTypeId">
-            <Select
-              allowClear
-              options={raceTypes.map((raceType) => ({ value: raceType.id, label: raceType.name }))}
-              placeholder="Select a race type"
-            />
-          </Form.Item>
-
-          <Form.Item<EditRaceFormValues> label="official_time" name="officialTime">
-            <Input placeholder="HH:MM:SS" />
-          </Form.Item>
-
-          <Form.Item<EditRaceFormValues> label="chip_time" name="chipTime">
-            <Input placeholder="HH:MM:SS" />
-          </Form.Item>
-
-          <Form.Item<EditRaceFormValues> label="pace_per_km" name="pacePerKm">
-            <Input placeholder="MM:SS" />
-          </Form.Item>
-        </Form>
-      </Modal>
+        onCreated={async () => {
+          setIsEditDrawerOpen(false)
+          setEditingRace(null)
+          setReturnToDetailsAfterEditClose(false)
+          await loadTableData()
+        }}
+      />
 
       <Modal
         title="Delete race?"
@@ -995,9 +868,15 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
           }
 
           setIsDetailsOpen(false)
-          setRaceDetails(null)
           setDetailsError(null)
-          handleOpenEdit(selectedDetailsRace)
+          setReturnToDetailsAfterEditClose(true)
+          if (raceDetails?.id === selectedDetailsRace.id) {
+            setEditingRace(raceDetails)
+            setIsEditDrawerOpen(true)
+            return
+          }
+
+          void handleOpenEdit(selectedDetailsRace)
         }}
         onDelete={() => {
           if (!selectedDetailsRace) {
@@ -1011,6 +890,7 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
           setRaceDetails(null)
           setSelectedDetailsRace(null)
           setDetailsError(null)
+          setReturnToDetailsAfterEditClose(false)
         }}
       />
     </Card>

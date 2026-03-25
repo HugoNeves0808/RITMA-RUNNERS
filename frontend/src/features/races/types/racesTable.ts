@@ -54,16 +54,6 @@ export type RaceCreateOptions = {
   shoes: RaceTypeOption[]
 }
 
-export type UpdateRaceTableItemPayload = {
-  raceDate: string
-  name: string
-  location: string | null
-  raceTypeId: string | null
-  officialTimeSeconds: number | null
-  chipTimeSeconds: number | null
-  pacePerKmSeconds: number | null
-}
-
 export type CreateRacePayload = {
   race: {
     raceStatus: string
@@ -99,6 +89,8 @@ export type CreateRacePayload = {
     wouldRepeatThisRace: boolean | null
   }
 }
+
+export type UpdateRaceTableItemPayload = CreateRacePayload
 
 export type CreateRaceResponse = {
   id: string

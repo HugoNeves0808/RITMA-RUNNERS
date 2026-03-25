@@ -38,7 +38,6 @@ import com.ritma.runners.race.dto.RaceTableYearResponse;
 import com.ritma.runners.race.dto.RaceTypeOptionResponse;
 import com.ritma.runners.race.dto.RaceCalendarYearMonthResponse;
 import com.ritma.runners.race.dto.RaceCalendarYearResponse;
-import com.ritma.runners.race.dto.UpdateRaceTableItemRequest;
 import com.ritma.runners.race.repository.RaceRepository;
 
 @Service
@@ -363,67 +362,66 @@ public class RaceService {
     }
 
     @Transactional
-    public RaceTableItemResponse updateTableRace(UUID userId, UUID raceId, UpdateRaceTableItemRequest request) {
-        validateUpdateRequest(request);
+    public RaceTableItemResponse updateRace(UUID userId, UUID raceId, CreateRaceRequest request) {
+        validateCreateRequest(request);
 
         if (!raceRepository.raceExists(userId, raceId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Race not found.");
         }
 
-        if (request.raceTypeId() != null && !raceRepository.raceTypeExists(userId, request.raceTypeId())) {
+        CreateRaceRequest.RaceData raceData = request.race();
+        if (raceData.raceTypeId() != null && !raceRepository.raceTypeExists(userId, raceData.raceTypeId())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid race type.");
         }
+        if (raceData.teamId() != null && !raceRepository.teamExists(userId, raceData.teamId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid team.");
+        }
+        if (raceData.circuitId() != null && !raceRepository.circuitExists(userId, raceData.circuitId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid circuit.");
+        }
+        if (request.results() != null && request.results().shoeId() != null && !raceRepository.shoeExists(userId, request.results().shoeId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid shoe.");
+        }
+
+        CreateRaceRequest.RaceResultData results = request.results();
+        CreateRaceRequest.RaceAnalysisData analysis = request.analysis();
 
         raceRepository.updateRace(
                 userId,
                 raceId,
-                request.raceDate(),
-                request.name().trim(),
-                request.location() != null ? request.location().trim() : null,
-                request.raceTypeId()
-        );
-        raceRepository.upsertRaceResult(
-                raceId,
-                request.officialTimeSeconds(),
-                request.chipTimeSeconds(),
-                request.pacePerKmSeconds()
+                raceData.raceStatus().trim().toUpperCase(Locale.ROOT),
+                raceData.raceDate(),
+                raceData.raceTime(),
+                raceData.name().trim(),
+                normalizeOptionalText(raceData.location()),
+                raceData.teamId(),
+                raceData.circuitId(),
+                raceData.raceTypeId(),
+                raceData.realKm(),
+                raceData.elevation(),
+                raceData.isValidForCategoryRanking() == null || raceData.isValidForCategoryRanking(),
+                results != null ? results.officialTimeSeconds() : null,
+                results != null ? results.chipTimeSeconds() : null,
+                results != null ? results.pacePerKmSeconds() : null,
+                results != null ? results.shoeId() : null,
+                results != null ? results.generalClassification() : null,
+                results != null ? results.isGeneralClassificationPodium() : null,
+                results != null ? results.ageGroupClassification() : null,
+                results != null ? results.isAgeGroupClassificationPodium() : null,
+                results != null ? results.teamClassification() : null,
+                results != null ? results.isTeamClassificationPodium() : null,
+                analysis != null ? normalizeOptionalText(analysis.preRaceConfidence()) : null,
+                analysis != null ? normalizeOptionalText(analysis.raceDifficulty()) : null,
+                analysis != null ? normalizeOptionalText(analysis.finalSatisfaction()) : null,
+                analysis != null ? normalizeOptionalText(analysis.painInjuries()) : null,
+                analysis != null ? normalizeOptionalText(analysis.analysisNotes()) : null,
+                analysis != null ? analysis.wouldRepeatThisRace() : null
         );
 
         return raceRepository.findTableRaces(userId, RaceQueryFilters.empty()).stream()
                 .filter(race -> race.id().equals(raceId))
                 .findFirst()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Race not found."));
-    }
-
-    private void validateUpdateRequest(UpdateRaceTableItemRequest request) {
-        if (request == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Race data is required.");
-        }
-
-        LocalDate raceDate = request.raceDate();
-        if (raceDate == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Race date is required.");
-        }
-
-        if (request.name() == null || request.name().trim().isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Race name is required.");
-        }
-
-        if (request.location() != null && request.location().trim().isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Location cannot be blank.");
-        }
-
-        if (request.officialTimeSeconds() != null && request.officialTimeSeconds() < 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Official time must be zero or greater.");
-        }
-
-        if (request.chipTimeSeconds() != null && request.chipTimeSeconds() < 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Chip time must be zero or greater.");
-        }
-
-        if (request.pacePerKmSeconds() != null && request.pacePerKmSeconds() < 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Pace per km must be zero or greater.");
-        }
     }
 
     private void validateCreateRequest(CreateRaceRequest request) {
