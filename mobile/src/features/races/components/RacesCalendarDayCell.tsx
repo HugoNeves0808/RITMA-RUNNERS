@@ -12,7 +12,7 @@ type RacesCalendarDayCellProps = {
 
 const STATUS_DOT: Record<string, string> = {
   IN_LIST: '#64748b',
-  REGISTERED: '#2563eb',
+  REGISTERED: '#f97316',
   NOT_REGISTERED: '#ca8a04',
   COMPLETED: '#16a34a',
   CANCELLED: '#dc2626',

@@ -26,6 +26,9 @@ This file keeps a short, slightly more detailed record of what was done in each 
 - Brought the same managed-option flow to mobile by adding inline management actions beside the `race type`, `team`, `circuit`, and `shoe` selectors, native app modals for create/edit/delete confirmation, and live refresh of local create options and race-type filters.
 - Refined both web and mobile `Races` table presentation by removing leftover timer noise from `Coming Up`, improving section hierarchy between `Coming Up`, yearly groups, and `In List`, and simplifying card chrome by dropping borders and relying more on status-driven fills.
 - Updated the mobile `Races` filters sheet so `Race status` and `Race types` now use dropdown-based selection instead of chip walls, while keeping `Scope` as the existing switcher and preserving multi-select behavior for both dropdown filters.
+- Refined the web `Races` table visuals with tighter title overflow handling, lighter `REGISTERED` status coloring, black-and-white `Coming Up` cards, and closer alignment between the filters button and the calendar/table switcher.
+- Updated the mobile `Races` table styling to match the latest web direction by keeping status color in badges instead of card backgrounds, tightening switcher sizing, and applying the same lighter `REGISTERED` accent across filters, tables, and calendars.
+- Added a native mobile race-details modal backed by the existing authenticated race-detail endpoint, including `Race data`, `Results`, and `Analysis` tabs, card-tap opening, a three-dot dropdown for `Edit` / `Delete`, and scroll-safe detail browsing.
 
 ### `c447603` - Refine races filters, actions, and admin entry cleanup across web and mobile
 

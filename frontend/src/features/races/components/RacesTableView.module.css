@@ -118,6 +118,45 @@
   box-shadow: none;
 }
 
+.raceRowComingUp {
+  background: #101828;
+}
+
+.raceRowComingUp:hover {
+  box-shadow: 0 18px 32px rgba(15, 23, 42, 0.2);
+}
+
+.raceRowComingUp .dateBadge {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.raceRowComingUp .dateBadgeDay,
+.raceRowComingUp .dateBadgeMonth,
+.raceRowComingUp .raceCardTitle,
+.raceRowComingUp .metricValue {
+  color: #ffffff;
+}
+
+.raceRowComingUp .metricLabel {
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.raceRowComingUp .moreAction {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.raceRowComingUp .moreAction:hover {
+  background: rgba(255, 255, 255, 0.14) !important;
+  color: #ffffff !important;
+}
+
+.raceRowComingUp .raceStatusRegistered {
+  background: rgba(251, 191, 36, 0.2);
+  color: #fbbf24;
+}
+
 .raceRowRegistered {
   background: rgba(219, 234, 254, 0.96);
 }
@@ -209,11 +248,13 @@
 }
 
 .raceCardTitle {
-  margin: 4px 0 0;
+  display: block;
+  margin: 2px 0 0;
+  padding-top: 2px;
   color: #101828;
   font-size: 20px;
-  font-weight: 900;
-  line-height: 1.02;
+  font-weight: 800;
+  line-height: 1.5;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -233,8 +274,8 @@
 }
 
 .raceStatusRegistered {
-  background: rgba(37, 99, 235, 0.12);
-  color: #1d4ed8;
+  background: rgba(251, 191, 36, 0.2);
+  color: #fbbf24;
 }
 
 .raceStatusCompleted {

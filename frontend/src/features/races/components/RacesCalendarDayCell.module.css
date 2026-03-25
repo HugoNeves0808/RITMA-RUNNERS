@@ -71,7 +71,7 @@
 }
 
 .raceItemRegistered {
-  background: rgba(219, 234, 254, 0.95);
+  background: rgba(255, 237, 213, 0.95);
 }
 
 .raceItemNotRegistered {
@@ -141,7 +141,7 @@
 }
 
 .statusDotRegistered {
-  background: #2563eb;
+  background: #f97316;
 }
 
 .statusDotNotRegistered {

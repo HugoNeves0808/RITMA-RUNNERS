@@ -11,9 +11,10 @@ import {
   View,
 } from 'react-native'
 import { colors } from '../../../theme/colors'
-import { fetchRaceTable, fetchRaceTypes, updateRaceTableItem, deleteRaceTableItems } from '../services/racesTableService'
+import { fetchRaceDetail, fetchRaceTable, fetchRaceTypes, updateRaceTableItem, deleteRaceTableItems } from '../services/racesTableService'
 import type { RaceFilters } from '../types/raceFilters'
-import type { RaceTableItem, RaceTableYearGroup, RaceTypeOption } from '../types/racesTable'
+import type { RaceDetailResponse, RaceTableItem, RaceTableYearGroup, RaceTypeOption } from '../types/racesTable'
+import { RaceDetailsModal } from './RaceDetailsModal'
 
 type RacesTableViewProps = {
   token: string
@@ -87,7 +88,7 @@ function getRaceStatusLabel(status: string | null | undefined) {
 function getStatusPalette(status: string | null | undefined) {
   switch (status) {
     case 'REGISTERED':
-      return { backgroundColor: 'rgba(37, 99, 235, 0.2)', color: '#1d4ed8' }
+      return { backgroundColor: 'rgba(251, 191, 36, 0.2)', color: '#fbbf24' }
     case 'COMPLETED':
       return { backgroundColor: 'rgba(22, 163, 74, 0.2)', color: '#15803d' }
     case 'IN_LIST':
@@ -257,6 +258,11 @@ export function RacesTableView({ token, showAllYears, filters, refreshKey = 0 }:
   const [isSaving, setIsSaving] = useState(false)
   const [isRaceTypeSelectorOpen, setIsRaceTypeSelectorOpen] = useState(false)
   const [actionRace, setActionRace] = useState<RaceTableItem | null>(null)
+  const [detailsRace, setDetailsRace] = useState<RaceTableItem | null>(null)
+  const [raceDetails, setRaceDetails] = useState<RaceDetailResponse | null>(null)
+  const [isDetailsLoading, setIsDetailsLoading] = useState(false)
+  const [detailsError, setDetailsError] = useState<string | null>(null)
+  const [detailsTab, setDetailsTab] = useState<'race' | 'results' | 'analysis'>('race')
 
   const visibleYears = useMemo(
     () => (showAllYears ? years : years.filter((yearGroup) => yearGroup.year === currentYear)),
@@ -361,6 +367,30 @@ export function RacesTableView({ token, showAllYears, filters, refreshKey = 0 }:
     setFormState(createEditFormState(race))
   }
 
+  const handleOpenDetails = async (race: RaceTableItem) => {
+    try {
+      setDetailsRace(race)
+      setRaceDetails(null)
+      setDetailsError(null)
+      setDetailsTab('race')
+      setIsDetailsLoading(true)
+      const detailPayload = await fetchRaceDetail(race.id, token)
+      setRaceDetails(detailPayload)
+    } catch (error) {
+      setDetailsError(error instanceof Error ? error.message : 'Unable to load this race right now.')
+    } finally {
+      setIsDetailsLoading(false)
+    }
+  }
+
+  const handleCloseDetails = () => {
+    setDetailsRace(null)
+    setRaceDetails(null)
+    setDetailsError(null)
+    setDetailsTab('race')
+    setIsDetailsLoading(false)
+  }
+
   const handleDelete = (race: RaceTableItem) => {
     Alert.alert(
       'Delete race?',
@@ -420,22 +450,22 @@ export function RacesTableView({ token, showAllYears, filters, refreshKey = 0 }:
     const statusPalette = getStatusPalette(race.raceStatus)
 
     return (
-      <View key={race.id} style={[styles.raceCard, { backgroundColor: statusPalette.backgroundColor }, highlighted ? styles.raceCardHighlighted : null]}>
-        <View style={styles.dateBadge}>
-          <Text style={styles.dateBadgeDay}>{getDayLabel(race.raceDate)}</Text>
-          <Text style={styles.dateBadgeMonth}>{getCompactMonthLabel(race.raceDate)}</Text>
+      <Pressable key={race.id} style={[styles.raceCard, highlighted ? styles.raceCardComingUp : null]} onPress={() => void handleOpenDetails(race)}>
+        <View style={[styles.dateBadge, highlighted ? styles.dateBadgeComingUp : null]}>
+          <Text style={[styles.dateBadgeDay, highlighted ? styles.dateBadgeDayComingUp : null]}>{getDayLabel(race.raceDate)}</Text>
+          <Text style={[styles.dateBadgeMonth, highlighted ? styles.dateBadgeMonthComingUp : null]}>{getCompactMonthLabel(race.raceDate)}</Text>
         </View>
 
         <View style={styles.raceMain}>
           <View style={styles.raceHeaderRow}>
             <View style={styles.raceTitleBlock}>
-              <Text style={styles.raceTitle} numberOfLines={1} ellipsizeMode="tail">{race.name}</Text>
+              <Text style={[styles.raceTitle, highlighted ? styles.raceTitleComingUp : null]} numberOfLines={1} ellipsizeMode="tail">{race.name}</Text>
             </View>
           </View>
 
           <View style={styles.metricsGrid}>
             <View style={styles.metricItem}>
-              <Text style={styles.metricValue}>{race.raceTypeName ?? '-'}</Text>
+              <Text style={[styles.metricValue, highlighted ? styles.metricValueComingUp : null]} numberOfLines={1} ellipsizeMode="tail">{race.raceTypeName ?? '-'}</Text>
             </View>
           </View>
 
@@ -449,17 +479,20 @@ export function RacesTableView({ token, showAllYears, filters, refreshKey = 0 }:
             </View>
             <View style={styles.cardActions}>
               <Pressable
-                style={styles.moreAction}
+                style={[styles.moreAction, highlighted ? styles.moreActionComingUp : null]}
                 accessibilityRole="button"
                 accessibilityLabel="More actions"
-                onPress={() => setActionRace(race)}
+                onPress={(event) => {
+                  event.stopPropagation()
+                  setActionRace(race)
+                }}
               >
-                <FontAwesome6 name="ellipsis-vertical" size={16} color={colors.textSecondary} />
+                <FontAwesome6 name="ellipsis-vertical" size={16} color={highlighted ? '#ffffff' : colors.textSecondary} />
               </Pressable>
             </View>
           </View>
         </View>
-      </View>
+      </Pressable>
     )
   }
 
@@ -559,6 +592,18 @@ export function RacesTableView({ token, showAllYears, filters, refreshKey = 0 }:
               style={styles.actionSheetButton}
               onPress={() => {
                 if (actionRace) {
+                  void handleOpenDetails(actionRace)
+                }
+                setActionRace(null)
+              }}
+            >
+              <FontAwesome6 name="eye" size={16} color={colors.textPrimary} />
+              <Text style={styles.actionSheetButtonLabel}>View race</Text>
+            </Pressable>
+            <Pressable
+              style={styles.actionSheetButton}
+              onPress={() => {
+                if (actionRace) {
                   handleOpenEdit(actionRace)
                 }
                 setActionRace(null)
@@ -582,6 +627,33 @@ export function RacesTableView({ token, showAllYears, filters, refreshKey = 0 }:
           </View>
         </Pressable>
       </Modal>
+
+      <RaceDetailsModal
+        visible={detailsRace != null}
+        race={raceDetails}
+        isLoading={isDetailsLoading}
+        error={detailsError}
+        activeTab={detailsTab}
+        onTabChange={setDetailsTab}
+        onClose={handleCloseDetails}
+        onEdit={() => {
+          if (!detailsRace) {
+            return
+          }
+
+          handleCloseDetails()
+          handleOpenEdit(detailsRace)
+        }}
+        onDelete={() => {
+          if (!detailsRace) {
+            return
+          }
+
+          const raceToDelete = detailsRace
+          handleCloseDetails()
+          handleDelete(raceToDelete)
+        }}
+      />
 
       <Modal
         visible={editingRace != null && formState != null}
@@ -809,8 +881,8 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     backgroundColor: colors.cardBackground,
   },
-  raceCardHighlighted: {
-    backgroundColor: 'rgba(255, 237, 213, 0.98)',
+  raceCardComingUp: {
+    backgroundColor: '#101828',
   },
   dateBadge: {
     width: 74,
@@ -822,17 +894,26 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 6,
   },
+  dateBadgeComingUp: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
   dateBadgeDay: {
     color: colors.textPrimary,
     fontSize: 30,
     fontWeight: '900',
     lineHeight: 30,
   },
+  dateBadgeDayComingUp: {
+    color: '#ffffff',
+  },
   dateBadgeMonth: {
     color: '#667085',
     fontSize: 12,
     fontWeight: '800',
     lineHeight: 14,
+  },
+  dateBadgeMonthComingUp: {
+    color: '#ffffff',
   },
   raceMain: {
     flex: 1,
@@ -862,6 +943,9 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     lineHeight: 24,
   },
+  raceTitleComingUp: {
+    color: '#ffffff',
+  },
   metricsGrid: {
     gap: 4,
   },
@@ -886,6 +970,9 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
   },
+  metricValueComingUp: {
+    color: '#ffffff',
+  },
   cardActions: {
     flexDirection: 'row',
     gap: 8,
@@ -897,6 +984,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 999,
     backgroundColor: 'rgba(255, 255, 255, 0.92)',
+  },
+  moreActionComingUp: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
   modalBackdrop: {
     flex: 1,

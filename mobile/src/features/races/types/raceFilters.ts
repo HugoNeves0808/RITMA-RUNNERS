@@ -44,7 +44,7 @@ export function countActiveRaceFilters(filters: RaceFilters) {
 export function getRaceStatusColor(status: string) {
   switch (status) {
     case 'REGISTERED':
-      return '#1d4ed8'
+      return '#fbbf24'
     case 'COMPLETED':
       return '#15803d'
     case 'IN_LIST':
@@ -65,7 +65,7 @@ export function getRaceStatusColor(status: string) {
 export function getRaceStatusBackgroundColor(status: string) {
   switch (status) {
     case 'REGISTERED':
-      return 'rgba(37, 99, 235, 0.12)'
+      return 'rgba(251, 191, 36, 0.2)'
     case 'COMPLETED':
       return 'rgba(22, 163, 74, 0.12)'
     case 'IN_LIST':

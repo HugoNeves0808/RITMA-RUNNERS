@@ -5,6 +5,7 @@ import type {
   CreateRaceResponse,
   ManageRaceOptionPayload,
   ManagedRaceOptionType,
+  RaceDetailResponse,
   RaceOptionUsage,
   RaceTableItem,
   RaceTablePayload,
@@ -32,6 +33,12 @@ export function fetchRaceTypes(token: string) {
 
 export function fetchRaceCreateOptions(token: string) {
   return apiRequest<RaceCreateOptions>('/api/races/create/options', {
+    token,
+  })
+}
+
+export function fetchRaceDetail(raceId: string, token: string) {
+  return apiRequest<RaceDetailResponse>(`/api/races/${raceId}`, {
     token,
   })
 }

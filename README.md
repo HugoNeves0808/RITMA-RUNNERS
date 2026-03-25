@@ -87,6 +87,8 @@ The first backend run downloads Maven locally through the wrapper.
 - The backend now also exposes authenticated `Races` table endpoints for grouped yearly listing, race-type options, inline updates, and deletion, including `location`, `officialTime`, `raceTime`, and `raceStatus` data needed by both clients.
 - The web `Races` page now opens by default in `Table` mode with a card-based yearly list, a header-level `Current year` / `All years` selector, direct per-race actions, and a `Coming Up` block that highlights registered races for the current week or the next upcoming registered race.
 - The mobile `Races` page now also opens by default in `Table` mode, includes a matching `Coming Up` block, and uses a shared filters icon that opens switcher-style controls for `Monthly` / `Yearly` calendar mode or `Current year` / `All years` table scope.
+- The web and mobile `Races` table views now share a closer visual language, including lighter `REGISTERED` accents, refined `Coming Up` emphasis, and tighter filter/switcher sizing.
+- The mobile `Races` table now also supports opening a full race-details modal with `Race data`, `Results`, and `Analysis` sections, matching the existing backend detail payload already used on the web.
 
 ## Database configuration
 

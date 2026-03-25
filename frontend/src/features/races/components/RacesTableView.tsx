@@ -558,7 +558,7 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
                   return (
                     <article
                       key={race.id}
-                      className={`${styles.raceRow} ${styles.raceRowToday}`.trim()}
+                      className={`${styles.raceRow} ${styles.raceRowComingUp}`.trim()}
                       onClick={() => void handleOpenDetails(race)}
                     >
                       <div className={styles.dateBadge}>
