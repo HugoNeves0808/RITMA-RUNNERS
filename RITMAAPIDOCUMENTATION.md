@@ -94,9 +94,9 @@ Authenticated client shell status:
 - `Admin Area` is currently a grouped navigation label in both clients, not a standalone page or backend endpoint
 - web `Races` now has an icon-only switcher that swaps between separate placeholder `Calendar` and `Table` view components
 - web `Races` now renders real monthly and yearly calendar views backed by authenticated race data, with compact monthly day cards and a yearly 12-month overview that uses race-status color cues on the day numbers
-- web `Races` also includes a real card-based table mode grouped by year, with header-level name search, a shared race-filters drawer, a `Coming Up` section for registered races, and row actions split between visible `view` and a three-dot menu that now keeps only `edit`
+- web `Races` also includes a real card-based table mode grouped by year, with header-level name search, a shared race-filters drawer, a `Coming Up` section for registered races, and row actions split between visible `view` and a three-dot menu that now includes both `edit` and `delete`
 - web `Races` now also includes an add-race drawer with three tabs for `Race data`, `Race results`, and `Race analysis`
-- web `Races` now also includes a dedicated race-details drawer opened from the row itself or from the eye action, with the same three tabs plus a direct `Edit` action in the header
+- web `Races` now also includes a dedicated race-details drawer opened from the row itself or from the eye action, with the same three tabs plus direct `Edit` and `Delete` actions in the header
 - web `Races` create flows now also let the user manage `race types`, `teams`, `circuits`, and `shoes` directly inside the creation UI, including inline create, edit, delete, usage inspection, and product-native confirmation modals
 - web `Races` time presentation now hides seconds and uses `AM/PM` where race start time is shown in the creation flow and in the race-details drawer
 - mobile `Races` now mirrors the same top-level switcher pattern and renders real monthly and yearly calendars backed by the same authenticated race data, with a compact per-day monthly summary and a single-column yearly overview adapted for smaller screens
@@ -922,9 +922,32 @@ Example body:
 }
 ```
 
-Race deletion note:
+### `DELETE /api/races/{raceId}`
 
-- the authenticated bulk race-deletion endpoint used by the older web table flow has been removed from the backend
+Deletes a single authenticated user's race.
+
+Backend behavior:
+
+- validates that the race belongs to the authenticated user
+- returns `404 Not Found` when the race does not exist for that user
+- deletes the base `user_races` row, which also removes the flattened results and analysis data stored on that same row
+
+Postman:
+
+- Method: `DELETE`
+- URL: `{{baseUrl}}/api/races/{{raceId}}`
+- Auth: `Bearer Token`
+- Token: `{{token}}`
+
+Expected response:
+
+- `204 No Content`
+
+Current client usage:
+
+- web `Races` exposes this endpoint through the three-dot card menu and the race-details drawer header
+- both entry points use a confirmation modal before the delete request is sent
+- after a successful deletion, the web table closes the details drawer if needed and refreshes the current race list
 
 ## Admin
 

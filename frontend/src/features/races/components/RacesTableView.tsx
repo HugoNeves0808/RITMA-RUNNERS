@@ -1,4 +1,4 @@
-import { faEllipsisVertical, faEye, faPenToSquare } from '@fortawesome/free-solid-svg-icons'
+import { faEllipsisVertical, faEye, faPenToSquare, faTrashCan } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
@@ -24,6 +24,7 @@ import {
   fetchRaceDetail,
   fetchRaceTable,
   fetchRaceTypes,
+  deleteRace,
   updateRaceTableItem,
 } from '../services/racesTableService'
 import type { RaceFilters } from '../types/raceFilters'
@@ -335,6 +336,8 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
   const [raceDetails, setRaceDetails] = useState<RaceDetailResponse | null>(null)
   const [selectedDetailsRace, setSelectedDetailsRace] = useState<RaceTableItem | null>(null)
   const [detailsError, setDetailsError] = useState<string | null>(null)
+  const [racePendingDelete, setRacePendingDelete] = useState<RaceTableItem | null>(null)
+  const [isDeletingRace, setIsDeletingRace] = useState(false)
   const [form] = Form.useForm<EditRaceFormValues>()
 
   const visibleYears = showAllYears
@@ -432,6 +435,32 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
     }
   }
 
+  const handleRequestDelete = (race: RaceTableItem) => {
+    setRacePendingDelete(race)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!token || !racePendingDelete) {
+      return
+    }
+
+    try {
+      setIsDeletingRace(true)
+      setError(null)
+      await deleteRace(racePendingDelete.id, token)
+      setRacePendingDelete(null)
+      setIsDetailsOpen(false)
+      setRaceDetails(null)
+      setSelectedDetailsRace(null)
+      setDetailsError(null)
+      await loadTableData()
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : 'Could not delete this race right now.')
+    } finally {
+      setIsDeletingRace(false)
+    }
+  }
+
   const handleSubmitEdit = async () => {
     if (!token || !editingRace) {
       return
@@ -474,6 +503,12 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
         label: 'Edit race',
         icon: <FontAwesomeIcon icon={faPenToSquare} />,
       },
+      {
+        key: 'delete',
+        label: 'Delete race',
+        icon: <FontAwesomeIcon icon={faTrashCan} />,
+        danger: true,
+      },
     ],
     onClick: ({ key, domEvent }: Parameters<NonNullable<MenuProps['onClick']>>[0]) => {
       domEvent.preventDefault()
@@ -481,6 +516,11 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
 
       if (key === 'edit') {
         handleOpenEdit(race)
+        return
+      }
+
+      if (key === 'delete') {
+        handleRequestDelete(race)
       }
     },
   })
@@ -920,11 +960,35 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
         </Form>
       </Modal>
 
+      <Modal
+        title="Delete race?"
+        open={racePendingDelete != null}
+        okText="Delete"
+        okButtonProps={{ danger: true }}
+        cancelText="Cancel"
+        confirmLoading={isDeletingRace}
+        onOk={() => void handleConfirmDelete()}
+        onCancel={() => {
+          if (isDeletingRace) {
+            return
+          }
+
+          setRacePendingDelete(null)
+        }}
+      >
+        <p className={styles.modalHint}>
+          {racePendingDelete
+            ? `This will permanently delete "${racePendingDelete.name}".`
+            : 'This will permanently delete this race.'}
+        </p>
+      </Modal>
+
       <RaceDetailsDrawer
         open={isDetailsOpen}
         race={raceDetails}
         isLoading={isDetailsLoading}
         error={detailsError}
+        isDeleting={isDeletingRace}
         onEdit={() => {
           if (!selectedDetailsRace) {
             return
@@ -934,6 +998,13 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
           setRaceDetails(null)
           setDetailsError(null)
           handleOpenEdit(selectedDetailsRace)
+        }}
+        onDelete={() => {
+          if (!selectedDetailsRace) {
+            return
+          }
+
+          handleRequestDelete(selectedDetailsRace)
         }}
         onClose={() => {
           setIsDetailsOpen(false)

@@ -97,3 +97,9 @@ export function updateRaceTableItem(raceId: string, payload: UpdateRaceTableItem
   })
 }
 
+export function deleteRace(raceId: string, token: string) {
+  return apiDeleteWithToken<void>(`/api/races/${raceId}`, token, undefined, {
+    suppressUnauthorized: true,
+  })
+}
+

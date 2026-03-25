@@ -242,6 +242,15 @@ public class RaceService {
     }
 
     @Transactional
+    public void deleteRace(UUID userId, UUID raceId) {
+        if (!raceRepository.raceExists(userId, raceId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Race not found.");
+        }
+
+        raceRepository.deleteRace(userId, raceId);
+    }
+
+    @Transactional
     public void detachManagedOptionUsage(UUID userId, RaceOptionType optionType, UUID optionId) {
         if (!raceRepository.managedOptionExists(userId, optionType, optionId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, optionType.label() + " not found.");

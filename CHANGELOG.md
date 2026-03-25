@@ -11,11 +11,14 @@ This file keeps a short, slightly more detailed record of what was done in each 
 
 ## Entries
 
-### `current` - Flatten race persistence and remove race deletion across backend and web
+### `current` - Restore single-race deletion and document the latest races flow
 
 - Merged the old `user_race_results` and `user_race_analysis` data into `user_races` through a new Flyway migration, so race result and analysis fields now live directly on the base race row and no longer depend on per-race child tables.
 - Updated backend race reads and writes to use the flattened `user_races` structure for race tables, race details, race creation, race updates, shoe usage lookups, and managed-option detach flows, while keeping the public API payloads stable for the clients.
-- Removed the backend bulk race-deletion endpoint and deleted the corresponding web race-deletion flow, including the table-action entry and the race-details drawer delete action, so web race management now keeps only `view` and `edit`.
+- Restored authenticated single-race deletion through `DELETE /api/races/{raceId}` in the backend, with ownership checks and a `404` response when the requested race does not exist.
+- Reintroduced the web race-deletion flow in the `Races` table, including a `Delete race` option in the three-dot card menu, a matching delete action in the race-details drawer, and a confirmation modal before the request is sent.
+- Kept the web `races` feature on local unauthorized-error handling instead of automatic logout, so an expired session now surfaces as an in-page error state instead of kicking the user out while they are working.
+- Increased the local JWT lifetime in the tracked development `.env` from `120` minutes to `10080` minutes so local sessions stay alive for 7 days during development and testing.
 - Hardened local database startup after the Flyway-history reset scenario by forcing both the datasource and Flyway to use the `public` schema explicitly in backend configuration.
 
 ### `previous` - Expand race creation and in-list handling across backend, web, and mobile

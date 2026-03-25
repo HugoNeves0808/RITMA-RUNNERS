@@ -201,6 +201,18 @@ public class RaceRepository {
         return count != null && count > 0;
     }
 
+    public int deleteRace(UUID userId, UUID raceId) {
+        return jdbcTemplate().update(
+                """
+                        DELETE FROM user_races
+                        WHERE user_id = ?
+                          AND id = ?
+                        """,
+                userId,
+                raceId
+        );
+    }
+
     public boolean raceTypeExists(UUID userId, UUID raceTypeId) {
         return namedOptionExists(userId, raceTypeId, RaceOptionType.RACE_TYPES.tableName());
     }

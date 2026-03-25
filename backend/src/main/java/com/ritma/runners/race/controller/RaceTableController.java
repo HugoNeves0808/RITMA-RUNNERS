@@ -137,6 +137,13 @@ public class RaceTableController {
         return raceService.updateTableRace(requireAuthenticatedUserId(user), raceId, request);
     }
 
+    @DeleteMapping("/{raceId:[0-9a-fA-F\\-]{36}}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteRace(@AuthenticationPrincipal JwtAuthenticatedUser user,
+                           @PathVariable UUID raceId) {
+        raceService.deleteRace(requireAuthenticatedUserId(user), raceId);
+    }
+
     private UUID requireAuthenticatedUserId(JwtAuthenticatedUser user) {
         if (user == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication is required.");
