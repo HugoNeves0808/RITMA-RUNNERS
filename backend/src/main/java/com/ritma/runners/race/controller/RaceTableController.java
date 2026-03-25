@@ -21,7 +21,6 @@ import org.springframework.web.server.ResponseStatusException;
 import com.ritma.runners.auth.dto.JwtAuthenticatedUser;
 import com.ritma.runners.race.dto.CreateRaceRequest;
 import com.ritma.runners.race.dto.CreateRaceResponse;
-import com.ritma.runners.race.dto.DeleteRacesRequest;
 import com.ritma.runners.race.dto.ManageRaceOptionRequest;
 import com.ritma.runners.race.dto.RaceCreateOptionsResponse;
 import com.ritma.runners.race.dto.RaceDetailResponse;
@@ -136,13 +135,6 @@ public class RaceTableController {
             @RequestBody UpdateRaceTableItemRequest request
     ) {
         return raceService.updateTableRace(requireAuthenticatedUserId(user), raceId, request);
-    }
-
-    @DeleteMapping("/bulk")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteRaces(@AuthenticationPrincipal JwtAuthenticatedUser user,
-                            @RequestBody DeleteRacesRequest request) {
-        raceService.deleteRaces(requireAuthenticatedUserId(user), request);
     }
 
     private UUID requireAuthenticatedUserId(JwtAuthenticatedUser user) {

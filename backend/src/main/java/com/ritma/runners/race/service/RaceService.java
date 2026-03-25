@@ -22,7 +22,6 @@ import org.springframework.http.HttpStatus;
 
 import com.ritma.runners.race.dto.CreateRaceRequest;
 import com.ritma.runners.race.dto.CreateRaceResponse;
-import com.ritma.runners.race.dto.DeleteRacesRequest;
 import com.ritma.runners.race.dto.ManageRaceOptionRequest;
 import com.ritma.runners.race.dto.RaceCreateOptionsResponse;
 import com.ritma.runners.race.dto.RaceCalendarDayResponse;
@@ -387,24 +386,6 @@ public class RaceService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Race not found."));
     }
 
-    @Transactional
-    public void deleteRaces(UUID userId, DeleteRacesRequest request) {
-        List<UUID> raceIds = request == null || request.raceIds() == null
-                ? List.of()
-                : request.raceIds().stream().filter(Objects::nonNull).distinct().toList();
-
-        if (raceIds.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Select at least one race.");
-        }
-
-        int existingCount = raceRepository.countExistingRaces(userId, raceIds);
-        if (existingCount != raceIds.size()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "One or more races could not be found.");
-        }
-
-        raceRepository.deleteRaces(userId, raceIds);
-    }
-
     private void validateUpdateRequest(UpdateRaceTableItemRequest request) {
         if (request == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Race data is required.");
@@ -546,6 +527,7 @@ public class RaceService {
                 && (results.officialTimeSeconds() != null
                 || results.chipTimeSeconds() != null
                 || results.pacePerKmSeconds() != null
+                || results.shoeId() != null
                 || results.generalClassification() != null
                 || results.ageGroupClassification() != null
                 || results.teamClassification() != null

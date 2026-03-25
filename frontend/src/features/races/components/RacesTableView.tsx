@@ -1,4 +1,4 @@
-import { faEllipsisVertical, faEye, faPenToSquare, faTrashCan } from '@fortawesome/free-solid-svg-icons'
+import { faEllipsisVertical, faEye, faPenToSquare } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
@@ -12,6 +12,7 @@ import {
   Empty,
   Form,
   Input,
+  type MenuProps,
   Modal,
   Select,
   Space,
@@ -20,7 +21,6 @@ import {
 } from 'antd'
 import { useAuth } from '../../auth'
 import {
-  deleteRaceTableItems,
   fetchRaceDetail,
   fetchRaceTable,
   fetchRaceTypes,
@@ -412,28 +412,6 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
     setIsEditModalOpen(true)
   }
 
-  const handleDelete = (race: RaceTableItem) => {
-    if (!token) {
-      return
-    }
-
-    Modal.confirm({
-      title: 'Delete race?',
-      content: 'This action cannot be undone.',
-      okText: 'Delete',
-      cancelText: 'Cancel',
-      okButtonProps: { danger: true },
-      onOk: async () => {
-        try {
-          await deleteRaceTableItems([race.id], token)
-          await loadTableData()
-        } catch (deleteError) {
-          setError(deleteError instanceof Error ? deleteError.message : 'Unknown error')
-        }
-      },
-    })
-  }
-
   const handleOpenDetails = async (race: RaceTableItem) => {
     if (!token) {
       return
@@ -496,20 +474,13 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
         label: 'Edit race',
         icon: <FontAwesomeIcon icon={faPenToSquare} />,
       },
-      {
-        key: 'delete',
-        label: 'Delete race',
-        icon: <FontAwesomeIcon icon={faTrashCan} />,
-        danger: true,
-      },
     ],
-    onClick: ({ key }: { key: string }) => {
+    onClick: ({ key, domEvent }: Parameters<NonNullable<MenuProps['onClick']>>[0]) => {
+      domEvent.preventDefault()
+      domEvent.stopPropagation()
+
       if (key === 'edit') {
         handleOpenEdit(race)
-      }
-
-      if (key === 'delete') {
-        handleDelete(race)
       }
     },
   })
@@ -963,16 +934,6 @@ export function RacesTableView({ showAllYears, filters, refreshKey = 0 }: RacesT
           setRaceDetails(null)
           setDetailsError(null)
           handleOpenEdit(selectedDetailsRace)
-        }}
-        onDelete={() => {
-          if (!selectedDetailsRace) {
-            return
-          }
-
-          setIsDetailsOpen(false)
-          setRaceDetails(null)
-          setDetailsError(null)
-          handleDelete(selectedDetailsRace)
         }}
         onClose={() => {
           setIsDetailsOpen(false)

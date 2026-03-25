@@ -9,7 +9,7 @@ public enum RaceOptionType {
     RACE_TYPES("race-types", "Race type", "user_race_types", "user_races", "race_type_id"),
     TEAMS("teams", "Team", "user_teams", "user_races", "team_id"),
     CIRCUITS("circuits", "Circuit", "user_circuits", "user_races", "circuit_id"),
-    SHOES("shoes", "Shoe", "user_shoes", "user_race_results", "shoe_id");
+    SHOES("shoes", "Shoe", "user_shoes", "user_races", "shoe_id");
 
     private final String pathValue;
     private final String label;

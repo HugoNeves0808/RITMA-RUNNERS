@@ -1,4 +1,4 @@
-import { faPenToSquare, faTrashCan } from '@fortawesome/free-solid-svg-icons'
+import { faPenToSquare } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { Button, Drawer, Spin, Tabs, Tooltip } from 'antd'
 import type { TabsProps } from 'antd'
@@ -12,7 +12,6 @@ type RaceDetailsDrawerProps = {
   isLoading: boolean
   error?: string | null
   onEdit?: () => void
-  onDelete?: () => void
   onClose: () => void
 }
 
@@ -140,7 +139,7 @@ function renderFieldsGrid(fields: Array<{ label: string; value: ReactNode }>) {
   )
 }
 
-export function RaceDetailsDrawer({ open, race, isLoading, error, onEdit, onDelete, onClose }: RaceDetailsDrawerProps) {
+export function RaceDetailsDrawer({ open, race, isLoading, error, onEdit, onClose }: RaceDetailsDrawerProps) {
   const items: TabsProps['items'] = [
     {
       key: 'race',
@@ -278,15 +277,6 @@ export function RaceDetailsDrawer({ open, race, isLoading, error, onEdit, onDele
             onClick={onEdit}
           >
             Edit
-          </Button>
-          <Button
-            type="text"
-            danger
-            className={`${styles.headerAction} ${styles.headerActionDanger}`.trim()}
-            icon={<FontAwesomeIcon icon={faTrashCan} />}
-            onClick={onDelete}
-          >
-            Delete
           </Button>
         </div>
       ) : null}

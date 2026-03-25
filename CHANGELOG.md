@@ -11,7 +11,14 @@ This file keeps a short, slightly more detailed record of what was done in each 
 
 ## Entries
 
-### `current` - Expand race creation and in-list handling across backend, web, and mobile
+### `current` - Flatten race persistence and remove race deletion across backend and web
+
+- Merged the old `user_race_results` and `user_race_analysis` data into `user_races` through a new Flyway migration, so race result and analysis fields now live directly on the base race row and no longer depend on per-race child tables.
+- Updated backend race reads and writes to use the flattened `user_races` structure for race tables, race details, race creation, race updates, shoe usage lookups, and managed-option detach flows, while keeping the public API payloads stable for the clients.
+- Removed the backend bulk race-deletion endpoint and deleted the corresponding web race-deletion flow, including the table-action entry and the race-details drawer delete action, so web race management now keeps only `view` and `edit`.
+- Hardened local database startup after the Flyway-history reset scenario by forcing both the datasource and Flyway to use the `public` schema explicitly in backend configuration.
+
+### `previous` - Expand race creation and in-list handling across backend, web, and mobile
 
 - Extended the authenticated `POST /api/races` backend flow so race creation now supports optional `team`, `circuit`, and `shoe` relations, validates ownership for those linked entities, and allows `raceDate` to stay empty only when the selected `raceStatus` is `IN_LIST`.
 - Added a new authenticated `GET /api/races/create/options` backend endpoint that returns the race-creation selectors needed by the clients in a single response, including available `raceTypes`, `teams`, `circuits`, and `shoes`.

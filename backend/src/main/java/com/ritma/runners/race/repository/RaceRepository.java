@@ -98,12 +98,11 @@ public class RaceRepository {
                     ur.location,
                     ur.race_type_id,
                     urt.name AS race_type_name,
-                    urr.official_time,
-                    urr.chip_time,
-                    urr.pace_per_km
+                    ur.official_time,
+                    ur.chip_time,
+                    ur.pace_per_km
                 FROM user_races ur
                 LEFT JOIN user_race_types urt ON urt.id = ur.race_type_id
-                LEFT JOIN user_race_results urr ON urr.user_race_id = ur.id
                 WHERE ur.user_id = ?
                 """);
         List<Object> args = new ArrayList<>(List.of(userId));
@@ -241,25 +240,12 @@ public class RaceRepository {
     }
 
     public int countManagedOptionUsage(UUID userId, RaceOptionType optionType, UUID optionId) {
-        Integer count;
-        if (optionType == RaceOptionType.RACE_TYPES
-                || optionType == RaceOptionType.TEAMS
-                || optionType == RaceOptionType.CIRCUITS) {
-            count = jdbcTemplate().queryForObject(
-                    "SELECT COUNT(*) FROM " + optionType.referenceTableName() + " WHERE user_id = ? AND " + optionType.referenceColumnName() + " = ?",
-                    Integer.class,
-                    userId,
-                    optionId
-            );
-        } else {
-            count = jdbcTemplate().queryForObject(
-                    "SELECT COUNT(*) FROM " + optionType.referenceTableName()
-                            + " ref JOIN user_races ur ON ur.id = ref.user_race_id WHERE ur.user_id = ? AND ref." + optionType.referenceColumnName() + " = ?",
-                    Integer.class,
-                    userId,
-                    optionId
-            );
-        }
+        Integer count = jdbcTemplate().queryForObject(
+                "SELECT COUNT(*) FROM " + optionType.referenceTableName() + " WHERE user_id = ? AND " + optionType.referenceColumnName() + " = ?",
+                Integer.class,
+                userId,
+                optionId
+        );
 
         return count == null ? 0 : count;
     }
@@ -273,27 +259,6 @@ public class RaceRepository {
     }
 
     public List<RaceOptionUsageItemResponse> findManagedOptionUsage(UUID userId, RaceOptionType optionType, UUID optionId) {
-        if (optionType == RaceOptionType.SHOES) {
-            return jdbcTemplate().query(
-                    """
-                            SELECT ur.id, ur.name, ur.race_date
-                            FROM user_race_results urr
-                            JOIN user_races ur ON ur.id = urr.user_race_id
-                            WHERE ur.user_id = ?
-                              AND urr.shoe_id = ?
-                            ORDER BY ur.race_date DESC NULLS LAST, lower(ur.name) ASC
-                            """,
-                    (rs, rowNum) -> new RaceOptionUsageItemResponse(
-                            rs.getObject("id", UUID.class),
-                            rs.getString("name"),
-                            rs.getObject("race_date", LocalDate.class),
-                            "Race results"
-                    ),
-                    userId,
-                    optionId
-            );
-        }
-
         return jdbcTemplate().query(
                 "SELECT id, name, race_date FROM user_races WHERE user_id = ? AND " + optionType.referenceColumnName()
                         + " = ? ORDER BY race_date DESC NULLS LAST, lower(name) ASC",
@@ -301,7 +266,7 @@ public class RaceRepository {
                         rs.getObject("id", UUID.class),
                         rs.getString("name"),
                         rs.getObject("race_date", LocalDate.class),
-                        "Race data"
+                        optionType == RaceOptionType.SHOES ? "Race results" : "Race data"
                 ),
                 userId,
                 optionId
@@ -309,21 +274,6 @@ public class RaceRepository {
     }
 
     public int detachManagedOptionUsage(UUID userId, RaceOptionType optionType, UUID optionId) {
-        if (optionType == RaceOptionType.SHOES) {
-            return jdbcTemplate().update(
-                    """
-                            UPDATE user_race_results urr
-                            SET shoe_id = NULL
-                            FROM user_races ur
-                            WHERE ur.id = urr.user_race_id
-                              AND ur.user_id = ?
-                              AND urr.shoe_id = ?
-                            """,
-                    userId,
-                    optionId
-            );
-        }
-
         return jdbcTemplate().update(
                 "UPDATE user_races SET " + optionType.referenceColumnName() + " = NULL WHERE user_id = ? AND "
                         + optionType.referenceColumnName() + " = ?",
@@ -350,36 +300,18 @@ public class RaceRepository {
     }
 
     public void upsertRaceResult(UUID raceId, Integer officialTimeSeconds, Integer chipTimeSeconds, Integer pacePerKmSeconds) {
-        if (officialTimeSeconds == null && chipTimeSeconds == null && pacePerKmSeconds == null) {
-            Integer count = jdbcTemplate().queryForObject(
-                    """
-                            SELECT COUNT(*)
-                            FROM user_race_results
-                            WHERE user_race_id = ?
-                            """,
-                    Integer.class,
-                    raceId
-            );
-
-            if (count == null || count == 0) {
-                return;
-            }
-        }
-
         jdbcTemplate().update(
                 """
-                        INSERT INTO user_race_results (user_race_id, official_time, chip_time, pace_per_km)
-                        VALUES (?, ?, ?, ?)
-                        ON CONFLICT (user_race_id)
-                        DO UPDATE
-                        SET official_time = EXCLUDED.official_time,
-                            chip_time = EXCLUDED.chip_time,
-                            pace_per_km = EXCLUDED.pace_per_km
+                        UPDATE user_races
+                        SET official_time = ?,
+                            chip_time = ?,
+                            pace_per_km = ?
+                        WHERE id = ?
                         """,
-                raceId,
                 officialTimeSeconds,
                 chipTimeSeconds,
-                pacePerKmSeconds
+                pacePerKmSeconds,
+                raceId
         );
     }
 
@@ -443,34 +375,19 @@ public class RaceRepository {
                                         Boolean isTeamClassificationPodium) {
         jdbcTemplate().update(
                 """
-                        INSERT INTO user_race_results (
-                            user_race_id,
-                            official_time,
-                            chip_time,
-                            pace_per_km,
-                            shoe_id,
-                            general_classification,
-                            is_general_classification_podium,
-                            age_group_classification,
-                            is_age_group_classification_podium,
-                            team_classification,
-                            is_team_classification_podium
-                        )
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        ON CONFLICT (user_race_id)
-                        DO UPDATE
-                        SET official_time = EXCLUDED.official_time,
-                            chip_time = EXCLUDED.chip_time,
-                            pace_per_km = EXCLUDED.pace_per_km,
-                            shoe_id = EXCLUDED.shoe_id,
-                            general_classification = EXCLUDED.general_classification,
-                            is_general_classification_podium = EXCLUDED.is_general_classification_podium,
-                            age_group_classification = EXCLUDED.age_group_classification,
-                            is_age_group_classification_podium = EXCLUDED.is_age_group_classification_podium,
-                            team_classification = EXCLUDED.team_classification,
-                            is_team_classification_podium = EXCLUDED.is_team_classification_podium
+                        UPDATE user_races
+                        SET official_time = ?,
+                            chip_time = ?,
+                            pace_per_km = ?,
+                            shoe_id = ?,
+                            general_classification = ?,
+                            is_general_classification_podium = ?,
+                            age_group_classification = ?,
+                            is_age_group_classification_podium = ?,
+                            team_classification = ?,
+                            is_team_classification_podium = ?
+                        WHERE id = ?
                         """,
-                raceId,
                 officialTimeSeconds,
                 chipTimeSeconds,
                 pacePerKmSeconds,
@@ -480,7 +397,8 @@ public class RaceRepository {
                 ageGroupClassification,
                 isAgeGroupClassificationPodium != null && isAgeGroupClassificationPodium,
                 teamClassification,
-                isTeamClassificationPodium != null && isTeamClassificationPodium
+                isTeamClassificationPodium != null && isTeamClassificationPodium,
+                raceId
         );
     }
 
@@ -514,30 +432,28 @@ public class RaceRepository {
                             ur.real_km,
                             ur.elevation,
                             ur.is_valid_for_category_ranking,
-                            urr.official_time,
-                            urr.chip_time,
-                            urr.pace_per_km,
-                            urr.shoe_id,
+                            ur.official_time,
+                            ur.chip_time,
+                            ur.pace_per_km,
+                            ur.shoe_id,
                             us.name AS shoe_name,
-                            urr.general_classification,
-                            urr.is_general_classification_podium,
-                            urr.age_group_classification,
-                            urr.is_age_group_classification_podium,
-                            urr.team_classification,
-                            urr.is_team_classification_podium,
-                            ura.pre_race_confidence,
-                            ura.race_difficulty,
-                            ura.final_satisfaction,
-                            ura.pain_injuries,
-                            ura.analysis_notes,
-                            ura.would_repeat_this_race
+                            ur.general_classification,
+                            ur.is_general_classification_podium,
+                            ur.age_group_classification,
+                            ur.is_age_group_classification_podium,
+                            ur.team_classification,
+                            ur.is_team_classification_podium,
+                            ur.pre_race_confidence,
+                            ur.race_difficulty,
+                            ur.final_satisfaction,
+                            ur.pain_injuries,
+                            ur.analysis_notes,
+                            ur.would_repeat_this_race
                         FROM user_races ur
                         LEFT JOIN user_teams ut ON ut.id = ur.team_id
                         LEFT JOIN user_circuits uc ON uc.id = ur.circuit_id
                         LEFT JOIN user_race_types urt ON urt.id = ur.race_type_id
-                        LEFT JOIN user_race_results urr ON urr.user_race_id = ur.id
-                        LEFT JOIN user_shoes us ON us.id = urr.shoe_id
-                        LEFT JOIN user_race_analysis ura ON ura.user_race_id = ur.id
+                        LEFT JOIN user_shoes us ON us.id = ur.shoe_id
                         WHERE ur.user_id = ?
                           AND ur.id = ?
                         """,
@@ -608,78 +524,22 @@ public class RaceRepository {
                                    Boolean wouldRepeatThisRace) {
         jdbcTemplate().update(
                 """
-                        INSERT INTO user_race_analysis (
-                            user_race_id,
-                            pre_race_confidence,
-                            race_difficulty,
-                            final_satisfaction,
-                            pain_injuries,
-                            analysis_notes,
-                            would_repeat_this_race
-                        )
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
-                        ON CONFLICT (user_race_id)
-                        DO UPDATE
-                        SET pre_race_confidence = EXCLUDED.pre_race_confidence,
-                            race_difficulty = EXCLUDED.race_difficulty,
-                            final_satisfaction = EXCLUDED.final_satisfaction,
-                            pain_injuries = EXCLUDED.pain_injuries,
-                            analysis_notes = EXCLUDED.analysis_notes,
-                            would_repeat_this_race = EXCLUDED.would_repeat_this_race
+                        UPDATE user_races
+                        SET pre_race_confidence = ?,
+                            race_difficulty = ?,
+                            final_satisfaction = ?,
+                            pain_injuries = ?,
+                            analysis_notes = ?,
+                            would_repeat_this_race = ?
+                        WHERE id = ?
                         """,
-                raceId,
                 preRaceConfidence,
                 raceDifficulty,
                 finalSatisfaction,
                 painInjuries,
                 analysisNotes,
-                wouldRepeatThisRace
-        );
-    }
-
-    public int countExistingRaces(UUID userId, List<UUID> raceIds) {
-        if (raceIds.isEmpty()) {
-            return 0;
-        }
-
-        String placeholders = String.join(", ", java.util.Collections.nCopies(raceIds.size(), "?"));
-        List<Object> args = new ArrayList<>();
-        args.add(userId);
-        args.addAll(raceIds);
-
-        Integer count = jdbcTemplate().queryForObject(
-                """
-                        SELECT COUNT(*)
-                        FROM user_races
-                        WHERE user_id = ?
-                          AND id IN ("""
-                        + placeholders
-                        + ")",
-                Integer.class,
-                args.toArray()
-        );
-
-        return count == null ? 0 : count;
-    }
-
-    public int deleteRaces(UUID userId, List<UUID> raceIds) {
-        if (raceIds.isEmpty()) {
-            return 0;
-        }
-
-        String placeholders = String.join(", ", java.util.Collections.nCopies(raceIds.size(), "?"));
-        List<Object> args = new ArrayList<>();
-        args.add(userId);
-        args.addAll(raceIds);
-
-        return jdbcTemplate().update(
-                """
-                        DELETE FROM user_races
-                        WHERE user_id = ?
-                          AND id IN ("""
-                        + placeholders
-                        + ")",
-                args.toArray()
+                wouldRepeatThisRace,
+                raceId
         );
     }
 
