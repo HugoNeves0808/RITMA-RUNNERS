@@ -19,14 +19,17 @@ export const EMPTY_RACE_FILTERS: RaceFilters = {
   raceTypeIds: [],
 }
 
+export const IN_LIST_WITHOUT_DATE_STATUS = 'IN_LIST_WITHOUT_DATE'
+
 export const RACE_STATUS_OPTIONS = [
   { value: 'REGISTERED', label: 'Registered' },
   { value: 'COMPLETED', label: 'Completed' },
-  { value: 'IN_LIST', label: 'In list' },
+  { value: 'IN_LIST', label: 'In List (with date)' },
+  { value: IN_LIST_WITHOUT_DATE_STATUS, label: 'In List (without date)' },
   { value: 'NOT_REGISTERED', label: 'Not registered' },
   { value: 'CANCELLED', label: 'Cancelled' },
-  { value: 'DID_NOT_START', label: 'DNS' },
-  { value: 'DID_NOT_FINISH', label: 'DNF' },
+  { value: 'DID_NOT_START', label: 'Did not start' },
+  { value: 'DID_NOT_FINISH', label: 'Did not finish' },
 ] as const
 
 export function getRaceStatusColor(status: string) {
@@ -36,6 +39,7 @@ export function getRaceStatusColor(status: string) {
     case 'COMPLETED':
       return '#15803d'
     case 'IN_LIST':
+    case IN_LIST_WITHOUT_DATE_STATUS:
       return '#b45309'
     case 'NOT_REGISTERED':
       return '#4b5563'
@@ -57,6 +61,7 @@ export function getRaceStatusBackgroundColor(status: string) {
     case 'COMPLETED':
       return 'rgba(22, 163, 74, 0.12)'
     case 'IN_LIST':
+    case IN_LIST_WITHOUT_DATE_STATUS:
       return 'rgba(245, 158, 11, 0.14)'
     case 'NOT_REGISTERED':
       return 'rgba(107, 114, 128, 0.14)'

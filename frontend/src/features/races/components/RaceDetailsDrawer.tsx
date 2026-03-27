@@ -89,9 +89,9 @@ function formatStatusLabel(status: string | null | undefined) {
     case 'CANCELLED':
       return 'Cancelled'
     case 'DID_NOT_START':
-      return 'DNS'
+      return 'Did not start'
     case 'DID_NOT_FINISH':
-      return 'DNF'
+      return 'Did not finish'
     default:
       return status.replaceAll('_', ' ').toLowerCase()
   }

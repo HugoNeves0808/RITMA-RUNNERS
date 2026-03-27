@@ -51,6 +51,7 @@ type AddRaceDrawerProps = {
   onCreated: () => void | Promise<void>
   onCreateOptionsChange?: (nextOptions: RaceCreateOptions) => void
   mode?: 'create' | 'edit'
+  triggerLabel?: string
   open?: boolean
   raceId?: string | null
   initialRace?: RaceDetailResponse | null
@@ -437,6 +438,7 @@ export function AddRaceDrawer({
   onCreated,
   onCreateOptionsChange,
   mode = 'create',
+  triggerLabel = 'Add Race',
   open,
   raceId = null,
   initialRace = null,
@@ -768,9 +770,11 @@ export function AddRaceDrawer({
           type="primary"
           className={styles.trigger}
           icon={<FontAwesomeIcon icon={faPlus} />}
-          aria-label="Add race"
+          aria-label={triggerLabel}
           onClick={() => setInternalOpen(true)}
-        />
+        >
+          {triggerLabel}
+        </Button>
       ) : null}
 
       <Drawer

@@ -5,6 +5,7 @@ import type { RacesCalendarMode } from '../types/racesCalendarMode'
 type RacesCalendarModeSwitcherProps = {
   selectedMode: RacesCalendarMode
   onModeChange: (mode: RacesCalendarMode) => void
+  disabled?: boolean
 }
 
 const OPTIONS = [
@@ -15,10 +16,12 @@ const OPTIONS = [
 export function RacesCalendarModeSwitcher({
   selectedMode,
   onModeChange,
+  disabled = false,
 }: RacesCalendarModeSwitcherProps) {
   return (
     <Select
       value={selectedMode}
+      disabled={disabled}
       onChange={onModeChange}
       options={OPTIONS}
       className={styles.select}

@@ -6,7 +6,7 @@
 
 .pageHeader {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
 }
@@ -27,36 +27,107 @@
   margin: 0 !important;
 }
 
-.headerControls {
+.contentLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 20px;
+  align-items: start;
+}
+
+.mainSection {
+  min-width: 0;
+}
+
+.sidebar {
+  align-self: start;
+}
+
+.sidebarCard {
+  position: sticky;
+  top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+.sidebarHeader {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 12px;
 }
 
-.tableYearsSelect {
-  min-width: 128px;
+.sidebarTitle {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #101828;
+}
+
+.clearButton {
+  padding-inline: 0 !important;
+  font-weight: 600;
+  color: #475467;
+}
+
+.sidebarDivider {
+  height: 1px;
+  background: rgba(16, 24, 40, 0.08);
+}
+
+.filterField {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filterLabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: #344054;
+}
+
+.fullWidthControl {
+  width: 100%;
 }
 
 .searchInput {
-  min-width: 220px;
+  width: 100%;
+  min-width: 0;
+}
+
+.statusOption {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  flex: 0 0 auto;
 }
 
 .activeFiltersRow {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
 }
 
 .filterChip {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   border: 1px solid rgba(16, 24, 40, 0.08);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.92);
   color: #344054;
-  padding: 8px 12px;
+  padding: 5px 10px;
   cursor: pointer;
   transition: border-color 0.2s ease, background-color 0.2s ease;
 }
@@ -71,26 +142,23 @@
 }
 
 .filterChipLabel {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
-}
-
-.filterChipDot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  flex: 0 0 auto;
+  line-height: 1.1;
 }
 
 .filterChipIcon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
   border-radius: 999px;
-  background: rgba(16, 24, 40, 0.06);
-  font-size: 12px;
+  background: #101828;
+  color: #ffffff;
+  font-size: 8px;
+  line-height: 1;
+  flex: 0 0 auto;
 }
 
 @media (max-width: 768px) {
@@ -99,18 +167,16 @@
     align-items: stretch;
   }
 
-  .headerControls {
-    flex-direction: column;
-    align-items: stretch;
+  .contentLayout {
+    grid-template-columns: 1fr;
   }
 
-  .tableYearsSelect {
-    flex: 1;
+  .sidebarCard {
+    position: static;
   }
 
-  .searchInput {
-    width: 100%;
-    min-width: 0;
+  .sidebarHeader {
+    align-items: flex-start;
   }
 
   .activeFiltersRow {

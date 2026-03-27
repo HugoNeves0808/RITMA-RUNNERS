@@ -18,6 +18,11 @@ export type RaceTableYearGroup = {
   races: RaceTableItem[]
 }
 
+export type TableYearSelection = {
+  allRaces: boolean
+  selectedYears: number[]
+}
+
 export type RaceTablePayload = {
   years: RaceTableYearGroup[]
   undatedRaces: RaceTableItem[]

@@ -24,6 +24,10 @@ This file keeps a short, slightly more detailed record of what was done in each 
 - Kept the web `races` feature on local unauthorized-error handling instead of automatic logout, so an expired session now surfaces as an in-page error state instead of kicking the user out while they are working.
 - Increased the local JWT lifetime in the tracked development `.env` from `120` minutes to `10080` minutes so local sessions stay alive for 7 days during development and testing.
 - Hardened local database startup after the Flyway-history reset scenario by forcing both the datasource and Flyway to use the `public` schema explicitly in backend configuration.
+- Reworked the web `Races` page filters into a right-side `Filters` panel with active chips above the page content, a text `Add Race` action aligned to the header right edge, and default `All years` scope instead of opening the table on the current year.
+- Refined the web `Races` filter behavior so `All years` and individual years are mutually exclusive inside the multi-select, the default year chip stays hidden when it is only the implicit scope, and removing the last selected year while other filters remain active now falls back to `All years`.
+- Split `IN_LIST` handling in the web `Races` status filter into `In List (with date)` and `In List (without date)`, kept the undated variant unavailable in `Calendar` view, and rendered undated `In List` rows as a separate section between `Coming Up` and the remaining yearly groups.
+- Polished the web `Races` presentation with compact filter chips, a centered inline loader in the table container, orange loading indicators, section-level info tooltips for `Coming Up` and `In List`, lighter status-copy updates such as `Did not start` / `Did not finish`, and cleaner filter-select presentation.
 
 ### `previous` - Expand race creation and in-list handling across backend, web, and mobile
 

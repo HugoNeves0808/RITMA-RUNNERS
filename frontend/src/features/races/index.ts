@@ -20,6 +20,7 @@ export {
   EMPTY_RACE_FILTERS,
   getRaceStatusBackgroundColor,
   getRaceStatusColor,
+  IN_LIST_WITHOUT_DATE_STATUS,
   RACE_STATUS_OPTIONS,
 } from './types/raceFilters'
 export type {
@@ -34,6 +35,7 @@ export type {
   RaceTablePayload,
   RaceTableYearGroup,
   RaceTypeOption,
+  TableYearSelection,
   UpdateRaceTableItemPayload,
 } from './types/racesTable'
 export type { RaceFilterOptions, RaceFilters } from './types/raceFilters'

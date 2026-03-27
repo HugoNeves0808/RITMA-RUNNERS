@@ -1,5 +1,3 @@
-import { faCalendarDays, faTableCellsLarge } from '@fortawesome/free-solid-svg-icons'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import styles from './RacesViewSwitcher.module.css'
 import type { RacesViewMode } from '../types/racesViewMode'
 
@@ -8,9 +6,9 @@ type RacesViewSwitcherProps = {
   onViewChange: (view: RacesViewMode) => void
 }
 
-const VIEW_OPTIONS: Array<{ value: RacesViewMode; label: string; icon: typeof faCalendarDays }> = [
-  { value: 'calendar', label: 'Calendar view', icon: faCalendarDays },
-  { value: 'table', label: 'Table view', icon: faTableCellsLarge },
+const VIEW_OPTIONS: Array<{ value: RacesViewMode; label: string; text: string }> = [
+  { value: 'table', label: 'Table view', text: 'Table' },
+  { value: 'calendar', label: 'Calendar view', text: 'Calendar' },
 ]
 
 export function RacesViewSwitcher({ selectedView, onViewChange }: RacesViewSwitcherProps) {
@@ -30,7 +28,7 @@ export function RacesViewSwitcher({ selectedView, onViewChange }: RacesViewSwitc
             className={isActive ? `${styles.switchButton} ${styles.switchButtonActive}` : styles.switchButton}
             onClick={() => onViewChange(option.value)}
           >
-            <FontAwesomeIcon icon={option.icon} />
+            <span>{option.text}</span>
           </button>
         )
       })}

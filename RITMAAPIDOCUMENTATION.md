@@ -69,7 +69,7 @@ These are not backend API endpoints, but they are relevant to the current user f
   Authenticated `Races` entry route in the web app.
 - `/races`
   Alias route that opens the same authenticated `Races` page in the web app.
-  The page now opens in `Table` mode by default, includes a top view switcher for `Calendar` and `Table`, a calendar-mode dropdown for `Monthly` and `Yearly`, a table-scope dropdown for `Current year` and `All years`, a name search field, a compact add-race action, and a filters button for shared race filters.
+  The page now opens in `Table` mode by default, includes a right-side `Filters` panel with a `Calendar` / `Table` switcher, a calendar-mode dropdown for `Monthly` and `Yearly`, a multi-select `Years` filter that defaults to `All years`, a name search field, shared status and race-type filters, active-filter chips above the content, and a compact `Add Race` action aligned to the header right edge.
 - `/best-efforts`
   Authenticated web section for best efforts.
 - `/profile`
@@ -94,7 +94,7 @@ Authenticated client shell status:
 - `Admin Area` is currently a grouped navigation label in both clients, not a standalone page or backend endpoint
 - web `Races` now has an icon-only switcher that swaps between separate placeholder `Calendar` and `Table` view components
 - web `Races` now renders real monthly and yearly calendar views backed by authenticated race data, with compact monthly day cards and a yearly 12-month overview that uses race-status color cues on the day numbers
-- web `Races` also includes a real card-based table mode grouped by year, with header-level name search, a shared race-filters drawer, a `Coming Up` section for registered races, and row actions split between visible `view` and a three-dot menu that now includes both `edit` and `delete`
+- web `Races` also includes a real card-based table mode grouped by year, with a sticky right-side filters panel, active-filter chips, a `Coming Up` section for registered races, an `In List` section for undated tracked races, and row actions split between visible `view` and a three-dot menu that now includes both `edit` and `delete`
 - web `Races` now also includes an add-race drawer with three tabs for `Race data`, `Race results`, and `Race analysis`
 - web `Races` now reuses that same three-tab drawer for editing, with prefilled values, full-field editing parity with create, and access from both the card menu and the race-details drawer
 - web `Races` now also includes a dedicated race-details drawer opened from the row itself or from the eye action, with the same three tabs plus direct `Edit` and `Delete` actions in the header
@@ -555,11 +555,11 @@ Expected response example:
 
 Client usage notes:
 
-- web `Races` table consumes `/api/races/table`, opens in `Current year` by default, applies race-name search locally, and uses backend filters for selected statuses and race types while rendering a card-style list grouped by year instead of a classic spreadsheet layout
+- web `Races` table consumes `/api/races/table`, opens in `All years` by default, applies race-name search locally, and uses backend filters for selected statuses and race types while rendering a card-style list grouped by year instead of a classic spreadsheet layout
 - mobile `Races` table consumes the same endpoint, also opens in `Current year` by default, applies race-name search locally in table mode, and uses the same backend-backed status and race-type filters in its compact card layout
 - both clients use `raceStatus` and `raceTime` to drive the `Coming Up` section, which only considers `REGISTERED` races in the current Monday-to-Sunday week or, when none exist, the next future registered race
 - both clients now keep `Coming Up` logically independent from local race-name search, so typing into search no longer redefines which race counts as upcoming; it only filters what is shown
-- races whose status is `IN_LIST` and do not yet have a `raceDate` are returned in `undatedRaces`; both clients keep them hidden by default and only show them when the user filters by the `IN_LIST` status
+- races whose status is `IN_LIST` and do not yet have a `raceDate` are returned in `undatedRaces`; the web client now exposes them through a dedicated `In List (without date)` status filter, renders them in a separate `In List` section after `Coming Up`, and keeps that undated status unavailable in `Calendar` view
 
 ### `GET /api/races/types`
 
