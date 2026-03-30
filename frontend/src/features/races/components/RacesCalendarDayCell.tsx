@@ -7,6 +7,7 @@ type RacesCalendarDayCellProps = {
   isCurrentMonth: boolean
   isToday: boolean
   races: RaceCalendarItem[]
+  onDayClick?: (races: RaceCalendarItem[]) => void
 }
 
 const RACE_STATUS_CLASS_MAP: Record<string, string> = {
@@ -46,10 +47,12 @@ export function RacesCalendarDayCell({
   isCurrentMonth,
   isToday,
   races,
+  onDayClick,
 }: RacesCalendarDayCellProps) {
   const primaryRace = getPrimaryRaceForDay(races)
   const visibleRaces = primaryRace ? [primaryRace] : []
   const remainingRaces = races.length - visibleRaces.length
+  const isInteractive = races.length > 0 && onDayClick != null
 
   return (
     <div
@@ -57,7 +60,17 @@ export function RacesCalendarDayCell({
         styles.cell,
         !isCurrentMonth ? styles.cellMuted : '',
         isToday ? styles.cellToday : '',
+        isInteractive ? styles.cellInteractive : '',
       ].filter(Boolean).join(' ')}
+      onClick={isInteractive ? () => onDayClick(races) : undefined}
+      onKeyDown={isInteractive ? (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          onDayClick(races)
+        }
+      } : undefined}
+      role={isInteractive ? 'button' : undefined}
+      tabIndex={isInteractive ? 0 : undefined}
     >
       <div className={styles.dateRow}>
         <span className={isCurrentMonth ? styles.dayNumber : `${styles.dayNumber} ${styles.dayNumberMuted}`}>

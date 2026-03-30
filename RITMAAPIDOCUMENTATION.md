@@ -69,7 +69,7 @@ These are not backend API endpoints, but they are relevant to the current user f
   Authenticated `Races` entry route in the web app.
 - `/races`
   Alias route that opens the same authenticated `Races` page in the web app.
-  The page now opens in `Table` mode by default, includes a right-side `Filters` panel with a `Calendar` / `Table` switcher, a calendar-mode dropdown for `Monthly` and `Yearly`, a multi-select `Years` filter that defaults to `All years`, a name search field, shared status and race-type filters, active-filter chips above the content, and a compact `Add Race` action aligned to the header right edge.
+  The page now opens in `List` mode by default, keeps the `List` / `Calendar` switcher in the page header beside `Add Race`, includes a right-side `Filters` panel, a calendar-mode dropdown for `Monthly` and `Yearly`, a multi-select `Years` filter that defaults to `All years`, a name search field, shared status and race-type filters, active-filter chips above the content, and a compact `Add Race` action aligned to the header right edge.
 - `/best-efforts`
   Authenticated web section for best efforts.
 - `/profile`
@@ -81,9 +81,9 @@ These are not backend API endpoints, but they are relevant to the current user f
 - `/admin-area/ritma-overview`
   Admin-only web overview dashboard with admin metrics and a pending-approvals preview.
 - `/admin-area/user-list`
-  Admin-only web area for reviewing the active user list.
+  Admin-only web area for reviewing the active user list with a separate table card and sticky filters card.
 - `/admin-area/pending-approvals`
-  Admin-only web area for reviewing pending account approvals.
+  Admin-only web area for reviewing pending account approvals with a separate table card and sticky filters card.
 - `/admin/account-requests`
   Temporary admin frontend page used to review pending accounts.
 
@@ -92,12 +92,12 @@ Authenticated client shell status:
 - web now uses a fixed left sidebar with admin-aware menu rendering, an `Admin Area` dropdown group for admins, `Races`, `Best Efforts`, account actions, and active route highlighting
 - mobile now uses a fixed top bar, fixed bottom navigation, and a fullscreen menu page opened from the hamburger button, including the same admin-only dropdown group and account actions near the end of the menu
 - `Admin Area` is currently a grouped navigation label in both clients, not a standalone page or backend endpoint
-- web `Races` now has an icon-only switcher that swaps between separate placeholder `Calendar` and `Table` view components
-- web `Races` now renders real monthly and yearly calendar views backed by authenticated race data, with compact monthly day cards and a yearly 12-month overview that uses race-status color cues on the day numbers
-- web `Races` also includes a real card-based table mode grouped by year, with a sticky right-side filters panel, active-filter chips, a `Coming Up` section for registered races, an `In List` section for undated tracked races, and row actions split between visible `view` and a three-dot menu that now includes both `edit` and `delete`
+- web `Races` now uses a header-level `List` / `Calendar` switcher beside `Add Race` instead of keeping that view switch inside the filters panel
+- web `Races` now renders real monthly and yearly calendar views backed by authenticated race data, with compact monthly day cards, a yearly 12-month overview that uses race-status color cues on the day numbers, direct month picking from the monthly title, and click-through day handling that opens race details directly or a same-day side panel when multiple races exist
+- web `Races` also includes a real card-based list mode grouped by year, with a sticky right-side filters panel, active-filter chips, a `Coming Up` section for registered races, an `In List` section for undated tracked races, and row actions handled through the card click plus a three-dot menu for `edit` and `delete`
 - web `Races` now also includes an add-race drawer with three tabs for `Race data`, `Race results`, and `Race analysis`
 - web `Races` now reuses that same three-tab drawer for editing, with prefilled values, full-field editing parity with create, and access from both the card menu and the race-details drawer
-- web `Races` now also includes a dedicated race-details drawer opened from the row itself or from the eye action, with the same three tabs plus direct `Edit` and `Delete` actions in the header
+- web `Races` now also includes a dedicated race-details drawer opened from the row itself, from calendar day interactions, or from the same-day side panel, with the same three tabs plus direct `Edit` and `Delete` actions in the header
 - web `Races` create flows now also let the user manage `race types`, `teams`, `circuits`, and `shoes` directly inside the creation UI, including inline create, edit, delete, usage inspection, and product-native confirmation modals
 - web `Races` time presentation now hides seconds and uses `AM/PM` where race start time is shown in the creation flow and in the race-details drawer
 - mobile `Races` now mirrors the same top-level switcher pattern and renders real monthly and yearly calendars backed by the same authenticated race data, with a compact per-day monthly summary and a single-column yearly overview adapted for smaller screens
@@ -105,7 +105,7 @@ Authenticated client shell status:
 - mobile `Races` filters now keep `Scope` as a switcher but use dropdowns for `Race status` and `Race types`, with multi-select behavior for both backend-backed filters
 - mobile `Races` now also includes an add-race modal with the same three functional tabs, required-field indicators, guided date/time selection, and the same optional `team`, `circuit`, and `shoe` selectors used in the web drawer
 - mobile `Races` now also mirrors the managed-option flows for `race types`, `teams`, `circuits`, and `shoes`, including in-place create/edit/delete, linked-record usage previews, and native confirmation modals instead of system dialogs
-- web `Pending Approvals` and `Users` now show real admin data with actions and pagination, while the admin overview section is still a placeholder
+- web `Pending Approvals`, `Users`, and `Overview` now all use the same page-title hierarchy, standalone content-card layout, and current admin data instead of the older placeholder structure
 - mobile `Pending Approvals`, `Users`, and `Overview` now also show real admin data with actions and pagination
 
 ## System

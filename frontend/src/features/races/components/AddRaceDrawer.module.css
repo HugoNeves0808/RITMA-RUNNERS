@@ -1,7 +1,11 @@
 .trigger {
-  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 126px;
   height: 34px;
-  padding: 0 12px !important;
+  padding: 0 18px !important;
   border: none !important;
   border-radius: 8px !important;
   background: linear-gradient(135deg, #f97316 0%, #ea580c 100%) !important;
@@ -9,6 +13,8 @@
   color: #fff !important;
   font-size: 13px;
   font-weight: 700;
+  white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 .trigger:hover,

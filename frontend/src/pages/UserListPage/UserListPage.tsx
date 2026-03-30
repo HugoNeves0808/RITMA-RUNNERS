@@ -1,7 +1,7 @@
-import { faRotateLeft, faTriangleExclamation } from '@fortawesome/free-solid-svg-icons'
+import { faBroom, faTriangleExclamation } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { useDeferredValue, useEffect, useState } from 'react'
-import { Alert, Button, Card, Checkbox, Input, Space, Spin, Table, Typography } from 'antd'
+import { Alert, Button, Card, Checkbox, Empty, Input, Space, Spin, Table, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useAuth } from '../../features/auth'
 import { fetchAdminUsers, type AdminUserListItem } from '../../features/admin'
@@ -151,10 +151,10 @@ export function UserListPage() {
   ]
 
   return (
-    <Card className={styles.pageCard} variant="borderless">
-      <div className={styles.header}>
+    <div className={styles.page}>
+      <div className={styles.pageHeader}>
         <div>
-          <Title level={2}>Users</Title>
+          <Title level={1} className={styles.pageTitle}>Users</Title>
         </div>
 
         <div className={styles.summaryBadge}>
@@ -176,19 +176,26 @@ export function UserListPage() {
 
       <div className={styles.contentLayout}>
         <div className={styles.tableSection}>
-          {!isLoading ? (
-            <Table
-              rowKey="id"
-              columns={columns}
-              dataSource={filteredUsers}
-              pagination={{
-                pageSize: 10,
-                showSizeChanger: false,
-                hideOnSinglePage: true,
-              }}
-              locale={{ emptyText: 'No active users.' }}
-            />
-          ) : null}
+          <Card className={styles.pageCard} variant="borderless">
+            {!isLoading && filteredUsers.length === 0 ? (
+              <div className={styles.emptyWrap}>
+                <Empty description={users.length === 0 ? 'No active users.' : 'No users match the current filters.'} />
+              </div>
+            ) : null}
+
+            {!isLoading && filteredUsers.length > 0 ? (
+              <Table
+                rowKey="id"
+                columns={columns}
+                dataSource={filteredUsers}
+                pagination={{
+                  pageSize: 10,
+                  showSizeChanger: false,
+                  hideOnSinglePage: true,
+                }}
+              />
+            ) : null}
+          </Card>
         </div>
 
         <aside className={styles.sidebar}>
@@ -198,7 +205,7 @@ export function UserListPage() {
               <Button
                 type="text"
                 className={styles.clearButton}
-                icon={<FontAwesomeIcon icon={faRotateLeft} />}
+                icon={<FontAwesomeIcon icon={faBroom} />}
                 title="Clear filters"
                 aria-label="Clear filters"
                 onClick={() => {
@@ -236,6 +243,6 @@ export function UserListPage() {
           </div>
         </aside>
       </div>
-    </Card>
+    </div>
   )
 }

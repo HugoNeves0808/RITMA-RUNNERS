@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { faChevronLeft, faChevronRight } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { Alert, Card, Spin } from 'antd'
@@ -13,6 +14,8 @@ type RacesCalendarMonthlyViewProps = {
   errorMessage: string | null
   onPreviousMonth: () => void
   onNextMonth: () => void
+  onMonthSelect: (year: number, month: number) => void
+  onDayClick: (races: RaceCalendarDay['races']) => void
 }
 
 type CalendarCell = {
@@ -77,8 +80,29 @@ export function RacesCalendarMonthlyView({
   errorMessage,
   onPreviousMonth,
   onNextMonth,
+  onMonthSelect,
+  onDayClick,
 }: RacesCalendarMonthlyViewProps) {
   const cells = buildCalendarCells(year, month, days)
+  const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false)
+  const pickerRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!isMonthPickerOpen) {
+      return
+    }
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (pickerRef.current?.contains(event.target as Node)) {
+        return
+      }
+
+      setIsMonthPickerOpen(false)
+    }
+
+    document.addEventListener('mousedown', handlePointerDown)
+    return () => document.removeEventListener('mousedown', handlePointerDown)
+  }, [isMonthPickerOpen])
 
   return (
     <Card className={styles.calendarCard} variant="borderless">
@@ -87,7 +111,42 @@ export function RacesCalendarMonthlyView({
           <button type="button" className={styles.iconButton} onClick={onPreviousMonth} aria-label="Open previous month">
             <FontAwesomeIcon icon={faChevronLeft} />
           </button>
-          <span className={styles.monthLabel}>{getMonthLabel(year, month)}</span>
+          <div className={styles.monthPickerWrap} ref={pickerRef}>
+            <button
+              type="button"
+              className={styles.monthLabelButton}
+              onClick={() => setIsMonthPickerOpen((current) => !current)}
+              aria-label="Choose calendar month"
+              aria-expanded={isMonthPickerOpen}
+            >
+              <span className={styles.monthLabel}>{getMonthLabel(year, month)}</span>
+            </button>
+
+            {isMonthPickerOpen ? (
+              <div className={styles.monthPickerPopover}>
+                <label className={styles.monthPickerLabel}>
+                  <span className={styles.monthPickerText}>Jump to month</span>
+                  <input
+                    type="month"
+                    className={styles.monthPickerInput}
+                    value={`${year}-${String(month).padStart(2, '0')}`}
+                    onChange={(event) => {
+                      const [nextYearText, nextMonthText] = event.target.value.split('-')
+                      const nextYear = Number(nextYearText)
+                      const nextMonth = Number(nextMonthText)
+
+                      if (!Number.isInteger(nextYear) || !Number.isInteger(nextMonth)) {
+                        return
+                      }
+
+                      onMonthSelect(nextYear, nextMonth)
+                      setIsMonthPickerOpen(false)
+                    }}
+                  />
+                </label>
+              </div>
+            ) : null}
+          </div>
           <button type="button" className={styles.iconButton} onClick={onNextMonth} aria-label="Open next month">
             <FontAwesomeIcon icon={faChevronRight} />
           </button>
@@ -122,6 +181,7 @@ export function RacesCalendarMonthlyView({
                 isCurrentMonth={cell.isCurrentMonth}
                 isToday={cell.isToday}
                 races={cell.races}
+                onDayClick={onDayClick}
               />
             ))}
           </div>

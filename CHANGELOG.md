@@ -13,6 +13,11 @@ This file keeps a short, slightly more detailed record of what was done in each 
 
 ### `current` - Restore single-race deletion and document the latest races flow
 
+- Refined the web `Races` header and filtering layout by renaming the main switcher entry from `Table` to `List`, moving the `List` / `Calendar` switcher out of the filters sidebar and into the page header beside `Add Race`, and tightening the search-field/icon treatment plus header action spacing.
+- Polished the web `Races` cards and drawers by removing the visible eye action from cards, making ellipsis tooltips appear only when text is actually truncated, simplifying the three-dot action button chrome, removing the overview-card border inside the race-details drawer, and adding direct month picking from the monthly calendar title.
+- Expanded the web calendar interaction model so clicking a day in monthly or yearly mode now opens race details directly for single-race days or a right-side day panel for multi-race days, with a return path back to that day panel after closing race details.
+- Reworked the web admin `Users` and `Pending Approvals` pages so their titles and filters now match the `Races` page structure, with standalone table cards, separate sticky filter cards, shared broom reset icons, and the same centered empty-state presentation used in `Races`.
+- Aligned the web admin `Overview` page title sizing with the other main pages so the admin landing page now uses the same top-level heading scale as `Races`, `Users`, and `Pending approvals`.
 - Merged the old `user_race_results` and `user_race_analysis` data into `user_races` through a new Flyway migration, so race result and analysis fields now live directly on the base race row and no longer depend on per-race child tables.
 - Updated backend race reads and writes to use the flattened `user_races` structure for race tables, race details, race creation, race updates, shoe usage lookups, and managed-option detach flows, while keeping the public API payloads stable for the clients.
 - Expanded the authenticated `PUT /api/races/{raceId}` flow so race editing now accepts the same full payload as race creation, including `race`, `results`, and `analysis`, instead of the older table-only subset of fields.

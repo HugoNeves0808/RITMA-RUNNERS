@@ -65,7 +65,6 @@
   background:
     radial-gradient(circle at top left, rgba(251, 146, 60, 0.16), transparent 38%),
     linear-gradient(180deg, #fffaf5 0%, #ffffff 100%);
-  border: 1px solid rgba(251, 146, 60, 0.18);
 }
 
 .overviewHeader {

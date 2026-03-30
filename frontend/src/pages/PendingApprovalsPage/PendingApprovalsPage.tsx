@@ -1,7 +1,7 @@
-import { faRotateLeft, faTriangleExclamation } from '@fortawesome/free-solid-svg-icons'
+import { faBroom, faTriangleExclamation } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { useDeferredValue, useEffect, useState } from 'react'
-import { Alert, Button, Card, Checkbox, Input, Popconfirm, Space, Spin, Table, Typography } from 'antd'
+import { Alert, Button, Card, Checkbox, Empty, Input, Popconfirm, Space, Spin, Table, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useAuth } from '../../features/auth'
 import {
@@ -200,10 +200,10 @@ export function PendingApprovalsPage() {
   ]
 
   return (
-    <Card className={styles.pageCard} variant="borderless">
-      <div className={styles.header}>
+    <div className={styles.page}>
+      <div className={styles.pageHeader}>
         <div>
-          <Title level={2}>Pending approvals</Title>
+          <Title level={1} className={styles.pageTitle}>Pending approvals</Title>
         </div>
 
         <div className={styles.summaryBadge}>
@@ -225,19 +225,26 @@ export function PendingApprovalsPage() {
 
       <div className={styles.contentLayout}>
         <div className={styles.tableSection}>
-          {!isLoading ? (
-            <Table
-              rowKey="id"
-              columns={columns}
-              dataSource={filteredApprovals}
-              pagination={{
-                pageSize: 10,
-                showSizeChanger: false,
-                hideOnSinglePage: true,
-              }}
-              locale={{ emptyText: 'No pending approvals.' }}
-            />
-          ) : null}
+          <Card className={styles.pageCard} variant="borderless">
+            {!isLoading && filteredApprovals.length === 0 ? (
+              <div className={styles.emptyWrap}>
+                <Empty description={approvals.length === 0 ? 'No pending approvals.' : 'No pending approvals match the current filters.'} />
+              </div>
+            ) : null}
+
+            {!isLoading && filteredApprovals.length > 0 ? (
+              <Table
+                rowKey="id"
+                columns={columns}
+                dataSource={filteredApprovals}
+                pagination={{
+                  pageSize: 10,
+                  showSizeChanger: false,
+                  hideOnSinglePage: true,
+                }}
+              />
+            ) : null}
+          </Card>
         </div>
 
         <aside className={styles.sidebar}>
@@ -247,7 +254,7 @@ export function PendingApprovalsPage() {
               <Button
                 type="text"
                 className={styles.clearButton}
-                icon={<FontAwesomeIcon icon={faRotateLeft} />}
+                icon={<FontAwesomeIcon icon={faBroom} />}
                 title="Clear filters"
                 aria-label="Clear filters"
                 onClick={() => {
@@ -281,6 +288,6 @@ export function PendingApprovalsPage() {
           </div>
         </aside>
       </div>
-    </Card>
+    </div>
   )
 }

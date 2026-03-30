@@ -7,7 +7,7 @@ type RacesViewSwitcherProps = {
 }
 
 const VIEW_OPTIONS: Array<{ value: RacesViewMode; label: string; text: string }> = [
-  { value: 'table', label: 'Table view', text: 'Table' },
+  { value: 'table', label: 'List view', text: 'List' },
   { value: 'calendar', label: 'Calendar view', text: 'Calendar' },
 ]
 

@@ -6,6 +6,7 @@ type RacesCalendarYearMonthProps = {
   year: number
   month: number
   days: RaceCalendarDay[]
+  onDayClick?: (races: RaceCalendarItem[]) => void
 }
 
 type CalendarCell = {
@@ -73,7 +74,7 @@ function buildDayTitle(dayNumber: number, races: RaceCalendarItem[]) {
   return `${dayNumber} - ${races.length} ${suffix}${primaryRace ? ` - ${primaryRace.name}` : ''}`
 }
 
-export function RacesCalendarYearMonth({ year, month, days }: RacesCalendarYearMonthProps) {
+export function RacesCalendarYearMonth({ year, month, days, onDayClick }: RacesCalendarYearMonthProps) {
   const cells = buildCalendarCells(year, month, days)
   const today = new Date()
   const isCurrentYearMonth = today.getFullYear() === year && today.getMonth() + 1 === month
@@ -96,12 +97,26 @@ export function RacesCalendarYearMonth({ year, month, days }: RacesCalendarYearM
           const dayBadgeClass = primaryRace
             ? styles[RACE_STATUS_CLASS_MAP[primaryRace.raceStatus] ?? '']
             : ''
+          const isInteractive = cell.races.length > 0 && onDayClick != null
 
           return (
             <div
               key={cell.key}
-              className={[styles.dayCell, !cell.isCurrentMonth ? styles.dayCellMuted : ''].filter(Boolean).join(' ')}
+              className={[
+                styles.dayCell,
+                !cell.isCurrentMonth ? styles.dayCellMuted : '',
+                isInteractive ? styles.dayCellInteractive : '',
+              ].filter(Boolean).join(' ')}
               title={buildDayTitle(cell.dayNumber, cell.races)}
+              onClick={isInteractive ? () => onDayClick(cell.races) : undefined}
+              onKeyDown={isInteractive ? (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault()
+                  onDayClick(cell.races)
+                }
+              } : undefined}
+              role={isInteractive ? 'button' : undefined}
+              tabIndex={isInteractive ? 0 : undefined}
             >
               <span
                 className={[

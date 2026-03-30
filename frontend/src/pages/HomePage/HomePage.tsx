@@ -1,4 +1,4 @@
-import { faBroom, faXmark } from '@fortawesome/free-solid-svg-icons'
+import { faBroom, faMagnifyingGlass, faXmark } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { useEffect, useMemo, useState } from 'react'
 import { Button, Input, Select, Typography } from 'antd'
@@ -336,24 +336,28 @@ export function HomePage() {
           </div>
         </div>
 
-        <AddRaceDrawer
-          createOptions={createOptions}
-          triggerLabel="Add Race"
-          onCreateOptionsChange={(nextOptions) => {
-            setCreateOptions(nextOptions)
-            setFilterOptions((current) => ({
-              ...current,
-              raceTypes: nextOptions.raceTypes,
-            }))
-            setFilters((current) => ({
-              ...current,
-              raceTypeIds: current.raceTypeIds.filter((raceTypeId) => (
-                nextOptions.raceTypes.some((raceType) => raceType.id === raceTypeId)
-              )),
-            }))
-          }}
-          onCreated={() => setRefreshKey((current) => current + 1)}
-        />
+        <div className={styles.headerActions}>
+          <RacesViewSwitcher selectedView={selectedView} onViewChange={setSelectedView} />
+
+          <AddRaceDrawer
+            createOptions={createOptions}
+            triggerLabel="Add Race"
+            onCreateOptionsChange={(nextOptions) => {
+              setCreateOptions(nextOptions)
+              setFilterOptions((current) => ({
+                ...current,
+                raceTypes: nextOptions.raceTypes,
+              }))
+              setFilters((current) => ({
+                ...current,
+                raceTypeIds: current.raceTypeIds.filter((raceTypeId) => (
+                  nextOptions.raceTypes.some((raceType) => raceType.id === raceTypeId)
+                )),
+              }))
+            }}
+            onCreated={() => setRefreshKey((current) => current + 1)}
+          />
+        </div>
       </div>
 
       {activeFilterChips.length > 0 ? (
@@ -423,13 +427,6 @@ export function HomePage() {
 
             <div className={styles.sidebarDivider} />
 
-            <div className={styles.filterField}>
-              <span className={styles.filterLabel}>View</span>
-              <div className={styles.fullWidthControl}>
-                <RacesViewSwitcher selectedView={selectedView} onViewChange={setSelectedView} />
-              </div>
-            </div>
-
             {selectedView === 'calendar' ? (
               <div className={styles.filterField}>
                 <span className={styles.filterLabel}>Calendar mode</span>
@@ -447,6 +444,7 @@ export function HomePage() {
                 className={styles.searchInput}
                 value={filters.search}
                 placeholder="Search race"
+                suffix={<FontAwesomeIcon icon={faMagnifyingGlass} />}
                 onChange={(event) => setFilters((current) => ({ ...current, search: event.target.value }))}
               />
             </label>

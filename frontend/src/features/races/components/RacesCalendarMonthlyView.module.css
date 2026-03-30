@@ -15,7 +15,18 @@
 .controls {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 18px;
+}
+
+.monthPickerWrap {
+  position: relative;
+}
+
+.monthLabelButton {
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
 }
 
 .monthLabel {
@@ -24,6 +35,60 @@
   font-size: 14px;
   font-weight: 700;
   text-align: center;
+}
+
+.monthLabelButton:hover .monthLabel,
+.monthLabelButton:focus-visible .monthLabel {
+  color: #344054;
+}
+
+.monthLabelButton:focus-visible {
+  outline: 2px solid rgba(16, 24, 40, 0.12);
+  outline-offset: 6px;
+  border-radius: 10px;
+}
+
+.monthPickerPopover {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 50%;
+  z-index: 2;
+  min-width: 220px;
+  padding: 12px;
+  border: 1px solid rgba(16, 24, 40, 0.08);
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+  transform: translateX(-50%);
+}
+
+.monthPickerLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.monthPickerText {
+  color: #475467;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.monthPickerInput {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid rgba(16, 24, 40, 0.12);
+  border-radius: 10px;
+  padding: 0 12px;
+  color: #101828;
+  font: inherit;
+}
+
+.monthPickerInput:focus {
+  outline: 2px solid rgba(249, 115, 22, 0.18);
+  border-color: rgba(249, 115, 22, 0.35);
 }
 
 .iconButton {
@@ -94,6 +159,12 @@
   .monthLabel {
     min-width: 0;
     flex: 1;
+  }
+
+  .monthPickerPopover {
+    left: auto;
+    right: 0;
+    transform: none;
   }
 
   .grid,

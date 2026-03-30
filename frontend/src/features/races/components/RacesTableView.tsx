@@ -1,6 +1,6 @@
-import { faEllipsisVertical, faEye, faPenToSquare, faTrashCan } from '@fortawesome/free-solid-svg-icons'
+import { faEllipsisVertical, faPenToSquare, faTrashCan } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import dayjs from 'dayjs'
 import {
@@ -160,11 +160,53 @@ function formatPaceText(totalSeconds: number | null) {
   return `${minutes}:${String(seconds).padStart(2, '0')} /km`
 }
 
+type OverflowTooltipProps = {
+  title: string
+  className?: string
+  children: ReactNode
+}
+
+function OverflowTooltip({ title, className, children }: OverflowTooltipProps) {
+  const contentRef = useRef<HTMLSpanElement | null>(null)
+  const [isOverflowing, setIsOverflowing] = useState(false)
+
+  useEffect(() => {
+    const element = contentRef.current
+    if (!element) {
+      return
+    }
+
+    const updateOverflow = () => {
+      setIsOverflowing(element.scrollWidth > element.clientWidth || element.scrollHeight > element.clientHeight)
+    }
+
+    updateOverflow()
+
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', updateOverflow)
+      return () => window.removeEventListener('resize', updateOverflow)
+    }
+
+    const resizeObserver = new ResizeObserver(() => updateOverflow())
+    resizeObserver.observe(element)
+
+    return () => resizeObserver.disconnect()
+  }, [title])
+
+  return (
+    <Tooltip title={isOverflowing ? title : null}>
+      <span ref={contentRef} className={className}>
+        {children}
+      </span>
+    </Tooltip>
+  )
+}
+
 function renderMetricValueWithTooltip(value: ReactNode, tooltip: string) {
   return (
-    <Tooltip title={tooltip}>
-      <span className={styles.metricValue}>{value}</span>
-    </Tooltip>
+    <OverflowTooltip title={tooltip} className={styles.metricValue}>
+      {value}
+    </OverflowTooltip>
   )
 }
 
@@ -529,9 +571,9 @@ export function RacesTableView({
                     <div className={styles.raceContent}>
                       <div className={styles.raceTopRow}>
                         <div className={styles.raceTitleBlock}>
-                          <Tooltip title={race.name}>
-                            <h4 className={styles.raceCardTitle}>{race.name}</h4>
-                          </Tooltip>
+                          <OverflowTooltip title={race.name} className={styles.raceCardTitle}>
+                            {race.name}
+                          </OverflowTooltip>
                         </div>
 
                         <div className={styles.raceTopMeta}>
@@ -597,19 +639,6 @@ export function RacesTableView({
                           </div>
                         </div>
 
-                        <div className={styles.cardActions}>
-                          <Button
-                            type="text"
-                            className={styles.iconAction}
-                            title="View details"
-                            aria-label="View details"
-                            icon={<FontAwesomeIcon icon={faEye} />}
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              void handleOpenDetails(race)
-                            }}
-                          />
-                        </div>
                       </div>
                     </div>
                   </article>
@@ -647,9 +676,9 @@ export function RacesTableView({
                         <div className={styles.raceContent}>
                           <div className={styles.raceTopRow}>
                             <div className={styles.raceTitleBlock}>
-                              <Tooltip title={race.name}>
-                                <h4 className={styles.raceCardTitle}>{race.name}</h4>
-                              </Tooltip>
+                              <OverflowTooltip title={race.name} className={styles.raceCardTitle}>
+                                {race.name}
+                              </OverflowTooltip>
                             </div>
 
                           <div className={styles.raceTopMeta}>
@@ -715,19 +744,6 @@ export function RacesTableView({
                             </div>
                           </div>
 
-                          <div className={styles.cardActions}>
-                            <Button
-                              type="text"
-                              className={styles.iconAction}
-                              title="View details"
-                              aria-label="View details"
-                              icon={<FontAwesomeIcon icon={faEye} />}
-                              onClick={(event) => {
-                                event.stopPropagation()
-                                void handleOpenDetails(race)
-                              }}
-                            />
-                          </div>
                         </div>
                       </div>
                     </article>
@@ -761,9 +777,9 @@ export function RacesTableView({
                     <div className={styles.raceContent}>
                       <div className={styles.raceTopRow}>
                         <div className={styles.raceTitleBlock}>
-                          <Tooltip title={race.name}>
-                            <h4 className={styles.raceCardTitle}>{race.name}</h4>
-                          </Tooltip>
+                          <OverflowTooltip title={race.name} className={styles.raceCardTitle}>
+                            {race.name}
+                          </OverflowTooltip>
                         </div>
 
                         <div className={styles.raceTopMeta}>
@@ -829,19 +845,6 @@ export function RacesTableView({
                           </div>
                         </div>
 
-                        <div className={styles.cardActions}>
-                          <Button
-                            type="text"
-                            className={styles.iconAction}
-                            title="View details"
-                            aria-label="View details"
-                            icon={<FontAwesomeIcon icon={faEye} />}
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              void handleOpenDetails(race)
-                            }}
-                          />
-                        </div>
                       </div>
                     </div>
                   </article>
@@ -879,9 +882,9 @@ export function RacesTableView({
                         <div className={styles.raceContent}>
                           <div className={styles.raceTopRow}>
                             <div className={styles.raceTitleBlock}>
-                              <Tooltip title={race.name}>
-                                <h4 className={styles.raceCardTitle}>{race.name}</h4>
-                              </Tooltip>
+                              <OverflowTooltip title={race.name} className={styles.raceCardTitle}>
+                                {race.name}
+                              </OverflowTooltip>
                             </div>
 
                             <div className={styles.raceTopMeta}>
@@ -947,19 +950,6 @@ export function RacesTableView({
                               </div>
                             </div>
 
-                            <div className={styles.cardActions}>
-                              <Button
-                                type="text"
-                                className={styles.iconAction}
-                                title="View details"
-                                aria-label="View details"
-                                icon={<FontAwesomeIcon icon={faEye} />}
-                                onClick={(event) => {
-                                  event.stopPropagation()
-                                  void handleOpenDetails(race)
-                                }}
-                              />
-                            </div>
                           </div>
                         </div>
                       </article>

@@ -12,6 +12,7 @@ type RacesCalendarYearlyViewProps = {
   errorMessage: string | null
   onPreviousYear: () => void
   onNextYear: () => void
+  onDayClick: (races: RaceCalendarYearMonth['days'][number]['races']) => void
 }
 
 export function RacesCalendarYearlyView({
@@ -21,6 +22,7 @@ export function RacesCalendarYearlyView({
   errorMessage,
   onPreviousYear,
   onNextYear,
+  onDayClick,
 }: RacesCalendarYearlyViewProps) {
   return (
     <Card className={styles.calendarCard} variant="borderless">
@@ -51,7 +53,13 @@ export function RacesCalendarYearlyView({
       {!isLoading ? (
         <div className={styles.monthsGrid}>
           {months.map((month) => (
-            <RacesCalendarYearMonth key={month.month} year={year} month={month.month} days={month.days} />
+            <RacesCalendarYearMonth
+              key={month.month}
+              year={year}
+              month={month.month}
+              days={month.days}
+              onDayClick={onDayClick}
+            />
           ))}
         </div>
       ) : null}

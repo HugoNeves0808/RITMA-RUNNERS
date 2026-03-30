@@ -1,18 +1,31 @@
-.pageCard {
-  margin-bottom: 24px;
-  border-radius: 24px;
-  background:
-    radial-gradient(circle at top right, rgba(220, 252, 231, 0.9), transparent 34%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.92));
-  box-shadow: 0 18px 50px rgba(16, 24, 40, 0.08);
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
-.header {
+.pageHeader {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 12px;
+}
+
+.pageTitle {
+  margin: 0 !important;
+}
+
+.pageCard {
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 18px 50px rgba(16, 24, 40, 0.08);
+}
+
+.emptyWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
 }
 
 .summaryBadge {
@@ -144,7 +157,7 @@
 }
 
 @media (max-width: 768px) {
-  .header {
+  .pageHeader {
     flex-direction: column;
   }
 

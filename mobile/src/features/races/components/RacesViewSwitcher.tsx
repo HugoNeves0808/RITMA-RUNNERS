@@ -14,7 +14,7 @@ const VIEW_OPTIONS: Array<{
   icon: React.ComponentProps<typeof FontAwesome6>['name']
 }> = [
   { value: 'calendar', label: 'Calendar view', icon: 'calendar-days' },
-  { value: 'table', label: 'Table view', icon: 'table-cells-large' },
+  { value: 'table', label: 'List view', icon: 'table-cells-large' },
 ]
 
 export function RacesViewSwitcher({ selectedView, onViewChange }: RacesViewSwitcherProps) {

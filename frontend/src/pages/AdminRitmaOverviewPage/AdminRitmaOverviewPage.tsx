@@ -216,7 +216,7 @@ export function AdminRitmaOverviewPage() {
   return (
     <div className={styles.page}>
       <div className={styles.pageHeader}>
-        <Title level={2} className={styles.pageTitle}>Overview</Title>
+        <Title level={1} className={styles.pageTitle}>Overview</Title>
 
         <Space wrap>
           <Button
