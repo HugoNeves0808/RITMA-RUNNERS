@@ -1,4 +1,4 @@
-import { faEllipsisVertical, faPenToSquare, faPlus, faTrashCan, faXmark } from '@fortawesome/free-solid-svg-icons'
+import { faPenToSquare, faPlus, faTrashCan, faXmark } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import dayjs from 'dayjs'
 import type { ReactNode } from 'react'
@@ -240,6 +240,10 @@ function normalizeClassificationPodium(value: number | null | undefined) {
 
 function isRaceDateRequired(raceStatus: string | undefined) {
   return (raceStatus ?? '').trim().toUpperCase() !== 'IN_LIST'
+}
+
+function isCompletedStatus(raceStatus: string | undefined) {
+  return (raceStatus ?? '').trim().toUpperCase() === 'COMPLETED'
 }
 
 function formatSecondsAsPace(totalSeconds: number) {
@@ -712,7 +716,7 @@ export function AddRaceDrawer({
               onClick={() => void openManageOptionsModal(optionType)}
               aria-label={`Create or manage ${config.title.toLowerCase()}`}
             >
-              <FontAwesomeIcon icon={faEllipsisVertical} />
+              <FontAwesomeIcon icon={faPenToSquare} />
             </button>
           </div>
         </Form.Item>
@@ -836,6 +840,9 @@ export function AddRaceDrawer({
 
             if ('raceStatus' in changedValues) {
               clearFieldError('raceDate')
+              clearFieldError('realKm')
+              clearFieldError('chipTime')
+              clearFieldError('pacePerKm')
             }
 
             if ('chipTime' in changedValues || 'realKm' in changedValues) {
@@ -951,8 +958,30 @@ export function AddRaceDrawer({
                     </div>
 
                     <div className={styles.row}>
-                      <Form.Item<AddRaceFormValues> label={renderInfoLabel('Real KM', 'Actual race distance in kilometres, using decimals when needed.')} name="realKm" className={styles.rowItem}>
-                        <InputNumber min={0} max={999.99} precision={2} step={0.01} className={styles.fullWidth} placeholder="21.10" />
+                      <Form.Item noStyle dependencies={['raceStatus']}>
+                        {({ getFieldValue }) => (
+                          <Form.Item<AddRaceFormValues>
+                            label={(
+                              <>
+                                {isCompletedStatus(getFieldValue('raceStatus')) ? <span aria-hidden="true" style={{ color: '#ff4d4f', marginRight: 4 }}>*</span> : null}
+                                {renderInfoLabel('Real KM', 'Actual race distance in kilometres, using decimals when needed.')}
+                              </>
+                            )}
+                            name="realKm"
+                            className={styles.rowItem}
+                            rules={[
+                              {
+                                validator: (_, value) => (
+                                  !isCompletedStatus(getFieldValue('raceStatus')) || value != null
+                                    ? Promise.resolve()
+                                    : Promise.reject(new Error('Real KM is required when race status is Completed.'))
+                                ),
+                              },
+                            ]}
+                          >
+                            <InputNumber min={0} max={999.99} precision={2} step={0.01} className={styles.fullWidth} placeholder="21.10" />
+                          </Form.Item>
+                        )}
                       </Form.Item>
 
                       <Form.Item<AddRaceFormValues> label={renderInfoLabel('Elevation', 'Total elevation gain of the race, usually in meters.')} name="elevation" className={styles.rowItem}>
@@ -983,27 +1012,70 @@ export function AddRaceDrawer({
                         />
                       </Form.Item>
 
-                      <Form.Item<AddRaceFormValues> label={renderInfoLabel('Chip time', 'Net finish time measured from crossing the start line to crossing the finish line.')} name="chipTime" className={styles.rowItem}>
-                        <Input
-                          inputMode="numeric"
-                          maxLength={8}
-                          placeholder="00:00:00"
-                          onChange={(event) => {
-                            form.setFieldValue('chipTime', formatDigitTimeInput(event.target.value, 'duration'))
-                          }}
-                        />
+                      <Form.Item noStyle dependencies={['raceStatus']}>
+                        {({ getFieldValue }) => (
+                          <Form.Item<AddRaceFormValues>
+                            label={(
+                              <>
+                                {isCompletedStatus(getFieldValue('raceStatus')) ? <span aria-hidden="true" style={{ color: '#ff4d4f', marginRight: 4 }}>*</span> : null}
+                                {renderInfoLabel('Chip time', 'Net finish time measured from crossing the start line to crossing the finish line.')}
+                              </>
+                            )}
+                            name="chipTime"
+                            className={styles.rowItem}
+                            rules={[
+                              {
+                                validator: (_, value) => (
+                                  !isCompletedStatus(getFieldValue('raceStatus')) || String(value ?? '').trim().length > 0
+                                    ? Promise.resolve()
+                                    : Promise.reject(new Error('Chip time is required when race status is Completed.'))
+                                ),
+                              },
+                            ]}
+                          >
+                            <Input
+                              inputMode="numeric"
+                              maxLength={8}
+                              placeholder="00:00:00"
+                              onChange={(event) => {
+                                form.setFieldValue('chipTime', formatDigitTimeInput(event.target.value, 'duration'))
+                              }}
+                            />
+                          </Form.Item>
+                        )}
                       </Form.Item>
                     </div>
 
-                    <Form.Item<AddRaceFormValues> label={renderInfoLabel('Pace per KM', 'Average pace per kilometre. It is calculated automatically from chip time and distance, but you can also adjust it manually.')} name="pacePerKm">
-                      <Input
-                        inputMode="numeric"
-                        maxLength={5}
-                        placeholder="00:00"
-                        onChange={(event) => {
-                          form.setFieldValue('pacePerKm', formatDigitTimeInput(event.target.value, 'pace'))
-                        }}
-                      />
+                    <Form.Item noStyle dependencies={['raceStatus']}>
+                      {({ getFieldValue }) => (
+                        <Form.Item<AddRaceFormValues>
+                          label={(
+                            <>
+                              {isCompletedStatus(getFieldValue('raceStatus')) ? <span aria-hidden="true" style={{ color: '#ff4d4f', marginRight: 4 }}>*</span> : null}
+                              {renderInfoLabel('Pace per KM', 'Average pace per kilometre. It is calculated automatically from chip time and distance, but you can also adjust it manually.')}
+                            </>
+                          )}
+                          name="pacePerKm"
+                          rules={[
+                            {
+                              validator: (_, value) => (
+                                !isCompletedStatus(getFieldValue('raceStatus')) || String(value ?? '').trim().length > 0
+                                  ? Promise.resolve()
+                                  : Promise.reject(new Error('Pace per KM is required when race status is Completed.'))
+                              ),
+                            },
+                          ]}
+                        >
+                          <Input
+                            inputMode="numeric"
+                            maxLength={5}
+                            placeholder="00:00"
+                            onChange={(event) => {
+                              form.setFieldValue('pacePerKm', formatDigitTimeInput(event.target.value, 'pace'))
+                            }}
+                          />
+                        </Form.Item>
+                      )}
                     </Form.Item>
 
                     {renderManagedSelect('shoeId', renderInfoLabel('Shoe', 'Optional shoe used in this race result.'), 'shoes')}

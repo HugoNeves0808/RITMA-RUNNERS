@@ -1,4 +1,5 @@
 export { AddRaceDrawer } from './components/AddRaceDrawer'
+export { RaceDetailsDrawer } from './components/RaceDetailsDrawer'
 export { RacesCalendarView } from './components/RacesCalendarView'
 export { RacesCalendarModeSwitcher } from './components/RacesCalendarModeSwitcher'
 export { RacesFiltersButton } from './components/RacesFiltersButton'
@@ -6,10 +7,12 @@ export { RacesTableView } from './components/RacesTableView'
 export { RacesViewSwitcher } from './components/RacesViewSwitcher'
 export {
   createManagedRaceOption,
+  deleteRace,
   deleteManagedRaceOption,
   detachManagedRaceOptionUsage,
   fetchManagedRaceOptions,
   fetchManagedRaceOptionUsage,
+  fetchRaceDetail,
   fetchRaceCreateOptions,
   fetchRaceFilterOptions,
   fetchRaceTable,
@@ -29,6 +32,7 @@ export type {
   ManageRaceOptionPayload,
   ManagedRaceOptionType,
   RaceCreateOptions,
+  RaceDetailResponse,
   RaceOptionUsage,
   RaceOptionUsageItem,
   RaceTableItem,

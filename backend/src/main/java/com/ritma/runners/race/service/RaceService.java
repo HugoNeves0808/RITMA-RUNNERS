@@ -476,11 +476,29 @@ public class RaceService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Elevation must be zero or greater.");
         }
 
-        validateCreateResults(request.results());
+        validateCreateResults(request.results(), normalizedStatus, realKm);
         validateCreateAnalysis(request.analysis());
     }
 
-    private void validateCreateResults(CreateRaceRequest.RaceResultData results) {
+    private void validateCreateResults(
+            CreateRaceRequest.RaceResultData results,
+            String normalizedStatus,
+            BigDecimal realKm
+    ) {
+        if ("COMPLETED".equals(normalizedStatus)) {
+            if (realKm == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Real KM is required when race status is Completed.");
+            }
+
+            if (results == null || results.chipTimeSeconds() == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Chip time is required when race status is Completed.");
+            }
+
+            if (results.pacePerKmSeconds() == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Pace per KM is required when race status is Completed.");
+            }
+        }
+
         if (results == null) {
             return;
         }

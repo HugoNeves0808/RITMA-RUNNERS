@@ -160,17 +160,17 @@
   justify-content: center;
   border: none;
   border-radius: 8px;
-  background: #111827;
-  color: #ffffff;
+  background: transparent;
+  color: #111827;
   cursor: pointer;
   min-height: 28px;
   padding: 0;
-  transition: background-color 0.2s ease;
+  transition: color 0.2s ease;
 }
 
 .addManagedOptionButton:hover,
 .addManagedOptionButton:focus {
-  background: #000000;
+  color: #000000;
 }
 
 .manageInlineButton {
