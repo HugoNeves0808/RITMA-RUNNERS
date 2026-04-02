@@ -169,6 +169,10 @@ public class RaceRepository {
     }
 
     public List<RaceTypeOptionResponse> findManagedOptions(UUID userId, RaceOptionType optionType) {
+        if (optionType == RaceOptionType.RACE_TYPES) {
+            return findRaceTypes(userId);
+        }
+
         return findNamedOptions(userId, optionType.tableName());
     }
 

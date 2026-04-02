@@ -60,6 +60,23 @@ function getCompactMonthLabel(value: string | null) {
   return month.charAt(0).toUpperCase() + month.slice(1).toLowerCase()
 }
 
+function getShortDateWithYear(value: string | null) {
+  if (!value) {
+    return ''
+  }
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
+
+  return new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(date)
+}
+
 function getLongMonthLabel(value: string) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) {
@@ -310,6 +327,19 @@ function filterYearsByRaceName(years: RaceTableYearGroup[], search: string) {
     .filter((yearGroup) => yearGroup.races.length > 0)
 }
 
+function extractRacesByStatus(years: RaceTableYearGroup[], status: string) {
+  return years.flatMap((yearGroup) => yearGroup.races.filter((race) => race.raceStatus === status))
+}
+
+function removeRacesByStatus(years: RaceTableYearGroup[], status: string) {
+  return years
+    .map((yearGroup) => ({
+      ...yearGroup,
+      races: yearGroup.races.filter((race) => race.raceStatus !== status),
+    }))
+    .filter((yearGroup) => yearGroup.races.length > 0)
+}
+
 type RacesTableViewProps = {
   tableYearSelection: TableYearSelection
   filters: RaceFilters
@@ -344,18 +374,26 @@ export function RacesTableView({
   const [racePendingDelete, setRacePendingDelete] = useState<RaceTableItem | null>(null)
   const [isDeletingRace, setIsDeletingRace] = useState(false)
   const [isUndatedSectionOpen, setIsUndatedSectionOpen] = useState(false)
+  const [openYearSections, setOpenYearSections] = useState<Record<number, boolean>>({})
 
   const visibleYears = tableYearSelection.allRaces
     ? years
     : years.filter((yearGroup) => tableYearSelection.selectedYears.includes(yearGroup.year))
   const normalizedSearch = filters.search.trim().toLowerCase()
   const filteredVisibleYears = filterYearsByRaceName(visibleYears, filters.search)
-  const shouldShowUndatedRaces = filters.statuses.includes(IN_LIST_WITHOUT_DATE_STATUS)
+  const hasStatusFilters = filters.statuses.length > 0
+  const allowsUndatedRacesForYearFilter = tableYearSelection.allRaces
+  const shouldShowDatedInListRaces = !hasStatusFilters || filters.statuses.includes('IN_LIST')
+  const shouldShowUndatedRaces = allowsUndatedRacesForYearFilter && (!hasStatusFilters || filters.statuses.includes(IN_LIST_WITHOUT_DATE_STATUS))
+  const filteredDatedInListRaces = !shouldShowDatedInListRaces
+    ? []
+    : extractRacesByStatus(filteredVisibleYears, 'IN_LIST')
   const filteredUndatedRaces = !shouldShowUndatedRaces
     ? []
     : normalizedSearch
     ? undatedRaces.filter((race) => race.name.toLowerCase().includes(normalizedSearch))
     : undatedRaces
+  const filteredInListRaces = [...filteredUndatedRaces, ...filteredDatedInListRaces]
   const allVisibleRaces = visibleYears.flatMap((yearGroup) => yearGroup.races)
   const weekUpcomingRaces = allVisibleRaces
     .filter((race) => isUpcomingRace(race, now))
@@ -366,7 +404,8 @@ export function RacesTableView({
   const upcomingRaces = normalizedSearch
     ? baseUpcomingRaces.filter((race) => race.name.toLowerCase().includes(normalizedSearch))
     : baseUpcomingRaces
-  const regularYears = removeUpcomingRaces(filteredVisibleYears, new Set(upcomingRaces.map((race) => race.id)))
+  const yearsWithoutInList = removeRacesByStatus(filteredVisibleYears, 'IN_LIST')
+  const regularYears = removeUpcomingRaces(yearsWithoutInList, new Set(upcomingRaces.map((race) => race.id)))
   const loadTableData = async () => {
     if (!token) {
       setYears([])
@@ -410,6 +449,22 @@ export function RacesTableView({
 
     return () => window.clearInterval(intervalId)
   }, [])
+
+  useEffect(() => {
+    setOpenYearSections((current) => {
+      const next = { ...current }
+      let changed = false
+
+      regularYears.forEach((yearGroup) => {
+        if (!(yearGroup.year in next)) {
+          next[yearGroup.year] = true
+          changed = true
+        }
+      })
+
+      return changed ? next : current
+    })
+  }, [regularYears])
 
   const handleOpenEdit = async (race: RaceTableItem) => {
     if (!token) {
@@ -533,7 +588,7 @@ export function RacesTableView({
         </div>
       ) : null}
 
-      {!isLoading && years.length > 0 && visibleYears.length === 0 && filteredUndatedRaces.length === 0 ? (
+      {!isLoading && years.length > 0 && visibleYears.length === 0 && filteredInListRaces.length === 0 ? (
         <div className={styles.emptyWrap}>
           <Empty
             description={tableYearSelection.selectedYears.length === 1 && tableYearSelection.selectedYears[0] === currentYear
@@ -543,18 +598,18 @@ export function RacesTableView({
         </div>
       ) : null}
 
-      {!isLoading && filteredVisibleYears.length === 0 && filteredUndatedRaces.length === 0 && (visibleYears.length > 0 || undatedRaces.length > 0) ? (
+      {!isLoading && regularYears.length === 0 && filteredInListRaces.length === 0 && (visibleYears.length > 0 || undatedRaces.length > 0) ? (
         <div className={styles.emptyWrap}>
           <Empty description="No races match the current filters." />
         </div>
       ) : null}
 
-      {!isLoading && filteredUndatedRaces.length > 0 ? (
+      {!isLoading && filteredInListRaces.length > 0 ? (
         <section className={styles.yearSection}>
           <div className={`${styles.yearHeader} ${styles.yearHeaderWithAction}`.trim()}>
             <div className={styles.sectionHeaderGroup}>
               <Tooltip
-                title="These are races you are tracking in your list but that do not have a confirmed date yet."
+                title="These are races you are tracking in your list, with or without a confirmed date."
               >
                 <span className={styles.sectionTitleWrap}>
                   <span className={`${styles.yearTitle} ${styles.sectionTitle}`.trim()}>
@@ -577,87 +632,38 @@ export function RacesTableView({
           {isUndatedSectionOpen ? (
             <div className={styles.yearCard}>
               <div className={styles.monthSection}>
-                <div className={styles.raceList}>
-                  {filteredUndatedRaces.map((race) => (
-                    <article key={race.id} className={styles.raceRow} onClick={() => void handleOpenDetails(race)}>
-                      <div className={styles.dateBadge}>
-                        <span className={styles.dateBadgeDay}>{getDayLabel(race.raceDate)}</span>
-                        <span className={styles.dateBadgeMonth}>{getCompactMonthLabel(race.raceDate)}</span>
-                      </div>
-
-                      <div className={styles.raceContent}>
-                        <div className={styles.raceTopRow}>
-                          <div className={styles.raceTitleBlock}>
-                            <OverflowTooltip title={race.name} className={styles.raceCardTitle}>
-                              {race.name}
-                            </OverflowTooltip>
-                          </div>
-
-                          <div className={styles.raceTopMeta}>
-                            <span className={`${styles.raceStatusBadge} ${getRaceStatusClassName(race.raceStatus)}`.trim()}>
-                              {getRaceStatusLabel(race.raceStatus)}
-                            </span>
-                            <Dropdown
-                              menu={getRaceActionsMenu(race)}
-                              trigger={['click']}
-                              placement="bottomRight"
-                            >
-                              <Button
-                                type="text"
-                                className={styles.moreAction}
-                                aria-label="Race actions"
-                                icon={<FontAwesomeIcon icon={faEllipsisVertical} />}
-                                onClick={(event) => event.stopPropagation()}
-                              />
-                            </Dropdown>
-                          </div>
+                <div className={styles.inListRows}>
+                  {filteredInListRaces.map((race) => (
+                    <article key={race.id} className={styles.inListRow} onClick={() => void handleOpenDetails(race)}>
+                      <div className={styles.inListMain}>
+                        <div className={styles.inListTitleRow}>
+                          <OverflowTooltip title={race.name} className={styles.inListName}>
+                            {race.name}
+                          </OverflowTooltip>
+                          <span className={`${styles.raceStatusBadge} ${styles.inListStatusBadge} ${getRaceStatusClassName(race.raceStatus)}`.trim()}>
+                            {race.raceDate ? 'In List (with date)' : 'In List (without date)'}
+                          </span>
                         </div>
-
-                        <div className={styles.raceBottomRow}>
-                          <div className={styles.metricsGrid}>
-                            <div className={styles.metricItem}>
-                              <span className={styles.metricLabel}>Location</span>
-                              {renderMetricValueWithTooltip(
-                                race.location ?? <span className={styles.emptyValue}>-</span>,
-                                race.location ?? '-',
-                              )}
-                            </div>
-
-                            <div className={styles.metricItem}>
-                              <span className={styles.metricLabel}>Race type</span>
-                              {renderMetricValueWithTooltip(
-                                race.raceTypeName ?? <span className={styles.emptyValue}>-</span>,
-                                race.raceTypeName ?? '-',
-                              )}
-                            </div>
-
-                            <div className={styles.metricItem}>
-                              <span className={styles.metricLabel}>Official time</span>
-                              {renderMetricValueWithTooltip(
-                                formatDuration(race.officialTimeSeconds),
-                                formatDurationText(race.officialTimeSeconds),
-                              )}
-                            </div>
-
-                            <div className={styles.metricItem}>
-                              <span className={styles.metricLabel}>Chip time</span>
-                              {renderMetricValueWithTooltip(
-                                formatDuration(race.chipTimeSeconds),
-                                formatDurationText(race.chipTimeSeconds),
-                              )}
-                            </div>
-
-                            <div className={styles.metricItem}>
-                              <span className={styles.metricLabel}>Pace per km</span>
-                              {renderMetricValueWithTooltip(
-                                formatPace(race.pacePerKmSeconds),
-                                formatPaceText(race.pacePerKmSeconds),
-                              )}
-                            </div>
-                          </div>
-
+                        <div className={styles.inListMetaRow}>
+                          {race.raceDate ? <span className={styles.inListMeta}>{getShortDateWithYear(race.raceDate)}</span> : null}
+                          {race.location ? <span className={styles.inListMeta}>{race.location}</span> : null}
+                          <span className={styles.inListMeta}>{race.raceTypeName ?? 'No race type'}</span>
                         </div>
                       </div>
+
+                      <Dropdown
+                        menu={getRaceActionsMenu(race)}
+                        trigger={['click']}
+                        placement="bottomRight"
+                      >
+                        <Button
+                          type="text"
+                          className={styles.moreAction}
+                          aria-label="Race actions"
+                          icon={<FontAwesomeIcon icon={faEllipsisVertical} />}
+                          onClick={(event) => event.stopPropagation()}
+                        />
+                      </Dropdown>
                     </article>
                   ))}
                 </div>
@@ -775,11 +781,24 @@ export function RacesTableView({
 
       {!isLoading && filteredVisibleYears.length > 0 ? regularYears.map((yearGroup) => (
         <section key={yearGroup.year} className={styles.yearSection}>
-          <div className={styles.yearHeader}>
+          <div className={`${styles.yearHeader} ${styles.yearHeaderWithAction}`.trim()}>
             <h3 className={`${styles.yearTitle} ${styles.yearNumberTitle}`.trim()}>{yearGroup.year}</h3>
+            <div className={styles.headerLine} />
+            <Button
+              type="text"
+              className={styles.collapseToggle}
+              onClick={() => setOpenYearSections((current) => ({
+                ...current,
+                [yearGroup.year]: !(current[yearGroup.year] ?? true),
+              }))}
+              aria-expanded={openYearSections[yearGroup.year] ?? true}
+              aria-label={(openYearSections[yearGroup.year] ?? true) ? `Collapse ${yearGroup.year} section` : `Expand ${yearGroup.year} section`}
+              icon={<FontAwesomeIcon icon={faChevronDown} className={(openYearSections[yearGroup.year] ?? true) ? styles.collapseIconOpen : styles.collapseIcon} />}
+            />
           </div>
 
-          <div className={styles.yearCard}>
+          {(openYearSections[yearGroup.year] ?? true) ? (
+            <div className={styles.yearCard}>
             {groupRacesByMonth(yearGroup.races).map((monthGroup) => (
               <div key={monthGroup.key} className={styles.monthSection}>
                 <div className={styles.raceList}>
@@ -876,7 +895,8 @@ export function RacesTableView({
                 </div>
               </div>
             ))}
-          </div>
+            </div>
+          ) : null}
         </section>
       )) : null}
 

@@ -40,13 +40,13 @@
   content: '';
   flex: 1;
   height: 1px;
-  background: rgba(16, 24, 40, 0.12);
+  background: linear-gradient(90deg, rgba(249, 115, 22, 0.28) 0%, rgba(249, 115, 22, 0.14) 62%, rgba(249, 115, 22, 0) 100%);
 }
 
 .headerLine {
   flex: 1;
   height: 1px;
-  background: rgba(16, 24, 40, 0.12);
+  background: linear-gradient(90deg, rgba(249, 115, 22, 0.28) 0%, rgba(249, 115, 22, 0.14) 62%, rgba(249, 115, 22, 0) 100%);
 }
 
 .yearTitle {
@@ -182,6 +182,75 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.inListRows {
+  display: flex;
+  flex-direction: column;
+}
+
+.inListRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 4px;
+  cursor: pointer;
+  transition: background-color 0.18s ease;
+}
+
+.inListRow:hover {
+  background: rgba(248, 250, 252, 0.92);
+}
+
+.inListMain {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.inListTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+}
+
+.inListName {
+  min-width: 0;
+  color: #101828;
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.inListStatusBadge {
+  flex: 0 0 auto;
+}
+
+.inListMetaRow {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  min-width: 0;
+  width: 100%;
+}
+
+.inListMeta {
+  min-width: 0;
+  color: #667085;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .raceRow {
@@ -479,6 +548,28 @@
 @media (max-width: 960px) {
   .yearHeader {
     gap: 12px;
+  }
+
+  .inListRow {
+    align-items: flex-start;
+  }
+
+  .inListMain {
+    gap: 6px;
+  }
+
+  .inListName {
+    width: auto;
+  }
+
+  .inListTitleRow {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .inListMetaRow {
+    flex-wrap: wrap;
+    gap: 6px 12px;
   }
 
   .raceRow {

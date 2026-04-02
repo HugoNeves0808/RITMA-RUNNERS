@@ -835,6 +835,7 @@ export function AddRaceDrawer({
     label: ReactNode,
     optionType: ManagedRaceOptionType,
     className?: string,
+    required = false,
   ) => {
     const config = MANAGED_OPTION_CONFIG[optionType]
     const options = getOptionsForType(optionType)
@@ -843,10 +844,16 @@ export function AddRaceDrawer({
       <div className={`${styles.managedField} ${className ?? ''}`.trim()}>
         <Form.Item<AddRaceFormValues> label={label}>
           <div className={styles.managedFieldRow}>
-            <Form.Item<AddRaceFormValues> name={fieldName} noStyle>
+            <Form.Item<AddRaceFormValues>
+              name={fieldName}
+              noStyle
+              rules={required ? [{ required: true, message: 'Race type is required.' }] : undefined}
+            >
               <Select
                 allowClear
+                showSearch
                 placeholder={config.placeholder}
+                optionFilterProp="label"
                 options={options.map((option) => ({
                   value: option.id,
                   label: option.name,
@@ -1135,7 +1142,18 @@ export function AddRaceDrawer({
                             <Input maxLength={150} placeholder="Lisbon" />
                           </Form.Item>
 
-                          {renderManagedSelect('raceTypeId', 'Race type', 'race-types', styles.rowItem)}
+                          {renderManagedSelect(
+                            'raceTypeId',
+                            (
+                              <>
+                                <span aria-hidden="true" style={{ color: '#ff4d4f', marginRight: 4 }}>*</span>
+                                Race type
+                              </>
+                            ),
+                            'race-types',
+                            styles.rowItem,
+                            true,
+                          )}
                         </div>
 
                         <div className={styles.row}>
@@ -1491,8 +1509,10 @@ export function AddRaceDrawer({
                   <div key={option.id} className={styles.manageOptionRow}>
                     <div className={styles.manageOptionInfo}>
                       <span className={styles.manageOptionName}>{option.name}</span>
-                      {managedOptionType === 'race-types' && option.targetKm != null ? (
-                        <span className={styles.manageOptionMeta}>{option.targetKm.toFixed(2)} km target</span>
+                      {managedOptionType === 'race-types' ? (
+                        <span className={styles.manageOptionMeta}>
+                          {option.targetKm != null ? `${option.targetKm.toFixed(2)} km` : 'No target km set'}
+                        </span>
                       ) : null}
                     </div>
                     <div className={styles.manageOptionActions}>

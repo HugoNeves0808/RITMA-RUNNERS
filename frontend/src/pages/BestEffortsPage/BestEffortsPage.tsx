@@ -1270,13 +1270,19 @@ export function BestEffortsPage() {
             <div className={styles.manageOptionsLoading}>
               <Spin />
             </div>
+          ) : raceTypes.length === 0 ? (
+            <div className={styles.manageOptionsEmptyState}>
+              <Empty description="No race types found yet." />
+            </div>
           ) : (
             <div className={styles.manageOptionsList}>
               {raceTypes.map((option) => (
                 <div key={option.id} className={styles.manageOptionRow}>
                   <div className={styles.manageOptionInfo}>
                     <span className={styles.manageOptionName}>{option.name}</span>
-                    {option.targetKm != null ? <span className={styles.manageOptionMeta}>{option.targetKm.toFixed(2)} km target</span> : null}
+                    <span className={styles.manageOptionMeta}>
+                      {option.targetKm != null ? `${option.targetKm.toFixed(2)} km` : 'No target km set'}
+                    </span>
                   </div>
                   <div className={styles.manageOptionActions}>
                     <Button

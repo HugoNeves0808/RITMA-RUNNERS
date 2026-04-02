@@ -751,6 +751,49 @@
   justify-content: flex-end;
 }
 
+.saveButton {
+  border-color: #111827 !important;
+  background: #111827 !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.saveButton:hover,
+.saveButton:focus {
+  border-color: #000000 !important;
+  background: #000000 !important;
+  color: #ffffff !important;
+}
+
+.saveButton:global(.ant-btn-primary),
+.saveButton:global(.ant-btn-color-primary) {
+  border-color: #111827 !important;
+  background: #111827 !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.saveButton:global(.ant-btn-primary):not(:disabled):not(.ant-btn-disabled),
+.saveButton:global(.ant-btn-color-primary):not(:disabled):not(.ant-btn-disabled),
+.saveButton:global(.ant-btn-primary):not(:disabled):not(.ant-btn-disabled):hover,
+.saveButton:global(.ant-btn-color-primary):not(:disabled):not(.ant-btn-disabled):hover,
+.saveButton:global(.ant-btn-primary):not(:disabled):not(.ant-btn-disabled):focus,
+.saveButton:global(.ant-btn-color-primary):not(:disabled):not(.ant-btn-disabled):focus {
+  border-color: #111827 !important;
+  background: #111827 !important;
+  color: #ffffff !important;
+}
+
+.saveButton:global(.ant-btn-primary:disabled),
+.saveButton:global(.ant-btn-color-primary:disabled),
+.saveButton:global(.ant-btn-primary.ant-btn-disabled),
+.saveButton:global(.ant-btn-color-primary.ant-btn-disabled) {
+  border-color: #d0d5dd !important;
+  background: #f2f4f7 !important;
+  color: #98a2b3 !important;
+  box-shadow: none !important;
+}
+
 .cancelEditingIconButton {
   display: inline-flex;
   align-items: center;
@@ -779,6 +822,12 @@
 .manageOptionsEmpty {
   color: #98a2b3;
   font-size: 14px;
+}
+
+.manageOptionsEmptyState {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0 4px;
 }
 
 .manageOptionsList {

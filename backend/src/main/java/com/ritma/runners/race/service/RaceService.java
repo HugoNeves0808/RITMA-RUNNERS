@@ -446,6 +446,10 @@ public class RaceService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Race name is required.");
         }
 
+        if (race.raceTypeId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Race type is required.");
+        }
+
         if (race.name().trim().length() > MAX_RACE_NAME_LENGTH) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Race name must have 150 characters or fewer.");
         }
