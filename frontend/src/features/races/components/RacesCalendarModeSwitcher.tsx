@@ -1,4 +1,4 @@
-import { Select } from 'antd'
+import { Segmented } from 'antd'
 import styles from './RacesCalendarModeSwitcher.module.css'
 import type { RacesCalendarMode } from '../types/racesCalendarMode'
 
@@ -19,12 +19,12 @@ export function RacesCalendarModeSwitcher({
   disabled = false,
 }: RacesCalendarModeSwitcherProps) {
   return (
-    <Select
+    <Segmented<RacesCalendarMode>
       value={selectedMode}
       disabled={disabled}
       onChange={onModeChange}
       options={OPTIONS}
-      className={styles.select}
+      className={styles.segmented}
       aria-label="Calendar view mode"
     />
   )

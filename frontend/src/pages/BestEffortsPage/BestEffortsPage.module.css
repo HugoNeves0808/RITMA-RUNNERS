@@ -83,17 +83,114 @@
   gap: 8px;
 }
 
-.filterLabelRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
 .filterLabel {
   font-size: 13px;
   font-weight: 700;
   color: #344054;
+}
+
+.filterCount {
+  color: #f97316;
+  font-size: 13px;
+  font-weight: 800;
+  margin-left: 4px;
+}
+
+.checkboxSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.checkboxSectionTitleRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.checkboxSectionTitleAction {
+  display: inline-flex;
+  align-items: center;
+}
+
+.checkboxSectionIcon {
+  color: #475467;
+  font-size: 14px;
+}
+
+.checkboxSectionBody {
+  padding-top: 2px;
+}
+
+.checkboxList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.checkboxList::-webkit-scrollbar {
+  width: 8px;
+}
+
+.checkboxList::-webkit-scrollbar-track {
+  background: rgba(16, 24, 40, 0.04);
+  border-radius: 999px;
+}
+
+.checkboxList::-webkit-scrollbar-thumb {
+  background: rgba(152, 162, 179, 0.7);
+  border-radius: 999px;
+}
+
+.checkboxOption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.checkboxOption :global(.ant-checkbox) {
+  top: 0;
+  flex: 0 0 auto;
+  margin-left: 12px;
+}
+
+.checkboxOption :global(.ant-checkbox-inner) {
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+}
+
+.checkboxOption :global(.ant-checkbox-checked .ant-checkbox-inner) {
+  background-color: #fed7aa;
+  border-color: #f97316;
+}
+
+.checkboxOption :global(.ant-checkbox-checked .ant-checkbox-inner::after) {
+  border-color: #c2410c;
+}
+
+.checkboxOptionLabel {
+  min-width: 0;
+  color: #344054;
+  font-size: 14px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.checkboxListHint {
+  color: #98a2b3;
+  font-size: 13px;
 }
 
 .manageFilterButton {
@@ -102,6 +199,8 @@
   color: #667085;
   cursor: pointer;
   padding: 0;
+  width: 20px;
+  height: 20px;
 }
 
 .manageFilterButton:hover {

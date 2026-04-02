@@ -69,10 +69,10 @@ These are not backend API endpoints, but they are relevant to the current user f
   Authenticated `Races` entry route in the web app.
 - `/races`
   Alias route that opens the same authenticated `Races` page in the web app.
-  The page now opens in `List` mode by default, keeps the `List` / `Calendar` switcher in the page header beside `Add Race`, includes a right-side `Filters` panel, a calendar-mode dropdown for `Monthly` and `Yearly`, a multi-select `Years` filter that defaults to `All years`, a name search field, shared status and race-type filters, active-filter chips above the content, and a compact `Add Race` action aligned to the header right edge.
+  The page now opens in `List` mode by default, keeps the `List` / `Calendar` switcher in the page header beside `Add Race`, includes a right-side `Filters` panel, uses a switcher for `Monthly` / `Yearly` calendar mode, exposes collapsible checkbox groups for `Years`, `Race status`, and `Race types`, lets the user manage `race types` directly from the filter title, and keeps filter state only across refresh of the same page.
 - `/best-efforts`
   Authenticated web section for best efforts.
-  The page now uses a header-level `Top 3` / `Top 5` / `All races` view switcher, a right-side `Race Type` filter, inline race-type management from that filter, category counters for `valid`, `below target`, `excluded`, and `total`, filtered race-list modals, and the shared race-details drawer with working `Edit` / `Delete` actions.
+  The page now uses a header-level `Top 3` / `Top 5` / `All races` view switcher, a right-side collapsible `Race types` filter with inline race-type management, category counters for `valid`, `below target`, `excluded`, and `total`, filtered race-list modals, and the shared race-details drawer with working `Edit` / `Delete` actions.
 - `/profile`
   Authenticated web section reserved for profile.
 - `/settings`
@@ -95,19 +95,19 @@ Authenticated client shell status:
 - `Admin Area` is currently a grouped navigation label in both clients, not a standalone page or backend endpoint
 - web `Races` now uses a header-level `List` / `Calendar` switcher beside `Add Race` instead of keeping that view switch inside the filters panel
 - web `Races` now renders real monthly and yearly calendar views backed by authenticated race data, with compact monthly day cards, a yearly 12-month overview that uses race-status color cues on the day numbers, direct month picking from the monthly title, and click-through day handling that opens race details directly or a same-day side panel when multiple races exist
-- web `Races` also includes a real card-based list mode grouped by year, with a sticky right-side filters panel, active-filter chips, a `Coming Up` section for registered races, an `In List` section for undated tracked races, and row actions handled through the card click plus a three-dot menu for `edit` and `delete`
+- web `Races` also includes a real card-based list mode grouped by year, with a sticky right-side filters panel, collapsible checkbox-based filters, a `Coming Up` section for registered races, a top `In List` section for undated tracked races that only appears when `In List (without date)` is selected, and row actions handled through the card click plus a three-dot menu for `edit` and `delete`
 - web `Races` now also includes an add-race drawer with three tabs for `Race data`, `Race results`, and `Race analysis`, but creation now starts in a status-first state where only `Race status` is shown until the user chooses it
 - web `Races` now reuses that same three-tab drawer for editing, with prefilled values, full-field editing parity with create, and access from both the card menu and the race-details drawer
 - web `Races` now also includes a dedicated race-details drawer opened from the row itself, from calendar day interactions, or from the same-day side panel, with the same three tabs plus direct `Edit` and `Delete` actions in the header
 - web `Races` create flows now also let the user manage `race types`, `teams`, `circuits`, and `shoes` directly inside the creation UI, including inline create, edit, delete, usage inspection, product-native confirmation modals, and illustrated empty states when no options exist yet
 - web `Races` time presentation now hides seconds and uses `AM/PM` where race start time is shown in the creation flow and in the race-details drawer
-- web `Best Efforts` now shows ranked race-type categories backed by authenticated best-effort data, keeps `Race Type` as a sticky filter, surfaces per-category `valid` / `below target` / `excluded` / `total` counters with explanatory tooltips, supports `Top 3`, `Top 5`, and `All races` modes, and reuses the shared race-details drawer plus edit/delete flows from the races feature
+- web `Best Efforts` now shows ranked race-type categories backed by authenticated best-effort data, keeps `Race types` as a sticky collapsible filter with inline management, surfaces per-category `valid` / `below target` / `excluded` / `total` counters with explanatory tooltips, supports `Top 3`, `Top 5`, and `All races` modes, and reuses the shared race-details drawer plus edit/delete flows from the races feature
 - mobile `Races` now mirrors the same top-level switcher pattern and renders real monthly and yearly calendars backed by the same authenticated race data, with a compact per-day monthly summary and a single-column yearly overview adapted for smaller screens
 - mobile `Races` also includes a real table mode with a compact card layout, the same `Coming Up` weekly logic for registered races, a shared race-filters sheet for both table and calendar, and a three-dot action menu on each race card
 - mobile `Races` filters now keep `Scope` as a switcher but use dropdowns for `Race status` and `Race types`, with multi-select behavior for both backend-backed filters
 - mobile `Races` now also includes an add-race modal with the same three functional tabs, required-field indicators, guided date/time selection, and the same optional `team`, `circuit`, and `shoe` selectors used in the web drawer
 - mobile `Races` now also mirrors the managed-option flows for `race types`, `teams`, `circuits`, and `shoes`, including in-place create/edit/delete, linked-record usage previews, and native confirmation modals instead of system dialogs
-- web `Pending Approvals`, `Users`, and `Overview` now all use the same page-title hierarchy, standalone content-card layout, and current admin data instead of the older placeholder structure
+- web `Pending Approvals`, `Users`, and `Overview` now all use the same page-title hierarchy, standalone content-card layout, and current admin data instead of the older placeholder structure, while `Pending Approvals` and `Users` also share the same collapsible filter-card treatment introduced in `Races`
 - mobile `Pending Approvals`, `Users`, and `Overview` now also show real admin data with actions and pagination
 
 ## System
@@ -1177,7 +1177,7 @@ Compatibility note:
 
 Current client usage:
 
-- web `Pending Approvals` currently consumes the stable `/api/admin/account-requests` endpoint, formats `createdAt` into a relative time label such as `15h 4min ago`, and exposes a filters panel with email search and an `older than 3 days` toggle
+- web `Pending Approvals` currently consumes the stable `/api/admin/account-requests` endpoint, formats `createdAt` into a relative time label such as `15h 4min ago`, exposes a `Races`-style filters panel with the same search icon and a collapsible `Request age` toggle group, and keeps those filters only across refresh of the same page
 - mobile `Pending Approvals` consumes the same stable `/api/admin/account-requests` endpoint, applies the same relative-time formatting, and exposes a compact filter panel with email search and an `older than 3 days` toggle
 - both clients paginate the rendered list locally with a maximum of 10 pending users per page
 - both clients show a warning indicator when the pending request is older than three days
@@ -1241,7 +1241,7 @@ Expected response example:
 
 Current client usage:
 
-- web `Users` consumes `/api/admin/users`, formats `lastLoginAt` into relative labels such as `2 days ago`, and exposes a filters panel with email search, `Only admins`, and `Inactive for over 1 year`
+- web `Users` consumes `/api/admin/users`, formats `lastLoginAt` into relative labels such as `2 days ago`, exposes a `Races`-style filters panel with the same search icon plus collapsible `Role` and `Activity` groups, and keeps those filters only across refresh of the same page
 - mobile `Users` consumes `/api/admin/users`, applies the same relative-time formatting, and exposes a compact filter panel with email search, `Only admins`, and `Inactive for over 1 year`
 - both clients paginate the rendered list locally with a maximum of 10 active users per page
 - both clients show a warning indicator when the last login is older than one year

@@ -1,4 +1,6 @@
 import {
+  faAngleDown,
+  faAngleUp,
   faBroom,
   faCalendarDays,
   faBolt,
@@ -9,9 +11,10 @@ import {
   faXmark,
 } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { useEffect, useMemo, useState } from 'react'
-import { Alert, Button, Card, Empty, Input, InputNumber, Modal, Segmented, Select, Space, Spin, Tag, Tooltip, Typography } from 'antd'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Alert, Button, Card, Checkbox, Empty, Input, InputNumber, Modal, Segmented, Space, Spin, Tag, Tooltip, Typography } from 'antd'
 import { useAuth } from '../../features/auth'
+import { STORAGE_KEYS } from '../../constants/storage'
 import {
   AddRaceDrawer,
   createManagedRaceOption,
@@ -39,10 +42,75 @@ import {
 import styles from './BestEffortsPage.module.css'
 
 const { Title } = Typography
-const ALL_RACE_TYPES_VALUE = '__ALL_RACE_TYPES__'
 const PODIUM_ORDER_TOP_THREE = [1, 0, 2]
 const PODIUM_ORDER_TOP_FIVE = [1, 0, 2, 3, 4]
 const CATEGORY_DISTANCE_EXCLUDED_MARGIN_KM = 0.3
+
+type PersistedBestEffortsFiltersState = {
+  viewMode: BestEffortsViewMode
+  selectedRaceType?: string
+  isRaceTypesOpen: boolean
+}
+
+function readPersistedBestEffortsFilters(): PersistedBestEffortsFiltersState | null {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  const rawValue = window.sessionStorage.getItem(STORAGE_KEYS.bestEffortsFilters)
+  if (!rawValue) {
+    return null
+  }
+
+  try {
+    const parsed = JSON.parse(rawValue) as Partial<PersistedBestEffortsFiltersState>
+    return {
+      viewMode: parsed.viewMode === 'top-5' || parsed.viewMode === 'all' ? parsed.viewMode : 'top-3',
+      selectedRaceType: typeof parsed.selectedRaceType === 'string' ? parsed.selectedRaceType : undefined,
+      isRaceTypesOpen: parsed.isRaceTypesOpen ?? true,
+    }
+  } catch {
+    return null
+  }
+}
+
+type CheckboxFilterSectionProps = {
+  title: string
+  count: number
+  isOpen: boolean
+  onToggle: () => void
+  titleAction?: React.ReactNode
+  children: React.ReactNode
+}
+
+function CheckboxFilterSection({
+  title,
+  count,
+  isOpen,
+  onToggle,
+  titleAction,
+  children,
+}: CheckboxFilterSectionProps) {
+  return (
+    <div className={styles.filterField}>
+      <button
+        type="button"
+        className={styles.checkboxSectionHeader}
+        onClick={onToggle}
+        aria-expanded={isOpen}
+      >
+        <span className={styles.checkboxSectionTitleRow}>
+          <span className={styles.filterLabel}>{title}</span>
+          {count > 0 ? <span className={styles.filterCount}>{count}</span> : null}
+          {titleAction ? <span className={styles.checkboxSectionTitleAction}>{titleAction}</span> : null}
+        </span>
+        <FontAwesomeIcon icon={isOpen ? faAngleUp : faAngleDown} className={styles.checkboxSectionIcon} />
+      </button>
+
+      {isOpen ? <div className={styles.checkboxSectionBody}>{children}</div> : null}
+    </div>
+  )
+}
 
 function formatDuration(totalSeconds: number | null) {
   if (totalSeconds == null) {
@@ -337,12 +405,15 @@ function getCategoryScoreBadgeClassName(mode: CategoryRacesMode) {
 
 export function BestEffortsPage() {
   const { token } = useAuth()
+  const persistedFilters = useMemo(() => readPersistedBestEffortsFilters(), [])
+  const isPageRefreshRef = useRef(false)
   const [payload, setPayload] = useState<BestEffortCategory[]>([])
   const [raceTypes, setRaceTypes] = useState<RaceTypeOption[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [viewMode, setViewMode] = useState<BestEffortsViewMode>('top-3')
-  const [selectedRaceType, setSelectedRaceType] = useState<string | undefined>(undefined)
+  const [viewMode, setViewMode] = useState<BestEffortsViewMode>(persistedFilters?.viewMode ?? 'top-3')
+  const [selectedRaceType, setSelectedRaceType] = useState<string | undefined>(persistedFilters?.selectedRaceType)
+  const [isRaceTypesOpen, setIsRaceTypesOpen] = useState(persistedFilters?.isRaceTypesOpen ?? true)
   const [categoryRacesModal, setCategoryRacesModal] = useState<CategoryRacesModalState | null>(null)
   const [expandedCategoryKeys, setExpandedCategoryKeys] = useState<string[]>([])
   const [isManageRaceTypesModalOpen, setIsManageRaceTypesModalOpen] = useState(false)
@@ -408,7 +479,7 @@ export function BestEffortsPage() {
         visibleItems: items,
       }
     })
-    .filter((category) => !selectedRaceType || selectedRaceType === ALL_RACE_TYPES_VALUE || category.categoryName === selectedRaceType)
+    .filter((category) => !selectedRaceType || category.categoryName === selectedRaceType)
     .filter((category) => category.totalEffortCount > 0), [payload, selectedRaceType, viewMode])
 
   const featuredLimit = viewMode === 'top-3' ? 3 : 5
@@ -416,6 +487,50 @@ export function BestEffortsPage() {
     label: raceType.name,
     value: raceType.name,
   }))
+
+  useEffect(() => {
+    if (!selectedRaceType) {
+      setIsRaceTypesOpen(false)
+    }
+  }, [selectedRaceType])
+
+  useEffect(() => {
+    if (selectedRaceType) {
+      setIsRaceTypesOpen(true)
+    }
+  }, [selectedRaceType])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    window.sessionStorage.setItem(STORAGE_KEYS.bestEffortsFilters, JSON.stringify({
+      viewMode,
+      selectedRaceType,
+      isRaceTypesOpen,
+    } satisfies PersistedBestEffortsFiltersState))
+  }, [isRaceTypesOpen, selectedRaceType, viewMode])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    const handleBeforeUnload = () => {
+      isPageRefreshRef.current = true
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+
+      if (!isPageRefreshRef.current) {
+        window.sessionStorage.removeItem(STORAGE_KEYS.bestEffortsFilters)
+      }
+    }
+  }, [])
 
   const handleClearFilters = () => {
     setViewMode('top-3')
@@ -927,29 +1042,40 @@ export function BestEffortsPage() {
 
             <div className={styles.sidebarDivider} />
 
-            <div className={styles.filterField}>
-              <div className={styles.filterLabelRow}>
-                <span className={styles.filterLabel}>Race Type</span>
-                <button
-                  type="button"
-                  className={styles.manageFilterButton}
-                  onClick={() => void openManageRaceTypesModal()}
-                  aria-label="Create or manage race types"
-                >
-                  <FontAwesomeIcon icon={faPenToSquare} />
-                </button>
+            <CheckboxFilterSection
+              title="Race types"
+              count={selectedRaceType ? 1 : 0}
+              isOpen={isRaceTypesOpen}
+              onToggle={() => setIsRaceTypesOpen((current) => !current)}
+              titleAction={(
+                <span onClick={(event) => event.stopPropagation()}>
+                  <button
+                    type="button"
+                    className={styles.manageFilterButton}
+                    onClick={() => void openManageRaceTypesModal()}
+                    aria-label="Create or manage race types"
+                  >
+                    <FontAwesomeIcon icon={faPenToSquare} />
+                  </button>
+                </span>
+              )}
+            >
+              <div className={styles.checkboxList}>
+                {raceTypeOptions.length === 0 ? (
+                  <span className={styles.checkboxListHint}>No race types available</span>
+                ) : raceTypeOptions.map((raceType) => (
+                  <label key={raceType.value} className={styles.checkboxOption}>
+                    <Checkbox
+                      checked={selectedRaceType === raceType.value}
+                      onChange={() => setSelectedRaceType(
+                        selectedRaceType === raceType.value ? undefined : raceType.value,
+                      )}
+                    />
+                    <span className={styles.checkboxOptionLabel}>{raceType.label}</span>
+                  </label>
+                ))}
               </div>
-              <Select
-                allowClear
-                placeholder="All race types"
-                value={selectedRaceType}
-                onChange={(value) => setSelectedRaceType(value === ALL_RACE_TYPES_VALUE ? undefined : value)}
-                options={[
-                  { label: 'All race types', value: ALL_RACE_TYPES_VALUE },
-                  ...raceTypeOptions,
-                ]}
-              />
-            </div>
+            </CheckboxFilterSection>
 
           </div>
         </aside>

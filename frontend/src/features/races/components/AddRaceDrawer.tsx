@@ -53,6 +53,12 @@ type AddRaceDrawerProps = {
   onCreateOptionsChange?: (nextOptions: RaceCreateOptions) => void
   mode?: 'create' | 'edit'
   triggerLabel?: string
+  triggerIconOnly?: boolean
+  triggerClassName?: string
+  manageOptionTriggerType?: ManagedRaceOptionType
+  forceManageOptionType?: ManagedRaceOptionType | null
+  onManageOptionModalClose?: () => void
+  hideTrigger?: boolean
   open?: boolean
   raceId?: string | null
   initialRace?: RaceDetailResponse | null
@@ -540,6 +546,12 @@ export function AddRaceDrawer({
   onCreateOptionsChange,
   mode = 'create',
   triggerLabel = 'Add Race',
+  triggerIconOnly = false,
+  triggerClassName,
+  manageOptionTriggerType,
+  forceManageOptionType = null,
+  onManageOptionModalClose,
+  hideTrigger = false,
   open,
   raceId = null,
   initialRace = null,
@@ -583,6 +595,14 @@ export function AddRaceDrawer({
   useEffect(() => {
     setLocalCreateOptions(createOptions)
   }, [createOptions])
+
+  useEffect(() => {
+    if (!forceManageOptionType) {
+      return
+    }
+
+    void openManageOptionsModal(forceManageOptionType)
+  }, [forceManageOptionType])
 
   useEffect(() => {
     if (!isOpen) {
@@ -662,6 +682,7 @@ export function AddRaceDrawer({
   const closeManageOptionsModal = () => {
     setIsManageOptionsModalOpen(false)
     resetManagedOptionState()
+    onManageOptionModalClose?.()
   }
 
   const clearFieldError = (fieldName: keyof AddRaceFormValues) => {
@@ -893,15 +914,22 @@ export function AddRaceDrawer({
 
   return (
     <>
-      {!isEditMode ? (
+      {!isEditMode && !hideTrigger ? (
         <Button
-          type="primary"
-          className={styles.trigger}
-          icon={<FontAwesomeIcon icon={faPlus} />}
+          type={manageOptionTriggerType ? 'text' : 'primary'}
+          className={triggerClassName ?? styles.trigger}
+          icon={<FontAwesomeIcon icon={manageOptionTriggerType ? faPenToSquare : faPlus} />}
           aria-label={triggerLabel}
-          onClick={() => setInternalOpen(true)}
+          onClick={() => {
+            if (manageOptionTriggerType) {
+              void openManageOptionsModal(manageOptionTriggerType)
+              return
+            }
+
+            setInternalOpen(true)
+          }}
         >
-          {triggerLabel}
+          {triggerIconOnly ? null : triggerLabel}
         </Button>
       ) : null}
 
@@ -1370,7 +1398,9 @@ export function AddRaceDrawer({
           <p>You have unsaved race data. If you leave now, the information you entered will be lost.</p>
         </Modal>
 
-        <Modal
+      </Drawer>
+
+      <Modal
           className={styles.manageOptionsDialog}
           title={managedOptionType === 'race-types' ? 'Manage race types' : `Manage ${MANAGED_OPTION_CONFIG[managedOptionType].title.toLowerCase()}`}
           open={isManageOptionsModalOpen}
@@ -1547,7 +1577,6 @@ export function AddRaceDrawer({
               : `Delete "${managedOptionConfirmState?.option.name ?? ''}"? This action cannot be undone.`}
           </p>
         </Modal>
-      </Drawer>
     </>
   )
 }

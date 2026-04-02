@@ -1,9 +1,10 @@
-import { faBroom, faTriangleExclamation } from '@fortawesome/free-solid-svg-icons'
+import { faAngleDown, faAngleUp, faBroom, faMagnifyingGlass, faTriangleExclamation } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { useDeferredValue, useEffect, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Button, Card, Checkbox, Empty, Input, Popconfirm, Space, Spin, Table, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useAuth } from '../../features/auth'
+import { STORAGE_KEYS } from '../../constants/storage'
 import {
   approvePendingApproval,
   fetchPendingApprovals,
@@ -13,6 +14,72 @@ import {
 import styles from './PendingApprovalsPage.module.css'
 
 const { Title } = Typography
+
+type PersistedPendingApprovalsFiltersState = {
+  search: string
+  olderThanThreeDays: boolean
+  isAgeOpen: boolean
+}
+
+function readPersistedPendingApprovalsFilters(): PersistedPendingApprovalsFiltersState | null {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  const rawValue = window.sessionStorage.getItem(STORAGE_KEYS.pendingApprovalsFilters)
+  if (!rawValue) {
+    return null
+  }
+
+  try {
+    const parsed = JSON.parse(rawValue) as Partial<PersistedPendingApprovalsFiltersState>
+    return {
+      search: typeof parsed.search === 'string' ? parsed.search : '',
+      olderThanThreeDays: parsed.olderThanThreeDays ?? false,
+      isAgeOpen: parsed.isAgeOpen ?? true,
+    }
+  } catch {
+    return null
+  }
+}
+
+type CheckboxFilterSectionProps = {
+  title: string
+  count: number
+  isOpen: boolean
+  onToggle: () => void
+  children: React.ReactNode
+}
+
+function CheckboxFilterSection({
+  title,
+  count,
+  isOpen,
+  onToggle,
+  children,
+}: CheckboxFilterSectionProps) {
+  return (
+    <div className={styles.filterField}>
+      <div className={styles.checkboxSectionHeader}>
+        <span className={styles.checkboxSectionTitleRow}>
+          <span className={styles.filterLabel}>{title}</span>
+          {count > 0 ? <span className={styles.filterCount}>{count}</span> : null}
+        </span>
+        <button
+          type="button"
+          className={styles.checkboxSectionToggle}
+          onClick={onToggle}
+          aria-expanded={isOpen}
+          aria-label={isOpen ? `Collapse ${title}` : `Expand ${title}`}
+        >
+          <FontAwesomeIcon icon={isOpen ? faAngleUp : faAngleDown} className={styles.checkboxSectionIcon} />
+        </button>
+      </div>
+
+      {isOpen ? <div className={styles.checkboxSectionBody}>{children}</div> : null}
+    </div>
+  )
+}
 
 function formatRequestedAt(value: string) {
   const requestedAt = new Date(value)
@@ -69,12 +136,15 @@ function isRequestStale(value: string) {
 
 export function PendingApprovalsPage() {
   const { token } = useAuth()
+  const persistedFilters = useMemo(() => readPersistedPendingApprovalsFilters(), [])
+  const isPageRefreshRef = useRef(false)
   const [approvals, setApprovals] = useState<PendingApproval[]>([])
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [processingId, setProcessingId] = useState<string | null>(null)
-  const [search, setSearch] = useState('')
-  const [olderThanThreeDays, setOlderThanThreeDays] = useState(false)
+  const [search, setSearch] = useState(persistedFilters?.search ?? '')
+  const [olderThanThreeDays, setOlderThanThreeDays] = useState(persistedFilters?.olderThanThreeDays ?? false)
+  const [isAgeOpen, setIsAgeOpen] = useState(persistedFilters?.isAgeOpen ?? true)
   const deferredSearch = useDeferredValue(search)
   const normalizedSearch = search.trim().toLowerCase()
   const filteredApprovals = approvals.filter((approval) => {
@@ -110,6 +180,50 @@ export function PendingApprovalsPage() {
 
     void loadPendingApprovals()
   }, [token, deferredSearch, olderThanThreeDays])
+
+  useEffect(() => {
+    if (!olderThanThreeDays) {
+      setIsAgeOpen(false)
+    }
+  }, [olderThanThreeDays])
+
+  useEffect(() => {
+    if (olderThanThreeDays) {
+      setIsAgeOpen(true)
+    }
+  }, [olderThanThreeDays])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    window.sessionStorage.setItem(STORAGE_KEYS.pendingApprovalsFilters, JSON.stringify({
+      search,
+      olderThanThreeDays,
+      isAgeOpen,
+    } satisfies PersistedPendingApprovalsFiltersState))
+  }, [isAgeOpen, olderThanThreeDays, search])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    const handleBeforeUnload = () => {
+      isPageRefreshRef.current = true
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+
+      if (!isPageRefreshRef.current) {
+        window.sessionStorage.removeItem(STORAGE_KEYS.pendingApprovalsFilters)
+      }
+    }
+  }, [])
 
   const handleApprove = async (userId: string) => {
     if (!token) {
@@ -274,17 +388,26 @@ export function PendingApprovalsPage() {
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search by email"
                 className={styles.searchInput}
+                suffix={<FontAwesomeIcon icon={faMagnifyingGlass} />}
               />
             </label>
 
-            <label className={styles.checkboxField}>
-              <Checkbox
-                checked={olderThanThreeDays}
-                onChange={(event) => setOlderThanThreeDays(event.target.checked)}
-              >
-                Waiting for over 3 days
-              </Checkbox>
-            </label>
+            <CheckboxFilterSection
+              title="Request age"
+              count={olderThanThreeDays ? 1 : 0}
+              isOpen={isAgeOpen}
+              onToggle={() => setIsAgeOpen((current) => !current)}
+            >
+              <div className={styles.checkboxList}>
+                <label className={styles.checkboxOption}>
+                  <Checkbox
+                    checked={olderThanThreeDays}
+                    onChange={(event) => setOlderThanThreeDays(event.target.checked)}
+                  />
+                  <span className={styles.checkboxOptionLabel}>Waiting for over 3 days</span>
+                </label>
+              </div>
+            </CheckboxFilterSection>
           </div>
         </aside>
       </div>

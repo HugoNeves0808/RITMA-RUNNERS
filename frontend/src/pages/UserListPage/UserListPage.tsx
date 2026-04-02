@@ -1,13 +1,84 @@
-import { faBroom, faTriangleExclamation } from '@fortawesome/free-solid-svg-icons'
+import { faAngleDown, faAngleUp, faBroom, faMagnifyingGlass, faTriangleExclamation } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { useDeferredValue, useEffect, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Button, Card, Checkbox, Empty, Input, Space, Spin, Table, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useAuth } from '../../features/auth'
 import { fetchAdminUsers, type AdminUserListItem } from '../../features/admin'
+import { STORAGE_KEYS } from '../../constants/storage'
 import styles from './UserListPage.module.css'
 
 const { Title } = Typography
+
+type PersistedUserListFiltersState = {
+  search: string
+  onlyAdmins: boolean
+  staleOnly: boolean
+  isRoleOpen: boolean
+  isActivityOpen: boolean
+}
+
+function readPersistedUserListFilters(): PersistedUserListFiltersState | null {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  const rawValue = window.sessionStorage.getItem(STORAGE_KEYS.userListFilters)
+  if (!rawValue) {
+    return null
+  }
+
+  try {
+    const parsed = JSON.parse(rawValue) as Partial<PersistedUserListFiltersState>
+    return {
+      search: typeof parsed.search === 'string' ? parsed.search : '',
+      onlyAdmins: parsed.onlyAdmins ?? false,
+      staleOnly: parsed.staleOnly ?? false,
+      isRoleOpen: parsed.isRoleOpen ?? true,
+      isActivityOpen: parsed.isActivityOpen ?? true,
+    }
+  } catch {
+    return null
+  }
+}
+
+type CheckboxFilterSectionProps = {
+  title: string
+  count: number
+  isOpen: boolean
+  onToggle: () => void
+  children: React.ReactNode
+}
+
+function CheckboxFilterSection({
+  title,
+  count,
+  isOpen,
+  onToggle,
+  children,
+}: CheckboxFilterSectionProps) {
+  return (
+    <div className={styles.filterField}>
+      <div className={styles.checkboxSectionHeader}>
+        <span className={styles.checkboxSectionTitleRow}>
+          <span className={styles.filterLabel}>{title}</span>
+          {count > 0 ? <span className={styles.filterCount}>{count}</span> : null}
+        </span>
+        <button
+          type="button"
+          className={styles.checkboxSectionToggle}
+          onClick={onToggle}
+          aria-expanded={isOpen}
+          aria-label={isOpen ? `Collapse ${title}` : `Expand ${title}`}
+        >
+          <FontAwesomeIcon icon={isOpen ? faAngleUp : faAngleDown} className={styles.checkboxSectionIcon} />
+        </button>
+      </div>
+
+      {isOpen ? <div className={styles.checkboxSectionBody}>{children}</div> : null}
+    </div>
+  )
+}
 
 function formatLastLogin(value: string | null) {
   if (!value) {
@@ -72,12 +143,16 @@ function isLastLoginStale(value: string | null) {
 
 export function UserListPage() {
   const { token } = useAuth()
+  const persistedFilters = useMemo(() => readPersistedUserListFilters(), [])
+  const isPageRefreshRef = useRef(false)
   const [users, setUsers] = useState<AdminUserListItem[]>([])
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [search, setSearch] = useState('')
-  const [onlyAdmins, setOnlyAdmins] = useState(false)
-  const [staleOnly, setStaleOnly] = useState(false)
+  const [search, setSearch] = useState(persistedFilters?.search ?? '')
+  const [onlyAdmins, setOnlyAdmins] = useState(persistedFilters?.onlyAdmins ?? false)
+  const [staleOnly, setStaleOnly] = useState(persistedFilters?.staleOnly ?? false)
+  const [isRoleOpen, setIsRoleOpen] = useState(persistedFilters?.isRoleOpen ?? true)
+  const [isActivityOpen, setIsActivityOpen] = useState(persistedFilters?.isActivityOpen ?? true)
   const deferredSearch = useDeferredValue(search)
   const normalizedSearch = search.trim().toLowerCase()
   const filteredUsers = users.filter((user) => {
@@ -114,6 +189,64 @@ export function UserListPage() {
 
     void loadUsers()
   }, [token, deferredSearch, onlyAdmins, staleOnly])
+
+  useEffect(() => {
+    if (!onlyAdmins) {
+      setIsRoleOpen(false)
+    }
+  }, [onlyAdmins])
+
+  useEffect(() => {
+    if (onlyAdmins) {
+      setIsRoleOpen(true)
+    }
+  }, [onlyAdmins])
+
+  useEffect(() => {
+    if (!staleOnly) {
+      setIsActivityOpen(false)
+    }
+  }, [staleOnly])
+
+  useEffect(() => {
+    if (staleOnly) {
+      setIsActivityOpen(true)
+    }
+  }, [staleOnly])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    window.sessionStorage.setItem(STORAGE_KEYS.userListFilters, JSON.stringify({
+      search,
+      onlyAdmins,
+      staleOnly,
+      isRoleOpen,
+      isActivityOpen,
+    } satisfies PersistedUserListFiltersState))
+  }, [isActivityOpen, isRoleOpen, onlyAdmins, search, staleOnly])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    const handleBeforeUnload = () => {
+      isPageRefreshRef.current = true
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+
+      if (!isPageRefreshRef.current) {
+        window.sessionStorage.removeItem(STORAGE_KEYS.userListFilters)
+      }
+    }
+  }, [])
 
   const columns: ColumnsType<AdminUserListItem> = [
     {
@@ -226,20 +359,37 @@ export function UserListPage() {
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search by email"
                 className={styles.searchInput}
+                suffix={<FontAwesomeIcon icon={faMagnifyingGlass} />}
               />
             </label>
 
-            <label className={styles.checkboxField}>
-              <Checkbox checked={onlyAdmins} onChange={(event) => setOnlyAdmins(event.target.checked)}>
-                Only admins
-              </Checkbox>
-            </label>
+            <CheckboxFilterSection
+              title="Role"
+              count={onlyAdmins ? 1 : 0}
+              isOpen={isRoleOpen}
+              onToggle={() => setIsRoleOpen((current) => !current)}
+            >
+              <div className={styles.checkboxList}>
+                <label className={styles.checkboxOption}>
+                  <Checkbox checked={onlyAdmins} onChange={(event) => setOnlyAdmins(event.target.checked)} />
+                  <span className={styles.checkboxOptionLabel}>Only admins</span>
+                </label>
+              </div>
+            </CheckboxFilterSection>
 
-            <label className={styles.checkboxField}>
-              <Checkbox checked={staleOnly} onChange={(event) => setStaleOnly(event.target.checked)}>
-                Inactive for over 1 year
-              </Checkbox>
-            </label>
+            <CheckboxFilterSection
+              title="Activity"
+              count={staleOnly ? 1 : 0}
+              isOpen={isActivityOpen}
+              onToggle={() => setIsActivityOpen((current) => !current)}
+            >
+              <div className={styles.checkboxList}>
+                <label className={styles.checkboxOption}>
+                  <Checkbox checked={staleOnly} onChange={(event) => setStaleOnly(event.target.checked)} />
+                  <span className={styles.checkboxOptionLabel}>Inactive for over 1 year</span>
+                </label>
+              </div>
+            </CheckboxFilterSection>
           </div>
         </aside>
       </div>

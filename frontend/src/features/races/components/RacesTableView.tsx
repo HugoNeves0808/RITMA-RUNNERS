@@ -1,4 +1,4 @@
-import { faEllipsisVertical, faPenToSquare, faTrashCan } from '@fortawesome/free-solid-svg-icons'
+import { faChevronDown, faEllipsisVertical, faPenToSquare, faTrashCan } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
@@ -343,18 +343,19 @@ export function RacesTableView({
   const [detailsError, setDetailsError] = useState<string | null>(null)
   const [racePendingDelete, setRacePendingDelete] = useState<RaceTableItem | null>(null)
   const [isDeletingRace, setIsDeletingRace] = useState(false)
+  const [isUndatedSectionOpen, setIsUndatedSectionOpen] = useState(false)
 
   const visibleYears = tableYearSelection.allRaces
     ? years
     : years.filter((yearGroup) => tableYearSelection.selectedYears.includes(yearGroup.year))
-  const hasUndatedInListFilter = filters.statuses.includes(IN_LIST_WITHOUT_DATE_STATUS)
   const normalizedSearch = filters.search.trim().toLowerCase()
   const filteredVisibleYears = filterYearsByRaceName(visibleYears, filters.search)
-  const filteredUndatedRaces = !hasUndatedInListFilter
+  const shouldShowUndatedRaces = filters.statuses.includes(IN_LIST_WITHOUT_DATE_STATUS)
+  const filteredUndatedRaces = !shouldShowUndatedRaces
     ? []
     : normalizedSearch
-      ? undatedRaces.filter((race) => race.name.toLowerCase().includes(normalizedSearch))
-      : undatedRaces
+    ? undatedRaces.filter((race) => race.name.toLowerCase().includes(normalizedSearch))
+    : undatedRaces
   const allVisibleRaces = visibleYears.flatMap((yearGroup) => yearGroup.races)
   const weekUpcomingRaces = allVisibleRaces
     .filter((race) => isUpcomingRace(race, now))
@@ -366,8 +367,6 @@ export function RacesTableView({
     ? baseUpcomingRaces.filter((race) => race.name.toLowerCase().includes(normalizedSearch))
     : baseUpcomingRaces
   const regularYears = removeUpcomingRaces(filteredVisibleYears, new Set(upcomingRaces.map((race) => race.id)))
-  const shouldShowUndatedFirst = false
-
   const loadTableData = async () => {
     if (!token) {
       setYears([])
@@ -384,12 +383,10 @@ export function RacesTableView({
           ...filters,
           statuses: datedStatuses,
         }),
-        hasUndatedInListFilter
-          ? fetchRaceTable(token, {
-            ...filters,
-            statuses: ['IN_LIST'],
-          })
-          : Promise.resolve(null),
+        fetchRaceTable(token, {
+          ...filters,
+          statuses: ['IN_LIST'],
+        }),
       ])
 
       setYears(tablePayload.years ?? [])
@@ -552,100 +549,121 @@ export function RacesTableView({
         </div>
       ) : null}
 
-      {!isLoading && shouldShowUndatedFirst && filteredUndatedRaces.length > 0 ? (
+      {!isLoading && filteredUndatedRaces.length > 0 ? (
         <section className={styles.yearSection}>
-          <div className={styles.yearHeader}>
-            <h3 className={`${styles.yearTitle} ${styles.sectionTitle}`.trim()}>In List</h3>
+          <div className={`${styles.yearHeader} ${styles.yearHeaderWithAction}`.trim()}>
+            <div className={styles.sectionHeaderGroup}>
+              <Tooltip
+                title="These are races you are tracking in your list but that do not have a confirmed date yet."
+              >
+                <span className={styles.sectionTitleWrap}>
+                  <span className={`${styles.yearTitle} ${styles.sectionTitle}`.trim()}>
+                    In List
+                  </span>
+                </span>
+              </Tooltip>
+            </div>
+            <div className={styles.headerLine} />
+            <Button
+              type="text"
+              className={styles.collapseToggle}
+              onClick={() => setIsUndatedSectionOpen((current) => !current)}
+              aria-expanded={isUndatedSectionOpen}
+              aria-label={isUndatedSectionOpen ? 'Collapse In List section' : 'Expand In List section'}
+              icon={<FontAwesomeIcon icon={faChevronDown} className={isUndatedSectionOpen ? styles.collapseIconOpen : styles.collapseIcon} />}
+            />
           </div>
 
-          <div className={styles.yearCard}>
-            <div className={styles.monthSection}>
-              <div className={styles.raceList}>
-                {filteredUndatedRaces.map((race) => (
-                  <article key={race.id} className={styles.raceRow} onClick={() => void handleOpenDetails(race)}>
-                    <div className={styles.dateBadge}>
-                      <span className={styles.dateBadgeDay}>{getDayLabel(race.raceDate)}</span>
-                      <span className={styles.dateBadgeMonth}>{getCompactMonthLabel(race.raceDate)}</span>
-                    </div>
-
-                    <div className={styles.raceContent}>
-                      <div className={styles.raceTopRow}>
-                        <div className={styles.raceTitleBlock}>
-                          <OverflowTooltip title={race.name} className={styles.raceCardTitle}>
-                            {race.name}
-                          </OverflowTooltip>
-                        </div>
-
-                        <div className={styles.raceTopMeta}>
-                          <span className={`${styles.raceStatusBadge} ${getRaceStatusClassName(race.raceStatus)}`.trim()}>
-                            {getRaceStatusLabel(race.raceStatus)}
-                          </span>
-                          <Dropdown
-                            menu={getRaceActionsMenu(race)}
-                            trigger={['click']}
-                            placement="bottomRight"
-                          >
-                            <Button
-                              type="text"
-                              className={styles.moreAction}
-                              aria-label="Race actions"
-                              icon={<FontAwesomeIcon icon={faEllipsisVertical} />}
-                              onClick={(event) => event.stopPropagation()}
-                            />
-                          </Dropdown>
-                        </div>
+          {isUndatedSectionOpen ? (
+            <div className={styles.yearCard}>
+              <div className={styles.monthSection}>
+                <div className={styles.raceList}>
+                  {filteredUndatedRaces.map((race) => (
+                    <article key={race.id} className={styles.raceRow} onClick={() => void handleOpenDetails(race)}>
+                      <div className={styles.dateBadge}>
+                        <span className={styles.dateBadgeDay}>{getDayLabel(race.raceDate)}</span>
+                        <span className={styles.dateBadgeMonth}>{getCompactMonthLabel(race.raceDate)}</span>
                       </div>
 
-                      <div className={styles.raceBottomRow}>
-                        <div className={styles.metricsGrid}>
-                          <div className={styles.metricItem}>
-                            <span className={styles.metricLabel}>Location</span>
-                            {renderMetricValueWithTooltip(
-                              race.location ?? <span className={styles.emptyValue}>-</span>,
-                              race.location ?? '-',
-                            )}
+                      <div className={styles.raceContent}>
+                        <div className={styles.raceTopRow}>
+                          <div className={styles.raceTitleBlock}>
+                            <OverflowTooltip title={race.name} className={styles.raceCardTitle}>
+                              {race.name}
+                            </OverflowTooltip>
                           </div>
 
-                          <div className={styles.metricItem}>
-                            <span className={styles.metricLabel}>Race type</span>
-                            {renderMetricValueWithTooltip(
-                              race.raceTypeName ?? <span className={styles.emptyValue}>-</span>,
-                              race.raceTypeName ?? '-',
-                            )}
-                          </div>
-
-                          <div className={styles.metricItem}>
-                            <span className={styles.metricLabel}>Official time</span>
-                            {renderMetricValueWithTooltip(
-                              formatDuration(race.officialTimeSeconds),
-                              formatDurationText(race.officialTimeSeconds),
-                            )}
-                          </div>
-
-                          <div className={styles.metricItem}>
-                            <span className={styles.metricLabel}>Chip time</span>
-                            {renderMetricValueWithTooltip(
-                              formatDuration(race.chipTimeSeconds),
-                              formatDurationText(race.chipTimeSeconds),
-                            )}
-                          </div>
-
-                          <div className={styles.metricItem}>
-                            <span className={styles.metricLabel}>Pace per km</span>
-                            {renderMetricValueWithTooltip(
-                              formatPace(race.pacePerKmSeconds),
-                              formatPaceText(race.pacePerKmSeconds),
-                            )}
+                          <div className={styles.raceTopMeta}>
+                            <span className={`${styles.raceStatusBadge} ${getRaceStatusClassName(race.raceStatus)}`.trim()}>
+                              {getRaceStatusLabel(race.raceStatus)}
+                            </span>
+                            <Dropdown
+                              menu={getRaceActionsMenu(race)}
+                              trigger={['click']}
+                              placement="bottomRight"
+                            >
+                              <Button
+                                type="text"
+                                className={styles.moreAction}
+                                aria-label="Race actions"
+                                icon={<FontAwesomeIcon icon={faEllipsisVertical} />}
+                                onClick={(event) => event.stopPropagation()}
+                              />
+                            </Dropdown>
                           </div>
                         </div>
 
+                        <div className={styles.raceBottomRow}>
+                          <div className={styles.metricsGrid}>
+                            <div className={styles.metricItem}>
+                              <span className={styles.metricLabel}>Location</span>
+                              {renderMetricValueWithTooltip(
+                                race.location ?? <span className={styles.emptyValue}>-</span>,
+                                race.location ?? '-',
+                              )}
+                            </div>
+
+                            <div className={styles.metricItem}>
+                              <span className={styles.metricLabel}>Race type</span>
+                              {renderMetricValueWithTooltip(
+                                race.raceTypeName ?? <span className={styles.emptyValue}>-</span>,
+                                race.raceTypeName ?? '-',
+                              )}
+                            </div>
+
+                            <div className={styles.metricItem}>
+                              <span className={styles.metricLabel}>Official time</span>
+                              {renderMetricValueWithTooltip(
+                                formatDuration(race.officialTimeSeconds),
+                                formatDurationText(race.officialTimeSeconds),
+                              )}
+                            </div>
+
+                            <div className={styles.metricItem}>
+                              <span className={styles.metricLabel}>Chip time</span>
+                              {renderMetricValueWithTooltip(
+                                formatDuration(race.chipTimeSeconds),
+                                formatDurationText(race.chipTimeSeconds),
+                              )}
+                            </div>
+
+                            <div className={styles.metricItem}>
+                              <span className={styles.metricLabel}>Pace per km</span>
+                              {renderMetricValueWithTooltip(
+                                formatPace(race.pacePerKmSeconds),
+                                formatPaceText(race.pacePerKmSeconds),
+                              )}
+                            </div>
+                          </div>
+
+                        </div>
                       </div>
-                    </div>
-                  </article>
-                ))}
+                    </article>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
+          ) : null}
         </section>
       ) : null}
 
@@ -749,106 +767,6 @@ export function RacesTableView({
                     </article>
                   )
                 })}
-              </div>
-            </div>
-          </div>
-        </section>
-      ) : null}
-
-      {!isLoading && filteredUndatedRaces.length > 0 ? (
-        <section className={styles.yearSection}>
-          <div className={styles.yearHeader}>
-            {renderSectionTitle(
-              'In List',
-              'These are races you are tracking in your list but that do not have a confirmed date yet.',
-            )}
-          </div>
-
-          <div className={styles.yearCard}>
-            <div className={styles.monthSection}>
-              <div className={styles.raceList}>
-                {filteredUndatedRaces.map((race) => (
-                  <article key={race.id} className={styles.raceRow} onClick={() => void handleOpenDetails(race)}>
-                    <div className={styles.dateBadge}>
-                      <span className={styles.dateBadgeDay}>{getDayLabel(race.raceDate)}</span>
-                      <span className={styles.dateBadgeMonth}>{getCompactMonthLabel(race.raceDate)}</span>
-                    </div>
-
-                    <div className={styles.raceContent}>
-                      <div className={styles.raceTopRow}>
-                        <div className={styles.raceTitleBlock}>
-                          <OverflowTooltip title={race.name} className={styles.raceCardTitle}>
-                            {race.name}
-                          </OverflowTooltip>
-                        </div>
-
-                        <div className={styles.raceTopMeta}>
-                          <span className={`${styles.raceStatusBadge} ${getRaceStatusClassName(race.raceStatus)}`.trim()}>
-                            {getRaceStatusLabel(race.raceStatus)}
-                          </span>
-                          <Dropdown
-                            menu={getRaceActionsMenu(race)}
-                            trigger={['click']}
-                            placement="bottomRight"
-                          >
-                            <Button
-                              type="text"
-                              className={styles.moreAction}
-                              aria-label="Race actions"
-                              icon={<FontAwesomeIcon icon={faEllipsisVertical} />}
-                              onClick={(event) => event.stopPropagation()}
-                            />
-                          </Dropdown>
-                        </div>
-                      </div>
-
-                      <div className={styles.raceBottomRow}>
-                        <div className={styles.metricsGrid}>
-                          <div className={styles.metricItem}>
-                            <span className={styles.metricLabel}>Location</span>
-                            {renderMetricValueWithTooltip(
-                              race.location ?? <span className={styles.emptyValue}>-</span>,
-                              race.location ?? '-',
-                            )}
-                          </div>
-
-                          <div className={styles.metricItem}>
-                            <span className={styles.metricLabel}>Race type</span>
-                            {renderMetricValueWithTooltip(
-                              race.raceTypeName ?? <span className={styles.emptyValue}>-</span>,
-                              race.raceTypeName ?? '-',
-                            )}
-                          </div>
-
-                          <div className={styles.metricItem}>
-                            <span className={styles.metricLabel}>Official time</span>
-                            {renderMetricValueWithTooltip(
-                              formatDuration(race.officialTimeSeconds),
-                              formatDurationText(race.officialTimeSeconds),
-                            )}
-                          </div>
-
-                          <div className={styles.metricItem}>
-                            <span className={styles.metricLabel}>Chip time</span>
-                            {renderMetricValueWithTooltip(
-                              formatDuration(race.chipTimeSeconds),
-                              formatDurationText(race.chipTimeSeconds),
-                            )}
-                          </div>
-
-                          <div className={styles.metricItem}>
-                            <span className={styles.metricLabel}>Pace per km</span>
-                            {renderMetricValueWithTooltip(
-                              formatPace(race.pacePerKmSeconds),
-                              formatPaceText(race.pacePerKmSeconds),
-                            )}
-                          </div>
-                        </div>
-
-                      </div>
-                    </div>
-                  </article>
-                ))}
               </div>
             </div>
           </div>

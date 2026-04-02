@@ -20,8 +20,30 @@
   margin-bottom: 14px;
 }
 
+.yearHeader.yearHeaderWithAction::after {
+  content: none;
+  display: none;
+}
+
+.yearHeaderWithAction {
+  justify-content: flex-start;
+}
+
+.sectionHeaderGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .yearHeader::after {
   content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(16, 24, 40, 0.12);
+}
+
+.headerLine {
   flex: 1;
   height: 1px;
   background: rgba(16, 24, 40, 0.12);
@@ -63,6 +85,34 @@
   font-weight: 800;
   line-height: 1;
   cursor: help;
+}
+
+.collapseToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0 !important;
+  border-radius: 999px;
+  background: transparent;
+  color: #475467;
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.collapseToggle:hover {
+  background: transparent !important;
+  color: #101828 !important;
+}
+
+.collapseIcon,
+.collapseIconOpen {
+  transition: transform 0.18s ease;
+}
+
+.collapseIconOpen {
+  transform: rotate(180deg);
 }
 
 .yearNumberTitle {
