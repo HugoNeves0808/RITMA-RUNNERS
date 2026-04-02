@@ -46,6 +46,7 @@ public class RaceService {
     private static final int MAX_LOCATION_LENGTH = 150;
     private static final int MAX_OPTION_NAME_LENGTH = 100;
     private static final BigDecimal MAX_REAL_KM = new BigDecimal("999.99");
+    private static final BigDecimal MAX_TARGET_KM = new BigDecimal("9999.99");
     private static final int MAX_ANALYSIS_RATING_LENGTH = 30;
 
     private static final Set<String> ALLOWED_RACE_STATUSES = Set.of(
@@ -188,11 +189,10 @@ public class RaceService {
 
     @Transactional
     public RaceTypeOptionResponse createManagedOption(UUID userId, RaceOptionType optionType, ManageRaceOptionRequest request) {
-        String normalizedName = validateManagedOptionRequest(optionType, request);
+        ValidatedManagedOption validatedOption = validateManagedOptionRequest(optionType, request);
 
         try {
-            UUID optionId = raceRepository.createManagedOption(userId, optionType, normalizedName);
-            return new RaceTypeOptionResponse(optionId, normalizedName);
+            return raceRepository.createManagedOption(userId, optionType, validatedOption.name(), validatedOption.targetKm());
         } catch (DuplicateKeyException exception) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -206,15 +206,14 @@ public class RaceService {
                                                       RaceOptionType optionType,
                                                       UUID optionId,
                                                       ManageRaceOptionRequest request) {
-        String normalizedName = validateManagedOptionRequest(optionType, request);
+        ValidatedManagedOption validatedOption = validateManagedOptionRequest(optionType, request);
 
         if (!raceRepository.managedOptionExists(userId, optionType, optionId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, optionType.label() + " not found.");
         }
 
         try {
-            raceRepository.updateManagedOption(userId, optionType, optionId, normalizedName);
-            return new RaceTypeOptionResponse(optionId, normalizedName);
+            return raceRepository.updateManagedOption(userId, optionType, optionId, validatedOption.name(), validatedOption.targetKm());
         } catch (DuplicateKeyException exception) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -575,7 +574,7 @@ public class RaceService {
         return value != null && !value.trim().isEmpty();
     }
 
-    private String validateManagedOptionRequest(RaceOptionType optionType, ManageRaceOptionRequest request) {
+    private ValidatedManagedOption validateManagedOptionRequest(RaceOptionType optionType, ManageRaceOptionRequest request) {
         if (request == null || request.name() == null || request.name().trim().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, optionType.label() + " name is required.");
         }
@@ -588,10 +587,41 @@ public class RaceService {
             );
         }
 
-        return normalizedName;
+        BigDecimal normalizedTargetKm = normalizeManagedOptionTargetKm(optionType, request.targetKm());
+        return new ValidatedManagedOption(normalizedName, normalizedTargetKm);
+    }
+
+    private BigDecimal normalizeManagedOptionTargetKm(RaceOptionType optionType, BigDecimal targetKm) {
+        if (optionType != RaceOptionType.RACE_TYPES) {
+            return null;
+        }
+
+        if (targetKm == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Race type target KM is required.");
+        }
+
+        if (targetKm.signum() < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Race type target KM must be zero or greater.");
+        }
+
+        if (targetKm.compareTo(MAX_TARGET_KM) > 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Race type target KM must be 9999.99 km or lower.");
+        }
+
+        if (targetKm.scale() > 2) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Race type target KM must use no more than 2 decimal places.");
+        }
+
+        return targetKm.stripTrailingZeros();
     }
 
     private String normalizeOptionalText(String value) {
         return hasText(value) ? value.trim() : null;
+    }
+
+    private record ValidatedManagedOption(
+            String name,
+            BigDecimal targetKm
+    ) {
     }
 }

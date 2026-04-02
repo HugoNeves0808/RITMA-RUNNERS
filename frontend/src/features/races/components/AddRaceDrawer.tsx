@@ -9,6 +9,7 @@ import {
   Checkbox,
   DatePicker,
   Drawer,
+  Empty,
   Form,
   Input,
   InputNumber,
@@ -104,12 +105,29 @@ const ANALYSIS_SELECT_OPTIONS = [
 ]
 
 const INITIAL_FORM_VALUES: Partial<AddRaceFormValues> = {
-  raceStatus: 'REGISTERED',
   isValidForCategoryRanking: true,
   isGeneralClassificationPodium: false,
   isAgeGroupClassificationPodium: false,
   isTeamClassificationPodium: false,
 }
+
+const CREATE_RACE_STATUS_ORDER = [
+  'IN_LIST',
+  'NOT_REGISTERED',
+  'REGISTERED',
+  'COMPLETED',
+  'DID_NOT_START',
+  'DID_NOT_FINISH',
+  'CANCELLED',
+] as const
+
+const CREATE_RACE_STATUS_OPTIONS = RACE_STATUS_OPTIONS
+  .filter((status) => status.value !== 'IN_LIST_WITHOUT_DATE')
+  .map((status) => ({
+    ...status,
+    label: status.value === 'IN_LIST' ? 'In List' : status.label,
+  }))
+  .sort((left, right) => CREATE_RACE_STATUS_ORDER.indexOf(left.value as typeof CREATE_RACE_STATUS_ORDER[number]) - CREATE_RACE_STATUS_ORDER.indexOf(right.value as typeof CREATE_RACE_STATUS_ORDER[number]))
 
 const MANAGED_OPTION_CONFIG: Record<ManagedRaceOptionType, {
   title: string
@@ -121,25 +139,25 @@ const MANAGED_OPTION_CONFIG: Record<ManagedRaceOptionType, {
     title: 'Race types',
     singularLabel: 'race type',
     placeholder: 'Select race type',
-    emptyLabel: 'No race type yet.',
+    emptyLabel: 'No race types available.',
   },
   teams: {
     title: 'Teams',
     singularLabel: 'team',
     placeholder: 'Select team',
-    emptyLabel: 'No team yet.',
+    emptyLabel: 'No teams available.',
   },
   circuits: {
     title: 'Circuits',
     singularLabel: 'circuit',
     placeholder: 'Select circuit',
-    emptyLabel: 'No circuit yet.',
+    emptyLabel: 'No circuits available.',
   },
   shoes: {
     title: 'Shoes',
     singularLabel: 'shoe',
     placeholder: 'Select shoe',
-    emptyLabel: 'No shoe yet.',
+    emptyLabel: 'No shoes available.',
   },
 }
 
@@ -242,8 +260,60 @@ function isRaceDateRequired(raceStatus: string | undefined) {
   return (raceStatus ?? '').trim().toUpperCase() !== 'IN_LIST'
 }
 
+function normalizeRaceStatus(raceStatus: string | undefined) {
+  return (raceStatus ?? '').trim().toUpperCase()
+}
+
 function isCompletedStatus(raceStatus: string | undefined) {
-  return (raceStatus ?? '').trim().toUpperCase() === 'COMPLETED'
+  return normalizeRaceStatus(raceStatus) === 'COMPLETED'
+}
+
+function isDnsStatus(raceStatus: string | undefined) {
+  return normalizeRaceStatus(raceStatus) === 'DID_NOT_START'
+}
+
+function isDnfStatus(raceStatus: string | undefined) {
+  return normalizeRaceStatus(raceStatus) === 'DID_NOT_FINISH'
+}
+
+function shouldShowDistanceFields(raceStatus: string | undefined) {
+  return isCompletedStatus(raceStatus) || isDnfStatus(raceStatus)
+}
+
+function shouldShowRankingValidityField(raceStatus: string | undefined) {
+  return isCompletedStatus(raceStatus)
+}
+
+function shouldShowResultsTab(raceStatus: string | undefined) {
+  return isCompletedStatus(raceStatus)
+}
+
+function shouldShowAnalysisTab(raceStatus: string | undefined) {
+  return isCompletedStatus(raceStatus) || isDnfStatus(raceStatus) || isDnsStatus(raceStatus)
+}
+
+function shouldShowShoeInRaceData(raceStatus: string | undefined) {
+  return isDnfStatus(raceStatus)
+}
+
+function shouldShowPreRaceConfidence(raceStatus: string | undefined) {
+  return shouldShowAnalysisTab(raceStatus)
+}
+
+function shouldShowRaceDifficulty(raceStatus: string | undefined) {
+  return isCompletedStatus(raceStatus) || isDnfStatus(raceStatus)
+}
+
+function shouldShowFinalSatisfaction(raceStatus: string | undefined) {
+  return isCompletedStatus(raceStatus) || isDnfStatus(raceStatus)
+}
+
+function shouldShowPainInjuries(raceStatus: string | undefined) {
+  return shouldShowAnalysisTab(raceStatus)
+}
+
+function shouldShowWouldRepeatThisRace(raceStatus: string | undefined) {
+  return isCompletedStatus(raceStatus) || isDnfStatus(raceStatus)
 }
 
 function formatSecondsAsPace(totalSeconds: number) {
@@ -380,10 +450,13 @@ function buildDrawerInitialValues(race: RaceDetailResponse | null | undefined): 
 }
 
 function buildRacePayload(values: AddRaceFormValues, fallbackRace?: RaceDetailResponse | null): CreateRacePayload {
-  const officialTimeSeconds = parseTimeToSeconds(values.officialTime, 'duration', 'Official time')
-  const chipTimeSeconds = parseTimeToSeconds(values.chipTime, 'duration', 'Chip time')
-  const pacePerKmSeconds = parseTimeToSeconds(values.pacePerKm, 'pace', 'Pace per KM')
-  const normalizedStatus = values.raceStatus.trim().toUpperCase()
+  const normalizedStatus = normalizeRaceStatus(values.raceStatus)
+  const showDistanceFields = shouldShowDistanceFields(normalizedStatus)
+  const showResultsTab = shouldShowResultsTab(normalizedStatus)
+  const showAnalysisTab = shouldShowAnalysisTab(normalizedStatus)
+  const officialTimeSeconds = showResultsTab ? parseTimeToSeconds(values.officialTime, 'duration', 'Official time') : null
+  const chipTimeSeconds = showResultsTab ? parseTimeToSeconds(values.chipTime, 'duration', 'Chip time') : null
+  const pacePerKmSeconds = showResultsTab ? parseTimeToSeconds(values.pacePerKm, 'pace', 'Pace per KM') : null
   const effectiveRaceDate = values.raceDate
     ?? (normalizedStatus !== 'IN_LIST' && fallbackRace?.race.raceDate ? dayjs(fallbackRace.race.raceDate) : undefined)
 
@@ -397,29 +470,33 @@ function buildRacePayload(values: AddRaceFormValues, fallbackRace?: RaceDetailRe
       teamId: values.teamId ?? null,
       circuitId: values.circuitId ?? null,
       raceTypeId: values.raceTypeId ?? null,
-      realKm: values.realKm ?? null,
-      elevation: values.elevation ?? null,
-      isValidForCategoryRanking: values.isValidForCategoryRanking ?? true,
+      realKm: showDistanceFields ? (values.realKm ?? null) : null,
+      elevation: showDistanceFields ? (values.elevation ?? null) : null,
+      isValidForCategoryRanking: shouldShowRankingValidityField(normalizedStatus)
+        ? (values.isValidForCategoryRanking ?? true)
+        : false,
     },
     results: {
       officialTimeSeconds,
       chipTimeSeconds,
       pacePerKmSeconds,
-      shoeId: values.shoeId ?? null,
-      generalClassification: values.generalClassification ?? null,
-      isGeneralClassificationPodium: values.isGeneralClassificationPodium ?? false,
-      ageGroupClassification: values.ageGroupClassification ?? null,
-      isAgeGroupClassificationPodium: values.isAgeGroupClassificationPodium ?? false,
-      teamClassification: values.teamClassification ?? null,
-      isTeamClassificationPodium: values.isTeamClassificationPodium ?? false,
+      shoeId: showResultsTab || shouldShowShoeInRaceData(normalizedStatus) ? (values.shoeId ?? null) : null,
+      generalClassification: showResultsTab ? (values.generalClassification ?? null) : null,
+      isGeneralClassificationPodium: showResultsTab ? (values.isGeneralClassificationPodium ?? false) : false,
+      ageGroupClassification: showResultsTab ? (values.ageGroupClassification ?? null) : null,
+      isAgeGroupClassificationPodium: showResultsTab ? (values.isAgeGroupClassificationPodium ?? false) : false,
+      teamClassification: showResultsTab ? (values.teamClassification ?? null) : null,
+      isTeamClassificationPodium: showResultsTab ? (values.isTeamClassificationPodium ?? false) : false,
     },
     analysis: {
-      preRaceConfidence: values.preRaceConfidence ?? null,
-      raceDifficulty: values.raceDifficulty ?? null,
-      finalSatisfaction: values.finalSatisfaction ?? null,
-      painInjuries: values.painInjuries?.trim() ? values.painInjuries.trim() : null,
-      analysisNotes: values.analysisNotes?.trim() ? values.analysisNotes.trim() : null,
-      wouldRepeatThisRace: values.wouldRepeatThisRace ?? null,
+      preRaceConfidence: showAnalysisTab && shouldShowPreRaceConfidence(normalizedStatus) ? (values.preRaceConfidence ?? null) : null,
+      raceDifficulty: showAnalysisTab && shouldShowRaceDifficulty(normalizedStatus) ? (values.raceDifficulty ?? null) : null,
+      finalSatisfaction: showAnalysisTab && shouldShowFinalSatisfaction(normalizedStatus) ? (values.finalSatisfaction ?? null) : null,
+      painInjuries: showAnalysisTab && shouldShowPainInjuries(normalizedStatus) && values.painInjuries?.trim()
+        ? values.painInjuries.trim()
+        : null,
+      analysisNotes: showAnalysisTab && values.analysisNotes?.trim() ? values.analysisNotes.trim() : null,
+      wouldRepeatThisRace: showAnalysisTab && shouldShowWouldRepeatThisRace(normalizedStatus) ? (values.wouldRepeatThisRace ?? null) : null,
     },
   }
 }
@@ -435,6 +512,26 @@ function renderInfoLabel(label: string, description: string) {
       </Tooltip>
     </span>
   )
+}
+
+function getRaceStatusGuidance(raceStatus: string | undefined) {
+  if (isCompletedStatus(raceStatus)) {
+    return 'Completed unlocks the full race form, including results and post-race analysis.'
+  }
+
+  if (isDnfStatus(raceStatus)) {
+    return 'Did not finish keeps race context and analysis visible, but hides final result fields.'
+  }
+
+  if (isDnsStatus(raceStatus)) {
+    return 'Did not start keeps the race details and notes, without showing result fields.'
+  }
+
+  if (normalizeRaceStatus(raceStatus) === 'IN_LIST') {
+    return 'In list keeps this entry lightweight while you are only tracking the race plan.'
+  }
+
+  return ''
 }
 
 export function AddRaceDrawer({
@@ -458,6 +555,7 @@ export function AddRaceDrawer({
   const [isManageOptionsModalOpen, setIsManageOptionsModalOpen] = useState(false)
   const [managedOptionType, setManagedOptionType] = useState<ManagedRaceOptionType>('race-types')
   const [managedOptionName, setManagedOptionName] = useState('')
+  const [managedOptionTargetKm, setManagedOptionTargetKm] = useState<number | null>(null)
   const [editingManagedOptionId, setEditingManagedOptionId] = useState<string | null>(null)
   const [managedOptionError, setManagedOptionError] = useState<string | null>(null)
   const [isManagedOptionSubmitting, setIsManagedOptionSubmitting] = useState(false)
@@ -469,6 +567,18 @@ export function AddRaceDrawer({
   const isOpen = isControlled ? open : internalOpen
   const initialFormValues = useMemo(() => buildDrawerInitialValues(initialRace), [initialRace])
   const isEditMode = mode === 'edit'
+  const currentRaceStatus = Form.useWatch('raceStatus', form) ?? initialFormValues.raceStatus
+  const hasSelectedStatus = isEditMode || Boolean(currentRaceStatus)
+  const showDistanceFields = shouldShowDistanceFields(currentRaceStatus)
+  const showRankingValidityField = shouldShowRankingValidityField(currentRaceStatus)
+  const showResultsTab = shouldShowResultsTab(currentRaceStatus)
+  const showAnalysisTab = shouldShowAnalysisTab(currentRaceStatus)
+  const showShoeInRaceData = shouldShowShoeInRaceData(currentRaceStatus)
+  const showPreRaceConfidence = shouldShowPreRaceConfidence(currentRaceStatus)
+  const showRaceDifficulty = shouldShowRaceDifficulty(currentRaceStatus)
+  const showFinalSatisfaction = shouldShowFinalSatisfaction(currentRaceStatus)
+  const showPainInjuries = shouldShowPainInjuries(currentRaceStatus)
+  const showWouldRepeatThisRace = shouldShowWouldRepeatThisRace(currentRaceStatus)
 
   useEffect(() => {
     setLocalCreateOptions(createOptions)
@@ -517,6 +627,7 @@ export function AddRaceDrawer({
 
   const resetManagedOptionState = () => {
     setManagedOptionName('')
+    setManagedOptionTargetKm(null)
     setEditingManagedOptionId(null)
     setManagedOptionError(null)
     setManagedOptionUsage(null)
@@ -528,6 +639,7 @@ export function AddRaceDrawer({
   const openManageOptionsModal = async (optionType: ManagedRaceOptionType, optionToEdit?: RaceTypeOption) => {
     setManagedOptionType(optionType)
     setManagedOptionName(optionToEdit?.name ?? '')
+    setManagedOptionTargetKm(optionType === 'race-types' ? (optionToEdit?.targetKm ?? null) : null)
     setEditingManagedOptionId(optionToEdit?.id ?? null)
     setManagedOptionError(null)
     setIsManageOptionsModalOpen(true)
@@ -585,8 +697,17 @@ export function AddRaceDrawer({
       setPendingDeleteOption(null)
 
       const savedOption = editingManagedOptionId
-        ? await updateManagedRaceOption(managedOptionType, editingManagedOptionId, { name: managedOptionName }, token)
-        : await createManagedRaceOption(managedOptionType, { name: managedOptionName }, token)
+        ? await updateManagedRaceOption(
+          managedOptionType,
+          editingManagedOptionId,
+          { name: managedOptionName, targetKm: managedOptionType === 'race-types' ? managedOptionTargetKm : undefined },
+          token,
+        )
+        : await createManagedRaceOption(
+          managedOptionType,
+          { name: managedOptionName, targetKm: managedOptionType === 'race-types' ? managedOptionTargetKm : undefined },
+          token,
+        )
 
       const currentOptions = getOptionsForType(managedOptionType)
       const nextOptions = editingManagedOptionId
@@ -601,6 +722,7 @@ export function AddRaceDrawer({
       }
 
       setManagedOptionName('')
+      setManagedOptionTargetKm(null)
       setEditingManagedOptionId(null)
     } catch (saveError) {
       setManagedOptionError(saveError instanceof Error ? saveError.message : 'Could not save this option right now.')
@@ -767,6 +889,8 @@ export function AddRaceDrawer({
     }
   }
 
+  const isManagedOptionSaveDisabled = managedOptionName.trim().length === 0 || (managedOptionType === 'race-types' && managedOptionTargetKm == null)
+
   return (
     <>
       {!isEditMode ? (
@@ -874,128 +998,177 @@ export function AddRaceDrawer({
                 label: 'Race data',
                 children: (
                   <div className={styles.tabPane}>
-                    <Form.Item<AddRaceFormValues>
-                      label={renderInfoLabel(
-                        'Race status',
-                        'Use In list for races you are tracking but do not have a confirmed date for yet. In list races stay hidden from the table by default and only appear when you filter by the In list status.',
-                      )}
-                      name="raceStatus"
-                      rules={[{ required: true, message: 'Race status is required.' }]}
-                    >
-                      <Select
-                        options={RACE_STATUS_OPTIONS.map((status) => ({
-                          value: status.value,
-                          label: (
-                            <span
-                              className={styles.statusOption}
-                              style={{
-                                color: getRaceStatusColor(status.value),
-                              }}
-                            >
-                              {status.label}
-                            </span>
-                          ),
-                        }))}
-                      />
-                    </Form.Item>
-
-                    <div className={styles.row}>
-                      <Form.Item noStyle dependencies={['raceStatus']}>
-                        {({ getFieldValue }) => (
-                          <Form.Item<AddRaceFormValues>
-                            label={(
-                              <>
-                                {isRaceDateRequired(getFieldValue('raceStatus')) ? <span aria-hidden="true" style={{ color: '#ff4d4f', marginRight: 4 }}>*</span> : null}
-                                Race date
-                              </>
-                            )}
-                            name="raceDate"
-                            className={styles.rowItem}
-                            rules={[
-                              {
-                                validator: (_, value) => (
-                                  !isRaceDateRequired(getFieldValue('raceStatus')) || value
-                                    ? Promise.resolve()
-                                    : Promise.reject(new Error('Race date is required.'))
-                                ),
-                              },
-                            ]}
-                          >
-                            <DatePicker format="YYYY-MM-DD" className={styles.fullWidth} />
-                          </Form.Item>
-                        )}
-                      </Form.Item>
+                    <div className={styles.statusHighlightCard}>
+                      <div className={styles.statusHighlightHeader}>
+                        <span className={styles.statusHighlightTitle}>
+                          <span aria-hidden="true" className={styles.statusHighlightRequired}>*</span>
+                          Race status
+                        </span>
+                      </div>
 
                       <Form.Item<AddRaceFormValues>
-                        label={renderInfoLabel('Race time', 'Optional start time of the race. Leave empty if it is not confirmed yet.')}
-                        name="raceTime"
-                        className={styles.rowItem}
+                        name="raceStatus"
+                        rules={[{ required: true, message: 'Race status is required.' }]}
+                        className={styles.statusHighlightField}
                       >
-                        <TimePicker use12Hours format="hh:mm A" className={styles.fullWidth} />
+                        <Select
+                          placeholder="Select the race status first"
+                          popupClassName={styles.statusSelectDropdown}
+                          options={CREATE_RACE_STATUS_OPTIONS.map((status) => ({
+                            value: status.value,
+                            label: (
+                              <span
+                                className={styles.statusOption}
+                                style={{
+                                  color: getRaceStatusColor(status.value),
+                                }}
+                              >
+                                {status.label}
+                              </span>
+                            ),
+                          }))}
+                          optionRender={(option) => {
+                            const shouldShowDivider = option.data.value === 'COMPLETED' || option.data.value === 'DID_NOT_START'
+                            const isCurrentOption = option.data.value === currentRaceStatus
+
+                            return (
+                              <div className={styles.statusOptionDropdownRow}>
+                                {shouldShowDivider ? <div className={styles.statusOptionDivider} aria-hidden="true" /> : null}
+                                <div
+                                  className={[
+                                    styles.statusOptionDropdownContent,
+                                    isCurrentOption ? styles.statusOptionDropdownContentSelected : '',
+                                  ].join(' ').trim()}
+                                >
+                                  {option.data.label}
+                                </div>
+                              </div>
+                            )
+                          }}
+                        />
                       </Form.Item>
+
+                      {getRaceStatusGuidance(currentRaceStatus) ? (
+                        <div className={styles.statusHighlightHint}>
+                          <span className={styles.statusHighlightHintIcon} aria-hidden="true">i</span>
+                          <span>{getRaceStatusGuidance(currentRaceStatus)}</span>
+                        </div>
+                      ) : null}
                     </div>
 
-                    <Form.Item<AddRaceFormValues>
-                      label="Race name"
-                      name="name"
-                      rules={[{ required: true, message: 'Race name is required.' }]}
-                    >
-                      <Input maxLength={150} placeholder="Lisbon Half Marathon" />
-                    </Form.Item>
-
-                    <div className={styles.row}>
-                      <Form.Item<AddRaceFormValues> label="Location" name="location" className={styles.rowItem}>
-                        <Input maxLength={150} placeholder="Lisbon" />
-                      </Form.Item>
-
-                      {renderManagedSelect('raceTypeId', 'Race type', 'race-types', styles.rowItem)}
-                    </div>
-
-                    <div className={styles.row}>
-                      {renderManagedSelect('teamId', renderInfoLabel('Team', 'Optional team linked to this race entry.'), 'teams', styles.rowItem)}
-
-                      {renderManagedSelect('circuitId', renderInfoLabel('Circuit', 'Optional circuit or championship this race belongs to.'), 'circuits', styles.rowItem)}
-                    </div>
-
-                    <div className={styles.row}>
-                      <Form.Item noStyle dependencies={['raceStatus']}>
-                        {({ getFieldValue }) => (
-                          <Form.Item<AddRaceFormValues>
-                            label={(
-                              <>
-                                {isCompletedStatus(getFieldValue('raceStatus')) ? <span aria-hidden="true" style={{ color: '#ff4d4f', marginRight: 4 }}>*</span> : null}
-                                {renderInfoLabel('Real KM', 'Actual race distance in kilometres, using decimals when needed.')}
-                              </>
+                    {hasSelectedStatus ? (
+                      <>
+                        <div className={styles.row}>
+                          <Form.Item noStyle dependencies={['raceStatus']}>
+                            {({ getFieldValue }) => (
+                              <Form.Item<AddRaceFormValues>
+                                label={(
+                                  <>
+                                    {isRaceDateRequired(getFieldValue('raceStatus')) ? <span aria-hidden="true" style={{ color: '#ff4d4f', marginRight: 4 }}>*</span> : null}
+                                    Race date
+                                  </>
+                                )}
+                                name="raceDate"
+                                className={styles.rowItem}
+                                rules={[
+                                  {
+                                    validator: (_, value) => (
+                                      !isRaceDateRequired(getFieldValue('raceStatus')) || value
+                                        ? Promise.resolve()
+                                        : Promise.reject(new Error('Race date is required.'))
+                                    ),
+                                  },
+                                ]}
+                              >
+                                <DatePicker format="YYYY-MM-DD" className={styles.fullWidth} />
+                              </Form.Item>
                             )}
-                            name="realKm"
-                            className={styles.rowItem}
-                            rules={[
-                              {
-                                validator: (_, value) => (
-                                  !isCompletedStatus(getFieldValue('raceStatus')) || value != null
-                                    ? Promise.resolve()
-                                    : Promise.reject(new Error('Real KM is required when race status is Completed.'))
-                                ),
-                              },
-                            ]}
-                          >
-                            <InputNumber min={0} max={999.99} precision={2} step={0.01} className={styles.fullWidth} placeholder="21.10" />
                           </Form.Item>
-                        )}
-                      </Form.Item>
 
-                      <Form.Item<AddRaceFormValues> label={renderInfoLabel('Elevation', 'Total elevation gain of the race, usually in meters.')} name="elevation" className={styles.rowItem}>
-                        <InputNumber min={0} className={styles.fullWidth} placeholder="250" />
-                      </Form.Item>
-                    </div>
+                          <Form.Item<AddRaceFormValues>
+                            label={renderInfoLabel('Race time', 'Optional start time of the race. Leave empty if it is not confirmed yet.')}
+                            name="raceTime"
+                            className={styles.rowItem}
+                          >
+                            <TimePicker use12Hours format="hh:mm A" className={styles.fullWidth} />
+                          </Form.Item>
+                        </div>
 
-                    <Form.Item<AddRaceFormValues> name="isValidForCategoryRanking" valuePropName="checked">
-                      <Checkbox>Valid for category ranking</Checkbox>
-                    </Form.Item>
+                        <Form.Item<AddRaceFormValues>
+                          label="Race name"
+                          name="name"
+                          rules={[{ required: true, message: 'Race name is required.' }]}
+                        >
+                          <Input maxLength={150} placeholder="Lisbon Half Marathon" />
+                        </Form.Item>
+
+                        <div className={styles.row}>
+                          <Form.Item<AddRaceFormValues> label="Location" name="location" className={styles.rowItem}>
+                            <Input maxLength={150} placeholder="Lisbon" />
+                          </Form.Item>
+
+                          {renderManagedSelect('raceTypeId', 'Race type', 'race-types', styles.rowItem)}
+                        </div>
+
+                        <div className={styles.row}>
+                          {renderManagedSelect('teamId', renderInfoLabel('Team', 'Optional team linked to this race entry.'), 'teams', styles.rowItem)}
+
+                          {renderManagedSelect('circuitId', renderInfoLabel('Circuit', 'Optional circuit or championship this race belongs to.'), 'circuits', styles.rowItem)}
+                        </div>
+
+                        {showDistanceFields ? (
+                          <div className={styles.row}>
+                            <Form.Item noStyle dependencies={['raceStatus']}>
+                              {({ getFieldValue }) => (
+                                <Form.Item<AddRaceFormValues>
+                                  label={(
+                                    <>
+                                      {isCompletedStatus(getFieldValue('raceStatus')) ? <span aria-hidden="true" style={{ color: '#ff4d4f', marginRight: 4 }}>*</span> : null}
+                                      {renderInfoLabel('Real KM', 'Actual race distance in kilometres, using decimals when needed.')}
+                                    </>
+                                  )}
+                                  name="realKm"
+                                  className={styles.rowItem}
+                                  rules={[
+                                    {
+                                      validator: (_, value) => (
+                                        !isCompletedStatus(getFieldValue('raceStatus')) || value != null
+                                          ? Promise.resolve()
+                                          : Promise.reject(new Error('Real KM is required when race status is Completed.'))
+                                      ),
+                                    },
+                                  ]}
+                                >
+                                  <InputNumber min={0} max={999.99} precision={2} step={0.01} className={styles.fullWidth} placeholder="21.10" />
+                                </Form.Item>
+                              )}
+                            </Form.Item>
+
+                            <Form.Item<AddRaceFormValues> label={renderInfoLabel('Elevation', 'Total elevation gain of the race, usually in meters.')} name="elevation" className={styles.rowItem}>
+                              <InputNumber min={0} className={styles.fullWidth} placeholder="250" />
+                            </Form.Item>
+                          </div>
+                        ) : null}
+
+                        {showShoeInRaceData
+                          ? renderManagedSelect('shoeId', renderInfoLabel('Shoe', 'Optional shoe used in this race attempt.'), 'shoes', styles.rowItem)
+                          : null}
+
+                        {showRankingValidityField ? (
+                          <Form.Item<AddRaceFormValues> name="isValidForCategoryRanking" valuePropName="checked">
+                            <Checkbox>Valid for category ranking</Checkbox>
+                          </Form.Item>
+                        ) : null}
+                      </>
+                    ) : (
+                      <div className={styles.statusWaitingState}>
+                        Choose a race status to unlock the rest of the form.
+                      </div>
+                    )}
                   </div>
                 ),
               },
-              {
+              ...(showResultsTab ? [{
                 key: 'results',
                 label: 'Race results',
                 children: (
@@ -1078,7 +1251,7 @@ export function AddRaceDrawer({
                       )}
                     </Form.Item>
 
-                    {renderManagedSelect('shoeId', renderInfoLabel('Shoe', 'Optional shoe used in this race result.'), 'shoes')}
+                    {renderManagedSelect('shoeId', renderInfoLabel('Shoe', 'Optional shoe used in this race result.'), 'shoes', styles.rowItem)}
 
                     <div className={styles.row}>
                       <div className={styles.classificationBlock}>
@@ -1134,40 +1307,52 @@ export function AddRaceDrawer({
                     </div>
                   </div>
                 ),
-              },
-              {
+              }] : []),
+              ...(showAnalysisTab ? [{
                 key: 'analysis',
                 label: 'Race analysis',
                 children: (
                   <div className={styles.tabPane}>
-                    <div className={styles.row}>
-                      <Form.Item<AddRaceFormValues> label={renderInfoLabel('Pre-race confidence', 'How confident you felt before the race started.')} name="preRaceConfidence" className={styles.rowItem}>
+                    {showPreRaceConfidence || showRaceDifficulty ? (
+                      <div className={styles.row}>
+                        {showPreRaceConfidence ? (
+                          <Form.Item<AddRaceFormValues> label={renderInfoLabel('Pre-race confidence', 'How confident you felt before the race started.')} name="preRaceConfidence" className={styles.rowItem}>
+                            <Select allowClear options={ANALYSIS_SELECT_OPTIONS} />
+                          </Form.Item>
+                        ) : null}
+
+                        {showRaceDifficulty ? (
+                          <Form.Item<AddRaceFormValues> label={renderInfoLabel('Race difficulty', 'Your perception of how hard the race felt overall.')} name="raceDifficulty" className={styles.rowItem}>
+                            <Select allowClear options={ANALYSIS_SELECT_OPTIONS} />
+                          </Form.Item>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    {showFinalSatisfaction ? (
+                      <Form.Item<AddRaceFormValues> label={renderInfoLabel('Final satisfaction', 'Your final satisfaction with the race and your performance.')} name="finalSatisfaction">
                         <Select allowClear options={ANALYSIS_SELECT_OPTIONS} />
                       </Form.Item>
+                    ) : null}
 
-                      <Form.Item<AddRaceFormValues> label={renderInfoLabel('Race difficulty', 'Your perception of how hard the race felt overall.')} name="raceDifficulty" className={styles.rowItem}>
-                        <Select allowClear options={ANALYSIS_SELECT_OPTIONS} />
+                    {showPainInjuries ? (
+                      <Form.Item<AddRaceFormValues> label="Pain / injuries" name="painInjuries">
+                        <TextArea rows={3} placeholder="Notes about pain or injuries during the race" />
                       </Form.Item>
-                    </div>
-
-                    <Form.Item<AddRaceFormValues> label={renderInfoLabel('Final satisfaction', 'Your final satisfaction with the race and your performance.')} name="finalSatisfaction">
-                      <Select allowClear options={ANALYSIS_SELECT_OPTIONS} />
-                    </Form.Item>
-
-                    <Form.Item<AddRaceFormValues> label="Pain / injuries" name="painInjuries">
-                      <TextArea rows={3} placeholder="Notes about pain or injuries during the race" />
-                    </Form.Item>
+                    ) : null}
 
                     <Form.Item<AddRaceFormValues> label="Analysis notes" name="analysisNotes">
                       <TextArea rows={5} placeholder="Post-race thoughts, what went well, what to improve..." />
                     </Form.Item>
 
-                    <Form.Item<AddRaceFormValues> name="wouldRepeatThisRace" valuePropName="checked">
-                      <Checkbox>I would repeat this race</Checkbox>
-                    </Form.Item>
+                    {showWouldRepeatThisRace ? (
+                      <Form.Item<AddRaceFormValues> name="wouldRepeatThisRace" valuePropName="checked">
+                        <Checkbox>I would repeat this race</Checkbox>
+                      </Form.Item>
+                    ) : null}
                   </div>
                 ),
-              },
+              }] : []),
             ]}
           />
         </Form>
@@ -1187,7 +1372,7 @@ export function AddRaceDrawer({
 
         <Modal
           className={styles.manageOptionsDialog}
-          title={`Manage ${MANAGED_OPTION_CONFIG[managedOptionType].title}`}
+          title={managedOptionType === 'race-types' ? 'Manage race types' : `Manage ${MANAGED_OPTION_CONFIG[managedOptionType].title.toLowerCase()}`}
           open={isManageOptionsModalOpen}
           footer={null}
           onCancel={closeManageOptionsModal}
@@ -1203,13 +1388,30 @@ export function AddRaceDrawer({
             ) : null}
 
             <div className={styles.manageOptionsForm}>
-              <div className={styles.manageInputRow}>
+              <div
+                className={styles.manageInputRow}
+                style={managedOptionType === 'race-types'
+                  ? { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 140px auto', gap: 8, alignItems: 'center' }
+                  : { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 8, alignItems: 'center', justifyContent: 'start' }}
+              >
                 <Input
                   value={managedOptionName}
                   maxLength={100}
                   placeholder={`Type the ${MANAGED_OPTION_CONFIG[managedOptionType].singularLabel} name here`}
                   onChange={(event) => setManagedOptionName(event.target.value)}
                 />
+                {managedOptionType === 'race-types' ? (
+                  <InputNumber
+                    min={0}
+                    max={9999.99}
+                    precision={2}
+                    step={0.01}
+                    className={styles.manageTargetInput}
+                    placeholder="Target km"
+                    value={managedOptionTargetKm ?? undefined}
+                    onChange={(value) => setManagedOptionTargetKm(typeof value === 'number' ? value : null)}
+                  />
+                ) : null}
                 <div className={styles.manageInputActions}>
                   {editingManagedOptionId ? (
                     <button
@@ -1217,6 +1419,7 @@ export function AddRaceDrawer({
                       className={styles.cancelEditingIconButton}
                       onClick={() => {
                         setManagedOptionName('')
+                        setManagedOptionTargetKm(null)
                         setEditingManagedOptionId(null)
                         setManagedOptionError(null)
                         setManagedOptionUsage(null)
@@ -1233,10 +1436,13 @@ export function AddRaceDrawer({
                       type="primary"
                       className={styles.saveButton}
                       loading={isManagedOptionSubmitting}
-                      disabled={managedOptionName.trim().length === 0}
+                      disabled={isManagedOptionSaveDisabled}
                       onClick={() => void handleSaveManagedOption()}
+                      style={!isManagedOptionSaveDisabled
+                        ? { borderColor: '#111827', background: '#111827', color: '#ffffff', boxShadow: 'none' }
+                        : undefined}
                     >
-                      {editingManagedOptionId ? 'Save changes' : `Create ${MANAGED_OPTION_CONFIG[managedOptionType].singularLabel}`}
+                      {editingManagedOptionId ? 'Save changes' : 'Add'}
                     </Button>
                   ) : null}
                 </div>
@@ -1247,17 +1453,25 @@ export function AddRaceDrawer({
               {isManagedOptionLoading ? (
                 <span className={styles.manageOptionsEmpty}>Loading {MANAGED_OPTION_CONFIG[managedOptionType].title.toLowerCase()}...</span>
               ) : getOptionsForType(managedOptionType).length === 0 ? (
-                <span className={styles.manageOptionsEmpty}>{MANAGED_OPTION_CONFIG[managedOptionType].emptyLabel}</span>
+                <div className={styles.manageOptionsEmptyState}>
+                  <Empty description={MANAGED_OPTION_CONFIG[managedOptionType].emptyLabel} />
+                </div>
               ) : (
                 getOptionsForType(managedOptionType).map((option) => (
                   <div key={option.id} className={styles.manageOptionRow}>
-                    <span className={styles.manageOptionName}>{option.name}</span>
+                    <div className={styles.manageOptionInfo}>
+                      <span className={styles.manageOptionName}>{option.name}</span>
+                      {managedOptionType === 'race-types' && option.targetKm != null ? (
+                        <span className={styles.manageOptionMeta}>{option.targetKm.toFixed(2)} km target</span>
+                      ) : null}
+                    </div>
                     <div className={styles.manageOptionActions}>
                       <Button
                         type="text"
                         icon={<FontAwesomeIcon icon={faPenToSquare} />}
                         onClick={() => {
                           setManagedOptionName(option.name)
+                          setManagedOptionTargetKm(managedOptionType === 'race-types' ? (option.targetKm ?? null) : null)
                           setEditingManagedOptionId(option.id)
                           setManagedOptionError(null)
                           setManagedOptionUsage(null)

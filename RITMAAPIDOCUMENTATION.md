@@ -96,10 +96,10 @@ Authenticated client shell status:
 - web `Races` now uses a header-level `List` / `Calendar` switcher beside `Add Race` instead of keeping that view switch inside the filters panel
 - web `Races` now renders real monthly and yearly calendar views backed by authenticated race data, with compact monthly day cards, a yearly 12-month overview that uses race-status color cues on the day numbers, direct month picking from the monthly title, and click-through day handling that opens race details directly or a same-day side panel when multiple races exist
 - web `Races` also includes a real card-based list mode grouped by year, with a sticky right-side filters panel, active-filter chips, a `Coming Up` section for registered races, an `In List` section for undated tracked races, and row actions handled through the card click plus a three-dot menu for `edit` and `delete`
-- web `Races` now also includes an add-race drawer with three tabs for `Race data`, `Race results`, and `Race analysis`
+- web `Races` now also includes an add-race drawer with three tabs for `Race data`, `Race results`, and `Race analysis`, but creation now starts in a status-first state where only `Race status` is shown until the user chooses it
 - web `Races` now reuses that same three-tab drawer for editing, with prefilled values, full-field editing parity with create, and access from both the card menu and the race-details drawer
 - web `Races` now also includes a dedicated race-details drawer opened from the row itself, from calendar day interactions, or from the same-day side panel, with the same three tabs plus direct `Edit` and `Delete` actions in the header
-- web `Races` create flows now also let the user manage `race types`, `teams`, `circuits`, and `shoes` directly inside the creation UI, including inline create, edit, delete, usage inspection, and product-native confirmation modals
+- web `Races` create flows now also let the user manage `race types`, `teams`, `circuits`, and `shoes` directly inside the creation UI, including inline create, edit, delete, usage inspection, product-native confirmation modals, and illustrated empty states when no options exist yet
 - web `Races` time presentation now hides seconds and uses `AM/PM` where race start time is shown in the creation flow and in the race-details drawer
 - web `Best Efforts` now shows ranked race-type categories backed by authenticated best-effort data, keeps `Race Type` as a sticky filter, surfaces per-category `valid` / `below target` / `excluded` / `total` counters with explanatory tooltips, supports `Top 3`, `Top 5`, and `All races` modes, and reuses the shared race-details drawer plus edit/delete flows from the races feature
 - mobile `Races` now mirrors the same top-level switcher pattern and renders real monthly and yearly calendars backed by the same authenticated race data, with a compact per-day monthly summary and a single-column yearly overview adapted for smaller screens
@@ -689,7 +689,7 @@ Expected response example:
 ```json
 {
   "raceTypes": [
-    { "id": "uuid-race-type", "name": "Half Marathon" }
+    { "id": "uuid-race-type", "name": "Half Marathon", "targetKm": 21.1 }
   ],
   "teams": [
     { "id": "uuid-team", "name": "RITMA Runners" }
@@ -833,6 +833,8 @@ Client usage notes:
 
 - web `Races` exposes this endpoint through a right-side creation drawer opened by the orange add button next to the page title
 - mobile `Races` exposes the same endpoint through a dedicated add-race modal with the same three logical tabs
+- on web, create mode now reveals the rest of the form only after the user selects `Race status`, while edit mode still opens prefilled
+- on web, the selected `raceStatus` now controls which sections stay visible: `Completed` unlocks full results plus analysis, `Did not finish` keeps race context plus analysis without final results, and `Did not start` keeps base race data plus notes without results
 - both clients auto-format manual duration and pace inputs while the user types, calculate `pacePerKm` from `chipTime` and `realKm` when possible, and automatically mark podium checkboxes when the corresponding classification is between `1` and `3`
 - the web create-race drawer now presents `Race time` without seconds and in `AM/PM`, while still persisting the backend-compatible time value
 - both clients now also expose optional selectors for `team`, `circuit`, and `shoe`
@@ -862,7 +864,8 @@ Expected response example:
 [
   {
     "id": "uuid",
-    "name": "Half Marathon"
+    "name": "Half Marathon",
+    "targetKm": 21.1
   }
 ]
 ```
@@ -870,6 +873,8 @@ Expected response example:
 ### `POST /api/races/options/{optionType}`
 
 Creates a new authenticated user-owned option for the selected family.
+
+For `race-types`, the payload may also include `targetKm`. The other option families ignore that field.
 
 Postman:
 
@@ -883,7 +888,8 @@ Example body:
 
 ```json
 {
-  "name": "RITMA Runners"
+  "name": "Half Marathon",
+  "targetKm": 21.1
 }
 ```
 
@@ -892,13 +898,16 @@ Expected response example:
 ```json
 {
   "id": "uuid",
-  "name": "RITMA Runners"
+  "name": "Half Marathon",
+  "targetKm": 21.1
 }
 ```
 
 ### `PUT /api/races/options/{optionType}/{optionId}`
 
 Renames an existing authenticated user-owned option.
+
+For `race-types`, this same request can also update `targetKm`.
 
 Postman:
 
@@ -912,7 +921,8 @@ Example body:
 
 ```json
 {
-  "name": "National Road Circuit"
+  "name": "Half Marathon",
+  "targetKm": 21.1
 }
 ```
 

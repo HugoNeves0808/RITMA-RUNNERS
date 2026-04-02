@@ -31,12 +31,14 @@ export type RaceTablePayload = {
 export type RaceTypeOption = {
   id: string
   name: string
+  targetKm: number | null
 }
 
 export type ManagedRaceOptionType = 'race-types' | 'teams' | 'circuits' | 'shoes'
 
 export type ManageRaceOptionPayload = {
   name: string
+  targetKm?: number | null
 }
 
 export type RaceOptionUsageItem = {

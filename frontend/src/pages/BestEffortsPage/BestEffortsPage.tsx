@@ -4,13 +4,13 @@ import {
   faBolt,
   faMedal,
   faPenToSquare,
-  faPlus,
   faRoad,
   faTrashCan,
+  faXmark,
 } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { useEffect, useMemo, useState } from 'react'
-import { Alert, Button, Card, Empty, Input, Modal, Segmented, Select, Space, Spin, Tag, Tooltip, Typography } from 'antd'
+import { Alert, Button, Card, Empty, Input, InputNumber, Modal, Segmented, Select, Space, Spin, Tag, Tooltip, Typography } from 'antd'
 import { useAuth } from '../../features/auth'
 import {
   AddRaceDrawer,
@@ -42,7 +42,7 @@ const { Title } = Typography
 const ALL_RACE_TYPES_VALUE = '__ALL_RACE_TYPES__'
 const PODIUM_ORDER_TOP_THREE = [1, 0, 2]
 const PODIUM_ORDER_TOP_FIVE = [1, 0, 2, 3, 4]
-const CATEGORY_DISTANCE_MARGIN_KM = 0.2
+const CATEGORY_DISTANCE_EXCLUDED_MARGIN_KM = 0.3
 
 function formatDuration(totalSeconds: number | null) {
   if (totalSeconds == null) {
@@ -95,14 +95,14 @@ function getMinimumAcceptedDistance(expectedDistanceKm: number | null) {
     return null
   }
 
-  return Math.max(expectedDistanceKm - CATEGORY_DISTANCE_MARGIN_KM, 0)
+  return Math.max(expectedDistanceKm - CATEGORY_DISTANCE_EXCLUDED_MARGIN_KM, 0)
 }
 
 function getFilteredItems(
   items: BestEffortItem[],
   viewMode: BestEffortsViewMode,
 ) {
-  const visibleItems = items.filter((item) => item.rankingNote !== 'Excluded from category ranking')
+  const visibleItems = items.filter((item) => item.validForBestEffortRanking || item.rankingNote === 'Below category distance')
 
   if (viewMode === 'top-3') {
     return visibleItems.filter((item) => item.validForBestEffortRanking).slice(0, 3)
@@ -128,7 +128,7 @@ function getRankingNoteBadgeClassName(item: BestEffortItem) {
     return styles.rankingNoteBelowTarget
   }
 
-  if (item.rankingNote === 'Excluded from category ranking') {
+  if (!item.validForBestEffortRanking) {
     return styles.rankingNoteExcluded
   }
 
@@ -136,7 +136,7 @@ function getRankingNoteBadgeClassName(item: BestEffortItem) {
 }
 
 function hasDisplayedRanking(item: BestEffortItem) {
-  return item.rankingNote !== 'Excluded from category ranking'
+  return item.validForBestEffortRanking || item.rankingNote === 'Below category distance'
 }
 
 function getCategoryScoreBadgeClassNameForItem(item: BestEffortItem) {
@@ -144,7 +144,7 @@ function getCategoryScoreBadgeClassNameForItem(item: BestEffortItem) {
     return styles.categoryScoreBelowTarget
   }
 
-  if (item.rankingNote === 'Excluded from category ranking') {
+  if (!item.validForBestEffortRanking) {
     return styles.categoryScoreExcluded
   }
 
@@ -319,7 +319,7 @@ function getBelowCategoryDistanceItems(category: BestEffortCategory) {
 }
 
 function getExcludedItems(category: BestEffortCategory) {
-  return category.efforts.filter((item) => item.rankingNote === 'Excluded from category ranking')
+  return category.efforts.filter((item) => !item.validForBestEffortRanking && item.rankingNote !== 'Below category distance')
 }
 
 function getCategoryScoreBadgeClassName(mode: CategoryRacesMode) {
@@ -347,6 +347,7 @@ export function BestEffortsPage() {
   const [expandedCategoryKeys, setExpandedCategoryKeys] = useState<string[]>([])
   const [isManageRaceTypesModalOpen, setIsManageRaceTypesModalOpen] = useState(false)
   const [managedRaceTypeName, setManagedRaceTypeName] = useState('')
+  const [managedRaceTypeTargetKm, setManagedRaceTypeTargetKm] = useState<number | null>(null)
   const [editingRaceTypeId, setEditingRaceTypeId] = useState<string | null>(null)
   const [managedRaceTypeError, setManagedRaceTypeError] = useState<string | null>(null)
   const [isManagedRaceTypeLoading, setIsManagedRaceTypeLoading] = useState(false)
@@ -408,7 +409,7 @@ export function BestEffortsPage() {
       }
     })
     .filter((category) => !selectedRaceType || selectedRaceType === ALL_RACE_TYPES_VALUE || category.categoryName === selectedRaceType)
-    .filter((category) => category.visibleItems.length > 0), [payload, selectedRaceType, viewMode])
+    .filter((category) => category.totalEffortCount > 0), [payload, selectedRaceType, viewMode])
 
   const featuredLimit = viewMode === 'top-3' ? 3 : 5
   const raceTypeOptions = raceTypes.map((raceType) => ({
@@ -432,6 +433,7 @@ export function BestEffortsPage() {
 
   const openManageRaceTypesModal = async (optionToEdit?: RaceTypeOption) => {
     setManagedRaceTypeName(optionToEdit?.name ?? '')
+    setManagedRaceTypeTargetKm(optionToEdit?.targetKm ?? null)
     setEditingRaceTypeId(optionToEdit?.id ?? null)
     setManagedRaceTypeError(null)
     setManagedRaceTypeUsage(null)
@@ -456,6 +458,7 @@ export function BestEffortsPage() {
   const closeManageRaceTypesModal = () => {
     setIsManageRaceTypesModalOpen(false)
     setManagedRaceTypeName('')
+    setManagedRaceTypeTargetKm(null)
     setEditingRaceTypeId(null)
     setManagedRaceTypeError(null)
     setManagedRaceTypeUsage(null)
@@ -473,8 +476,8 @@ export function BestEffortsPage() {
       setManagedRaceTypeError(null)
 
       const savedRaceType = editingRaceTypeId
-        ? await updateManagedRaceOption('race-types', editingRaceTypeId, { name: managedRaceTypeName }, token)
-        : await createManagedRaceOption('race-types', { name: managedRaceTypeName }, token)
+        ? await updateManagedRaceOption('race-types', editingRaceTypeId, { name: managedRaceTypeName, targetKm: managedRaceTypeTargetKm }, token)
+        : await createManagedRaceOption('race-types', { name: managedRaceTypeName, targetKm: managedRaceTypeTargetKm }, token)
 
       const latestRaceTypes = editingRaceTypeId
         ? raceTypes.map((option) => (option.id === savedRaceType.id ? savedRaceType : option)).sort((left, right) => left.name.localeCompare(right.name))
@@ -482,6 +485,7 @@ export function BestEffortsPage() {
 
       setRaceTypes(latestRaceTypes)
       setManagedRaceTypeName('')
+      setManagedRaceTypeTargetKm(null)
       setEditingRaceTypeId(null)
     } catch (saveError) {
       setManagedRaceTypeError(saveError instanceof Error ? saveError.message : 'Could not save this race type right now.')
@@ -536,6 +540,7 @@ export function BestEffortsPage() {
 
       if (editingRaceTypeId === managedRaceTypeConfirmState.option.id) {
         setManagedRaceTypeName('')
+        setManagedRaceTypeTargetKm(null)
         setEditingRaceTypeId(null)
       }
 
@@ -727,8 +732,10 @@ export function BestEffortsPage() {
       <div className={styles.contentLayout}>
         <section className={styles.mainSection}>
           {!isLoading && !errorMessage && visibleCategories.length === 0 ? (
-            <Card className={styles.emptyCard}>
-              <Empty description="No best efforts found for the current filters." />
+            <Card className={styles.emptyCard} variant="borderless">
+              <div className={styles.emptyWrap}>
+                <Empty description="No best efforts found for the current filters." />
+              </div>
             </Card>
           ) : null}
 
@@ -754,7 +761,7 @@ export function BestEffortsPage() {
                             {formatDistance(category.expectedDistanceKm)}
                           </span>
                         ) : (
-                          <Tag>Distance inferred from category not available</Tag>
+                          <Tag>No target km defined</Tag>
                         )}
                       </div>
                     </div>
@@ -778,7 +785,7 @@ export function BestEffortsPage() {
                           </span>
                         </Tooltip>
                         {belowCategoryDistanceCount > 0 ? (
-                          <Tooltip title={`Below target races are valid for category ranking but fall short of the minimum accepted distance for this best effort category (${minimumAcceptedDistanceLabel}).`}>
+                          <Tooltip title={`Below target races are within 300 meters of the target and stay visible in this category, but they still fall short of the target distance (${formatDistance(category.expectedDistanceKm)}).`}>
                             <span
                               className={`${styles.categoryScoreBadge} ${getCategoryScoreBadgeClassName('below-category-distance')} ${styles.clickableTag}`.trim()}
                               onClick={() => openCategoryRacesModal(category, 'below-category-distance')}
@@ -796,7 +803,7 @@ export function BestEffortsPage() {
                           </Tooltip>
                         ) : null}
                         {excludedCount > 0 ? (
-                          <Tooltip title={`Excluded races are not considered for best effort ranking because they are marked as not valid for category ranking, regardless of the minimum accepted distance (${minimumAcceptedDistanceLabel}).`}>
+                          <Tooltip title={`Excluded races are outside the ranking because they are either marked as not valid for category ranking, more than 300 meters below the target (${minimumAcceptedDistanceLabel}), or the race type still has no target km defined.`}>
                             <span
                               className={`${styles.categoryScoreBadge} ${getCategoryScoreBadgeClassName('excluded')} ${styles.clickableTag}`.trim()}
                               onClick={() => openCategoryRacesModal(category, 'excluded')}
@@ -836,7 +843,15 @@ export function BestEffortsPage() {
                   })()}
 
                   <div className={styles.entriesList}>
-                    <PodiumShowcase items={category.visibleItems.slice(0, featuredLimit)} />
+                    {category.visibleItems.length > 0 ? (
+                      <PodiumShowcase items={category.visibleItems.slice(0, featuredLimit)} />
+                    ) : (
+                      <div className={styles.categoryEmptyState}>
+                        {category.expectedDistanceKm == null
+                          ? 'Define a target km for this race type to unlock the ranking.'
+                          : 'No races are currently eligible for this ranking.'}
+                      </div>
+                    )}
 
                     {viewMode === 'all' && category.visibleItems.length > featuredLimit ? (
                       <div className={styles.rankListSection}>
@@ -1064,76 +1079,123 @@ export function BestEffortsPage() {
       </Modal>
 
       <Modal
+        className={styles.manageOptionsDialog}
         open={isManageRaceTypesModalOpen}
         title="Manage race types"
-        okText={editingRaceTypeId ? 'Save changes' : 'Add race type'}
-        cancelText="Close"
-        okButtonProps={{ loading: isManagedRaceTypeSubmitting, disabled: !managedRaceTypeName.trim() }}
-        onOk={() => void handleSaveRaceType()}
+        footer={null}
         onCancel={closeManageRaceTypesModal}
       >
         {managedRaceTypeError ? <Alert type="error" message={managedRaceTypeError} showIcon style={{ marginBottom: 16 }} /> : null}
 
-        <div className={styles.manageOptionsForm}>
-          <Input
-            placeholder="10K"
-            value={managedRaceTypeName}
-            onChange={(event) => setManagedRaceTypeName(event.target.value)}
-            maxLength={100}
-            suffix={!editingRaceTypeId ? <FontAwesomeIcon icon={faPlus} /> : null}
-          />
-        </div>
+        <div className={styles.manageOptionsModal}>
+          <div className={styles.manageOptionsForm}>
+            <div className={styles.manageInputRow}>
+              <Input
+                placeholder="Type the race type name here"
+                value={managedRaceTypeName}
+                onChange={(event) => setManagedRaceTypeName(event.target.value)}
+                maxLength={100}
+              />
+              <InputNumber
+                min={0}
+                max={9999.99}
+                precision={2}
+                step={0.01}
+                className={styles.manageRaceTypeTargetInput}
+                placeholder="Target km"
+                value={managedRaceTypeTargetKm ?? undefined}
+                onChange={(value) => setManagedRaceTypeTargetKm(typeof value === 'number' ? value : null)}
+              />
+              <div className={styles.manageInputActions}>
+                {editingRaceTypeId ? (
+                  <button
+                    type="button"
+                    className={styles.cancelEditingIconButton}
+                    onClick={() => {
+                      setManagedRaceTypeName('')
+                      setManagedRaceTypeTargetKm(null)
+                      setEditingRaceTypeId(null)
+                      setManagedRaceTypeError(null)
+                      setManagedRaceTypeUsage(null)
+                      setManagedRaceTypeConfirmState(null)
+                    }}
+                    aria-label="Cancel editing"
+                  >
+                    <FontAwesomeIcon icon={faXmark} />
+                  </button>
+                ) : null}
 
-        {isManagedRaceTypeLoading ? (
-          <div className={styles.manageOptionsLoading}>
-            <Spin />
-          </div>
-        ) : (
-          <div className={styles.manageOptionsList}>
-            {raceTypes.map((option) => (
-              <div key={option.id} className={styles.manageOptionRow}>
-                <span className={styles.manageOptionName}>{option.name}</span>
-                <div className={styles.manageOptionActions}>
+                {!managedRaceTypeConfirmState ? (
                   <Button
-                    type="text"
-                    icon={<FontAwesomeIcon icon={faPenToSquare} />}
-                    onClick={() => void openManageRaceTypesModal(option)}
-                  />
-                  <Button
-                    type="text"
-                    danger
-                    icon={<FontAwesomeIcon icon={faTrashCan} />}
-                    onClick={() => void handleDeleteRaceType(option)}
-                  />
-                </div>
+                    type="primary"
+                    className={styles.saveButton}
+                    loading={isManagedRaceTypeSubmitting}
+                    disabled={!managedRaceTypeName.trim() || managedRaceTypeTargetKm == null}
+                    onClick={() => void handleSaveRaceType()}
+                  >
+                    {editingRaceTypeId ? 'Save changes' : 'Add'}
+                  </Button>
+                ) : null}
               </div>
-            ))}
-
-            {raceTypes.length === 0 ? <Empty description="No race types yet." /> : null}
+            </div>
           </div>
-        )}
 
-        {managedRaceTypeConfirmState ? (
-          <div className={styles.manageConfirmBox}>
-            <p className={styles.manageConfirmText}>
-              {managedRaceTypeConfirmState.kind === 'detach-delete'
-                ? `This race type is being used in ${managedRaceTypeUsage?.usageCount ?? 0} race(s). Delete it and detach it from those races?`
-                : `Delete "${managedRaceTypeConfirmState.option.name}"?`}
-            </p>
-            <Space>
-              <Button onClick={() => {
-                setManagedRaceTypeConfirmState(null)
-                setManagedRaceTypeUsage(null)
-              }}
-              >
-                Cancel
-              </Button>
-              <Button danger loading={isManagedRaceTypeSubmitting} onClick={() => void handleConfirmRaceTypeAction()}>
-                {managedRaceTypeConfirmState.kind === 'detach-delete' ? 'Detach and delete' : 'Delete'}
-              </Button>
-            </Space>
-          </div>
-        ) : null}
+          {isManagedRaceTypeLoading ? (
+            <div className={styles.manageOptionsLoading}>
+              <Spin />
+            </div>
+          ) : (
+            <div className={styles.manageOptionsList}>
+              {raceTypes.map((option) => (
+                <div key={option.id} className={styles.manageOptionRow}>
+                  <div className={styles.manageOptionInfo}>
+                    <span className={styles.manageOptionName}>{option.name}</span>
+                    {option.targetKm != null ? <span className={styles.manageOptionMeta}>{option.targetKm.toFixed(2)} km target</span> : null}
+                  </div>
+                  <div className={styles.manageOptionActions}>
+                    <Button
+                      type="text"
+                      icon={<FontAwesomeIcon icon={faPenToSquare} />}
+                      onClick={() => void openManageRaceTypesModal(option)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      type="text"
+                      danger
+                      icon={<FontAwesomeIcon icon={faTrashCan} />}
+                      onClick={() => void handleDeleteRaceType(option)}
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {managedRaceTypeConfirmState ? (
+            <div className={styles.manageConfirmBox}>
+              <p className={styles.manageConfirmText}>
+                {managedRaceTypeConfirmState.kind === 'detach-delete'
+                  ? `This race type is being used in ${managedRaceTypeUsage?.usageCount ?? 0} race(s). Delete it and detach it from those races?`
+                  : `Delete "${managedRaceTypeConfirmState.option.name}"?`}
+              </p>
+              <Space>
+                <Button onClick={() => {
+                  setManagedRaceTypeConfirmState(null)
+                  setManagedRaceTypeUsage(null)
+                }}
+                >
+                  Cancel
+                </Button>
+                <Button danger loading={isManagedRaceTypeSubmitting} onClick={() => void handleConfirmRaceTypeAction()}>
+                  {managedRaceTypeConfirmState.kind === 'detach-delete' ? 'Detach and delete' : 'Delete'}
+                </Button>
+              </Space>
+            </div>
+          ) : null}
+        </div>
       </Modal>
     </div>
   )

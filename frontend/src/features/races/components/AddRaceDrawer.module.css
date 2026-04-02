@@ -74,6 +74,35 @@
   color: #ffffff !important;
 }
 
+.saveButton:global(.ant-btn-primary),
+.saveButton:global(.ant-btn-color-primary) {
+  border-color: #111827 !important;
+  background: #111827 !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.saveButton:global(.ant-btn-primary):not(:disabled):not(.ant-btn-disabled),
+.saveButton:global(.ant-btn-color-primary):not(:disabled):not(.ant-btn-disabled),
+.saveButton:global(.ant-btn-primary):not(:disabled):not(.ant-btn-disabled):hover,
+.saveButton:global(.ant-btn-color-primary):not(:disabled):not(.ant-btn-disabled):hover,
+.saveButton:global(.ant-btn-primary):not(:disabled):not(.ant-btn-disabled):focus,
+.saveButton:global(.ant-btn-color-primary):not(:disabled):not(.ant-btn-disabled):focus {
+  border-color: #111827 !important;
+  background: #111827 !important;
+  color: #ffffff !important;
+}
+
+.saveButton:global(.ant-btn-primary:disabled),
+.saveButton:global(.ant-btn-color-primary:disabled),
+.saveButton:global(.ant-btn-primary.ant-btn-disabled),
+.saveButton:global(.ant-btn-color-primary.ant-btn-disabled) {
+  border-color: #d0d5dd !important;
+  background: #f2f4f7 !important;
+  color: #98a2b3 !important;
+  box-shadow: none !important;
+}
+
 .alert {
   margin-bottom: 16px;
 }
@@ -90,6 +119,53 @@
 
 .drawer :global(.ant-select-selector) .statusOption {
   padding: 0;
+}
+
+.statusOptionDropdownRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.statusOptionDivider {
+  width: 100%;
+  height: 1px;
+  background: rgba(16, 24, 40, 0.08);
+}
+
+.statusOptionDropdownContent {
+  display: flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 2px 10px;
+  border-radius: 8px;
+}
+
+.statusOptionDropdownContentSelected {
+  background: rgba(255, 247, 237, 0.96);
+}
+
+.statusSelectDropdown :global(.ant-select-item-option-selected) {
+  background: transparent !important;
+}
+
+.statusSelectDropdown :global(.ant-select-item-option-active) {
+  background: transparent !important;
+}
+
+.statusSelectDropdown :global(.ant-select-item-option-selected.ant-select-item-option-active) {
+  background: transparent !important;
+}
+
+.statusSelectDropdown :global(.ant-select-item) {
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+}
+
+.statusSelectDropdown :global(.ant-select-item-option-active) .statusOptionDropdownContent,
+.statusSelectDropdown :global(.ant-select-item-option-selected.ant-select-item-option-active) .statusOptionDropdownContent {
+  background: rgba(255, 247, 237, 0.96);
 }
 
 .fieldLabelWrap {
@@ -124,6 +200,124 @@
   gap: 4px;
 }
 
+.statusHighlightCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 16px;
+  border: 1px solid rgba(249, 115, 22, 0.2);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 247, 237, 0.96) 0%, rgba(255, 255, 255, 0.98) 100%),
+    radial-gradient(circle at top right, rgba(251, 146, 60, 0.2), transparent 38%);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
+}
+
+.statusHighlightHeader {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.statusHighlightTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #101828;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.statusHighlightRequired {
+  color: #ff4d4f;
+  font-weight: 800;
+}
+
+.statusHighlightField {
+  margin-bottom: 0 !important;
+}
+
+.statusHighlightField :global(.ant-form-item-label) {
+  padding-bottom: 8px;
+}
+
+.statusHighlightField :global(.ant-select-selector) {
+  border-radius: 12px !important;
+  border-color: rgba(249, 115, 22, 0.28) !important;
+  box-shadow: none !important;
+}
+
+.statusHighlightField :global(.ant-select-selection-wrap) {
+  align-items: center;
+}
+
+.statusHighlightField :global(.ant-select-selection-search),
+.statusHighlightField :global(.ant-select-selection-placeholder),
+.statusHighlightField :global(.ant-select-selection-item) {
+  line-height: 30px !important;
+}
+
+.statusHighlightField :global(.ant-select-arrow) {
+  top: 50%;
+  right: 14px;
+  inset-inline-end: 14px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-top: 0 !important;
+  pointer-events: none;
+}
+
+.statusHighlightField :global(.ant-select-focused .ant-select-selector),
+.statusHighlightField :global(.ant-select-open .ant-select-selector),
+.statusHighlightField :global(.ant-select:not(.ant-select-disabled):hover .ant-select-selector) {
+  border-color: rgba(234, 88, 12, 0.52) !important;
+}
+
+.statusHighlightHint {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: #9a3412;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.statusHighlightHintIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(154, 52, 18, 0.18);
+  color: #9a3412;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+
+.statusWaitingState {
+  padding: 18px 16px;
+  border: 1px dashed rgba(16, 24, 40, 0.12);
+  border-radius: 14px;
+  background: rgba(248, 250, 252, 0.72);
+  color: #667085;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+}
+
 .row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -143,8 +337,16 @@
   flex-direction: column;
 }
 
+.managedField.rowItem {
+  margin-bottom: 18px;
+}
+
 .managedField :global(.ant-form-item) {
   margin-bottom: 0;
+}
+
+.managedField.rowItem :global(.ant-form-item-label) {
+  padding-bottom: 8px;
 }
 
 .managedFieldRow {
@@ -226,14 +428,19 @@
 .manageOptionsForm {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 10px;
+  margin-bottom: 16px;
 }
 
 .manageInputRow {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) 140px auto;
   gap: 8px;
   align-items: center;
+}
+
+.manageTargetInput {
+  width: 100%;
 }
 
 .manageInputActions {
@@ -291,6 +498,12 @@
   font-size: 14px;
 }
 
+.manageOptionsEmptyState {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0 4px;
+}
+
 .manageOptionRow {
   display: flex;
   align-items: center;
@@ -299,6 +512,7 @@
   padding: 10px 12px;
   border: 1px solid rgba(16, 24, 40, 0.08);
   border-radius: 12px;
+  background: rgba(255, 255, 255, 0.95);
 }
 
 .manageOptionName {
@@ -306,8 +520,21 @@
   font-weight: 600;
 }
 
-.manageOptionActions {
+.manageOptionInfo {
   display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.manageOptionMeta {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.manageOptionActions {
+  display: inline-flex;
   align-items: center;
   gap: 4px;
 }
@@ -360,6 +587,10 @@
 
 @media (max-width: 768px) {
   .row {
+    grid-template-columns: 1fr;
+  }
+
+  .manageInputRow {
     grid-template-columns: 1fr;
   }
 }

@@ -138,7 +138,7 @@ public class RaceRepository {
 
     public List<RaceTypeOptionResponse> findRaceTypes(UUID userId) {
         String sql = """
-                SELECT id, name
+                SELECT id, name, target_km
                 FROM user_race_types
                 WHERE user_id = ?
                   AND archived = FALSE
@@ -149,7 +149,8 @@ public class RaceRepository {
                 sql,
                 (rs, rowNum) -> new RaceTypeOptionResponse(
                         rs.getObject("id", UUID.class),
-                        rs.getString("name")
+                        rs.getString("name"),
+                        rs.getBigDecimal("target_km")
                 ),
                 userId
         );
@@ -229,26 +230,58 @@ public class RaceRepository {
         return namedOptionExists(userId, shoeId, RaceOptionType.SHOES.tableName());
     }
 
-    public UUID createManagedOption(UUID userId, RaceOptionType optionType, String name) {
-        return jdbcTemplate().queryForObject(
+    public RaceTypeOptionResponse createManagedOption(UUID userId, RaceOptionType optionType, String name, BigDecimal targetKm) {
+        if (optionType == RaceOptionType.RACE_TYPES) {
+            return jdbcTemplate().queryForObject(
+                    "INSERT INTO " + optionType.tableName() + " (user_id, name, target_km) VALUES (?, ?, ?) RETURNING id, name, target_km",
+                    (rs, rowNum) -> new RaceTypeOptionResponse(
+                            rs.getObject("id", UUID.class),
+                            rs.getString("name"),
+                            rs.getBigDecimal("target_km")
+                    ),
+                    userId,
+                    name,
+                    targetKm
+            );
+        }
+
+        UUID optionId = jdbcTemplate().queryForObject(
                 "INSERT INTO " + optionType.tableName() + " (user_id, name) VALUES (?, ?) RETURNING id",
                 UUID.class,
                 userId,
                 name
         );
+
+        return new RaceTypeOptionResponse(optionId, name, null);
     }
 
     public boolean managedOptionExists(UUID userId, RaceOptionType optionType, UUID optionId) {
         return namedOptionExists(userId, optionId, optionType.tableName());
     }
 
-    public void updateManagedOption(UUID userId, RaceOptionType optionType, UUID optionId, String name) {
+    public RaceTypeOptionResponse updateManagedOption(UUID userId, RaceOptionType optionType, UUID optionId, String name, BigDecimal targetKm) {
+        if (optionType == RaceOptionType.RACE_TYPES) {
+            return jdbcTemplate().queryForObject(
+                    "UPDATE " + optionType.tableName() + " SET name = ?, target_km = ? WHERE user_id = ? AND id = ? RETURNING id, name, target_km",
+                    (rs, rowNum) -> new RaceTypeOptionResponse(
+                            rs.getObject("id", UUID.class),
+                            rs.getString("name"),
+                            rs.getBigDecimal("target_km")
+                    ),
+                    name,
+                    targetKm,
+                    userId,
+                    optionId
+            );
+        }
+
         jdbcTemplate().update(
                 "UPDATE " + optionType.tableName() + " SET name = ? WHERE user_id = ? AND id = ?",
                 name,
                 userId,
                 optionId
         );
+        return new RaceTypeOptionResponse(optionId, name, null);
     }
 
     public int countManagedOptionUsage(UUID userId, RaceOptionType optionType, UUID optionId) {
@@ -612,10 +645,11 @@ public class RaceRepository {
 
     private List<RaceTypeOptionResponse> findNamedOptions(UUID userId, String tableName) {
         return jdbcTemplate().query(
-                "SELECT id, name FROM " + tableName + " WHERE user_id = ? ORDER BY lower(name) ASC",
+                "SELECT id, name, NULL::numeric AS target_km FROM " + tableName + " WHERE user_id = ? ORDER BY lower(name) ASC",
                 (rs, rowNum) -> new RaceTypeOptionResponse(
                         rs.getObject("id", UUID.class),
-                        rs.getString("name")
+                        rs.getString("name"),
+                        rs.getBigDecimal("target_km")
                 ),
                 userId
         );

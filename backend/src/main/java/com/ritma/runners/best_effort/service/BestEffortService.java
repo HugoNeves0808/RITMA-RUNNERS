@@ -1,14 +1,11 @@
 package com.ritma.runners.best_effort.service;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
@@ -22,9 +19,8 @@ import com.ritma.runners.best_effort.repository.BestEffortRepository.BestEffortR
 @Service
 public class BestEffortService {
 
-    private static final BigDecimal CATEGORY_DISTANCE_MARGIN_KM = new BigDecimal("0.20");
+    private static final BigDecimal CATEGORY_DISTANCE_EXCLUDED_MARGIN_KM = new BigDecimal("0.30");
     private static final int GOOD_POSITION_LIMIT = 10;
-    private static final Pattern DISTANCE_PATTERN = Pattern.compile("(\\d+(?:[\\.,]\\d+)?)\\s*(km|k|m|mi|mile|miles)\\b");
 
     private final BestEffortRepository bestEffortRepository;
 
@@ -49,10 +45,10 @@ public class BestEffortService {
 
     private BestEffortCategoryResponse buildCategory(String categoryKey, List<BestEffortRaceRow> rows) {
         String categoryName = rows.get(0).raceTypeName();
-        BigDecimal expectedDistanceKm = inferExpectedDistanceKm(categoryName);
+        BigDecimal expectedDistanceKm = rows.get(0).targetKm();
 
         List<BestEffortItemResponse> efforts = rows.stream()
-                .sorted(buildRankingComparator(categoryName))
+                .sorted(buildRankingComparator())
                 .map(row -> toResponse(row, expectedDistanceKm))
                 .toList();
 
@@ -94,7 +90,7 @@ public class BestEffortService {
         );
     }
 
-    private Comparator<BestEffortRaceRow> buildRankingComparator(String categoryName) {
+    private Comparator<BestEffortRaceRow> buildRankingComparator() {
         return Comparator
                 .comparing(BestEffortRaceRow::chipTimeSeconds, Comparator.nullsLast(Integer::compareTo))
                 .thenComparing(BestEffortRaceRow::pacePerKmSeconds, Comparator.nullsLast(Integer::compareTo))
@@ -141,20 +137,11 @@ public class BestEffortService {
             return false;
         }
 
-        if (row.chipTimeSeconds() == null) {
+        if (expectedDistanceKm == null || row.realKm() == null) {
             return false;
         }
 
-        if (expectedDistanceKm == null) {
-            return true;
-        }
-
-        if (row.realKm() == null) {
-            return false;
-        }
-
-        BigDecimal minimumAcceptedDistance = expectedDistanceKm.subtract(CATEGORY_DISTANCE_MARGIN_KM);
-        return row.realKm().compareTo(minimumAcceptedDistance) >= 0;
+        return row.realKm().compareTo(expectedDistanceKm) >= 0;
     }
 
     private String buildRankingNote(BestEffortRaceRow row, BigDecimal expectedDistanceKm) {
@@ -163,55 +150,27 @@ public class BestEffortService {
         }
 
         if (expectedDistanceKm == null) {
-            return "Valid for ranking";
+            return "Missing category target";
         }
 
         if (row.realKm() == null) {
             return "Missing real distance";
         }
 
-        BigDecimal minimumAcceptedDistance = expectedDistanceKm.subtract(CATEGORY_DISTANCE_MARGIN_KM);
+        BigDecimal minimumAcceptedDistance = getMinimumAcceptedDistance(expectedDistanceKm);
         if (row.realKm().compareTo(minimumAcceptedDistance) < 0) {
+            return "Excluded from category ranking";
+        }
+
+        if (row.realKm().compareTo(expectedDistanceKm) < 0) {
             return "Below category distance";
         }
 
         return "Valid for ranking";
     }
 
-    private BigDecimal inferExpectedDistanceKm(String categoryName) {
-        if (categoryName == null) {
-            return null;
-        }
-
-        String normalized = categoryName.trim().toLowerCase(Locale.ROOT);
-        if (normalized.isEmpty()) {
-            return null;
-        }
-
-        if (normalized.contains("maratona") || normalized.contains("marathon")) {
-            if (normalized.contains("meia") || normalized.contains("half")) {
-                return new BigDecimal("21.0975");
-            }
-            return new BigDecimal("42.195");
-        }
-
-        Matcher matcher = DISTANCE_PATTERN.matcher(normalized);
-        if (!matcher.find()) {
-            return null;
-        }
-
-        BigDecimal value = new BigDecimal(matcher.group(1).replace(',', '.'));
-        String unit = matcher.group(2);
-
-        if ("m".equals(unit) && value.compareTo(new BigDecimal("100")) >= 0) {
-            return value.divide(new BigDecimal("1000"), 4, RoundingMode.HALF_UP).stripTrailingZeros();
-        }
-
-        if ("mi".equals(unit) || "mile".equals(unit) || "miles".equals(unit)) {
-            return value.multiply(new BigDecimal("1.60934")).setScale(4, RoundingMode.HALF_UP).stripTrailingZeros();
-        }
-
-        return value.stripTrailingZeros();
+    private BigDecimal getMinimumAcceptedDistance(BigDecimal expectedDistanceKm) {
+        return expectedDistanceKm.subtract(CATEGORY_DISTANCE_EXCLUDED_MARGIN_KM).max(BigDecimal.ZERO);
     }
 
     private boolean isPodium(Integer classification, Boolean podiumFlag) {
