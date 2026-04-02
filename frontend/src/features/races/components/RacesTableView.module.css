@@ -16,7 +16,7 @@
 .yearHeader {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
   margin-bottom: 14px;
 }
 
@@ -36,17 +36,47 @@
   flex-wrap: wrap;
 }
 
-.yearHeader::after {
-  content: '';
+.headerLine {
   flex: 1;
   height: 1px;
   background: linear-gradient(90deg, rgba(249, 115, 22, 0.28) 0%, rgba(249, 115, 22, 0.14) 62%, rgba(249, 115, 22, 0) 100%);
 }
 
-.headerLine {
+.yearHeaderButton {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: center;
+}
+
+.yearHeaderButton:hover .yearNumberTitle,
+.yearHeaderButton:hover .collapseIcon,
+.yearHeaderButton:hover .collapseIconOpen {
+  color: #101828;
+}
+
+.yearHeaderContent {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+.yearHeaderLineLeft,
+.yearHeaderLineRight {
   flex: 1;
   height: 1px;
-  background: linear-gradient(90deg, rgba(249, 115, 22, 0.28) 0%, rgba(249, 115, 22, 0.14) 62%, rgba(249, 115, 22, 0) 100%);
+}
+
+.yearHeaderLineLeft {
+  background: linear-gradient(90deg, rgba(249, 115, 22, 0) 0%, rgba(249, 115, 22, 0.28) 100%);
+}
+
+.yearHeaderLineRight {
+  background: linear-gradient(90deg, rgba(249, 115, 22, 0.28) 0%, rgba(249, 115, 22, 0) 100%);
 }
 
 .yearTitle {
@@ -87,28 +117,12 @@
   cursor: help;
 }
 
-.collapseToggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  padding: 0 !important;
-  border-radius: 999px;
-  background: transparent;
-  color: #475467;
-  flex: 0 0 auto;
-  margin-left: auto;
-}
-
-.collapseToggle:hover {
-  background: transparent !important;
-  color: #101828 !important;
-}
-
 .collapseIcon,
 .collapseIconOpen {
+  color: #475467;
+  font-size: 14px;
   transition: transform 0.18s ease;
+  flex: 0 0 auto;
 }
 
 .collapseIconOpen {
@@ -116,11 +130,8 @@
 }
 
 .yearNumberTitle {
-  border-radius: 999px;
-  background: rgba(15, 23, 42, 0.06);
-  padding: 8px 14px;
-  color: #101828;
-  font-size: 18px;
+  color: #475467;
+  font-size: 24px;
   font-weight: 800;
   line-height: 1;
   letter-spacing: 0.01em;
@@ -184,73 +195,154 @@
   gap: 12px;
 }
 
-.inListRows {
+.inListModalList {
   display: flex;
   flex-direction: column;
+  gap: 12px;
+  margin-top: 18px;
 }
 
-.inListRow {
+.bucketListModalHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 12px 4px;
-  cursor: pointer;
-  transition: background-color 0.18s ease;
+  gap: 16px;
+  padding-right: 36px;
 }
 
-.inListRow:hover {
-  background: rgba(248, 250, 252, 0.92);
+.bucketListModalTitle {
+  color: #101828;
+  font-size: 18px;
+  font-weight: 800;
 }
 
-.inListMain {
+.bucketListFilter {
+  min-width: 220px;
+}
+
+.bucketListGroup {
   display: flex;
   flex-direction: column;
+  gap: 0;
+}
+
+.bucketListGroupHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid rgba(16, 24, 40, 0.08);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(241, 245, 249, 0.98), rgba(226, 232, 240, 0.98)),
+    radial-gradient(circle at top right, rgba(249, 115, 22, 0.08), transparent 28%);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+}
+
+.bucketListGroupHeader:hover {
+  border-color: rgba(249, 115, 22, 0.16);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.05);
+}
+
+.bucketListGroupTitle {
+  color: #101828;
+  font-size: 16px;
+  font-weight: 800;
+  min-width: 0;
+}
+
+.bucketListGroupMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  flex: 0 0 auto;
+}
+
+.bucketListGroupCount {
+  color: #667085;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.bucketListGroupBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid rgba(16, 24, 40, 0.08);
+  border-top: none;
+  border-radius: 0 0 14px 14px;
+  background: rgba(255, 255, 255, 0.98);
+}
+
+.bucketListGroup:has(.bucketListGroupBody) .bucketListGroupHeader {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.bucketListRow {
+  display: flex;
   align-items: flex-start;
-  gap: 4px;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+}
+
+.bucketListRow + .bucketListRow {
+  border-top: 1px solid rgba(16, 24, 40, 0.08);
+}
+
+.clickableBucketListRow {
+  cursor: pointer;
+}
+
+.clickableBucketListRow:hover {
+  background: rgba(248, 250, 252, 0.8);
+}
+
+.inListModalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+}
+
+.inListModalMain {
+  display: flex;
   min-width: 0;
   flex: 1;
 }
 
-.inListTitleRow {
+.inListModalTitleBlock {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  width: 100%;
+  flex-direction: column;
+  gap: 8px;
   min-width: 0;
 }
 
-.inListName {
-  min-width: 0;
+.inListModalTitle {
+  display: block;
   color: #101828;
-  font-size: 15px;
-  font-weight: 700;
-  white-space: nowrap;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.35;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.inListStatusBadge {
-  flex: 0 0 auto;
-}
-
-.inListMetaRow {
+.inListModalSubtitle {
   display: flex;
-  align-items: center;
-  gap: 32px;
-  min-width: 0;
-  width: 100%;
-}
-
-.inListMeta {
-  min-width: 0;
+  flex-wrap: wrap;
+  gap: 8px 18px;
   color: #667085;
   font-size: 13px;
   font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .raceRow {
@@ -550,26 +642,41 @@
     gap: 12px;
   }
 
-  .inListRow {
+  .bucketListModalHeader {
     align-items: flex-start;
+    flex-direction: column;
+    padding-right: 0;
   }
 
-  .inListMain {
-    gap: 6px;
+  .bucketListFilter {
+    width: 100%;
+    min-width: 0;
   }
 
-  .inListName {
-    width: auto;
-  }
-
-  .inListTitleRow {
+  .bucketListGroupHeader {
     align-items: flex-start;
     flex-direction: column;
   }
 
-  .inListMetaRow {
-    flex-wrap: wrap;
-    gap: 6px 12px;
+  .bucketListGroupMeta {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .bucketListRow {
+    flex-direction: column;
+  }
+
+  .inListModalHeader {
+    flex-direction: column;
+  }
+
+  .inListModalHeader .raceStatusBadge {
+    align-self: flex-end;
+  }
+
+  .inListModalTitle {
+    white-space: normal;
   }
 
   .raceRow {

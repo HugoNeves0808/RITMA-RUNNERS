@@ -1,6 +1,6 @@
 import { faChevronDown, faEllipsisVertical, faPenToSquare, faTrashCan } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import dayjs from 'dayjs'
 import {
@@ -11,6 +11,7 @@ import {
   Empty,
   type MenuProps,
   Modal,
+  Select,
   Space,
   Spin,
   Tooltip,
@@ -21,7 +22,7 @@ import {
   fetchRaceTable,
   deleteRace,
 } from '../services/racesTableService'
-import { IN_LIST_WITHOUT_DATE_STATUS, type RaceFilters } from '../types/raceFilters'
+import type { RaceFilters } from '../types/raceFilters'
 import type {
   RaceCreateOptions,
   RaceDetailResponse,
@@ -227,19 +228,6 @@ function renderMetricValueWithTooltip(value: ReactNode, tooltip: string) {
   )
 }
 
-function renderSectionTitle(label: string, description: string) {
-  return (
-    <span className={styles.sectionTitleWrap}>
-      <span className={`${styles.yearTitle} ${styles.sectionTitle}`.trim()}>{label}</span>
-      <Tooltip title={description}>
-        <span className={styles.infoIcon} aria-label={`${label} info`}>
-          i
-        </span>
-      </Tooltip>
-    </span>
-  )
-}
-
 function groupRacesByMonth(races: RaceTableItem[]) {
   const monthMap = new Map<string, RaceTableItem[]>()
 
@@ -340,11 +328,33 @@ function removeRacesByStatus(years: RaceTableYearGroup[], status: string) {
     .filter((yearGroup) => yearGroup.races.length > 0)
 }
 
+function sortInListRaces(races: RaceTableItem[]) {
+  return [...races].sort((left, right) => {
+    if (left.raceDate && right.raceDate) {
+      return left.raceDate.localeCompare(right.raceDate)
+    }
+
+    if (left.raceDate) {
+      return -1
+    }
+
+    if (right.raceDate) {
+      return 1
+    }
+
+    return left.name.localeCompare(right.name)
+  })
+}
+
 type RacesTableViewProps = {
   tableYearSelection: TableYearSelection
   filters: RaceFilters
   refreshKey?: number
   createOptions: RaceCreateOptions
+  hideContent?: boolean
+  bucketListOpen?: boolean
+  onBucketListOpenChange?: (open: boolean) => void
+  onBucketListCountChange?: (count: number) => void
   onCreateOptionsChange?: (nextOptions: RaceCreateOptions) => void
 }
 
@@ -353,12 +363,17 @@ export function RacesTableView({
   filters,
   refreshKey = 0,
   createOptions,
+  hideContent = false,
+  bucketListOpen,
+  onBucketListOpenChange,
+  onBucketListCountChange,
   onCreateOptionsChange,
 }: RacesTableViewProps) {
   const { token } = useAuth()
   const currentYear = dayjs().year()
   const [now, setNow] = useState(() => dayjs())
   const [years, setYears] = useState<RaceTableYearGroup[]>([])
+  const [inListYears, setInListYears] = useState<RaceTableYearGroup[]>([])
   const [undatedRaces, setUndatedRaces] = useState<RaceTableItem[]>([])
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -373,27 +388,51 @@ export function RacesTableView({
   const [detailsError, setDetailsError] = useState<string | null>(null)
   const [racePendingDelete, setRacePendingDelete] = useState<RaceTableItem | null>(null)
   const [isDeletingRace, setIsDeletingRace] = useState(false)
-  const [isUndatedSectionOpen, setIsUndatedSectionOpen] = useState(false)
+  const [isInListModalOpenInternal, setIsInListModalOpenInternal] = useState(false)
+  const [selectedBucketListRaceType, setSelectedBucketListRaceType] = useState<string | undefined>(undefined)
   const [openYearSections, setOpenYearSections] = useState<Record<number, boolean>>({})
+  const [openBucketListSections, setOpenBucketListSections] = useState<Record<string, boolean>>({})
+  const isInListModalOpen = bucketListOpen ?? isInListModalOpenInternal
+  const setIsInListModalOpen = onBucketListOpenChange ?? setIsInListModalOpenInternal
 
   const visibleYears = tableYearSelection.allRaces
     ? years
     : years.filter((yearGroup) => tableYearSelection.selectedYears.includes(yearGroup.year))
+  const visibleInListYears = tableYearSelection.allRaces
+    ? inListYears
+    : inListYears.filter((yearGroup) => tableYearSelection.selectedYears.includes(yearGroup.year))
   const normalizedSearch = filters.search.trim().toLowerCase()
   const filteredVisibleYears = filterYearsByRaceName(visibleYears, filters.search)
-  const hasStatusFilters = filters.statuses.length > 0
   const allowsUndatedRacesForYearFilter = tableYearSelection.allRaces
-  const shouldShowDatedInListRaces = !hasStatusFilters || filters.statuses.includes('IN_LIST')
-  const shouldShowUndatedRaces = allowsUndatedRacesForYearFilter && (!hasStatusFilters || filters.statuses.includes(IN_LIST_WITHOUT_DATE_STATUS))
-  const filteredDatedInListRaces = !shouldShowDatedInListRaces
-    ? []
-    : extractRacesByStatus(filteredVisibleYears, 'IN_LIST')
-  const filteredUndatedRaces = !shouldShowUndatedRaces
+  const filteredVisibleInListYears = filterYearsByRaceName(visibleInListYears, filters.search)
+  const filteredDatedInListRaces = extractRacesByStatus(filteredVisibleInListYears, 'IN_LIST')
+  const filteredUndatedRaces = !allowsUndatedRacesForYearFilter
     ? []
     : normalizedSearch
     ? undatedRaces.filter((race) => race.name.toLowerCase().includes(normalizedSearch))
     : undatedRaces
-  const filteredInListRaces = [...filteredUndatedRaces, ...filteredDatedInListRaces]
+  const filteredInListRaces = sortInListRaces([...filteredDatedInListRaces, ...filteredUndatedRaces])
+  const bucketListGroups = useMemo(() => {
+    const groupMap = new Map<string, RaceTableItem[]>()
+
+    filteredInListRaces.forEach((race) => {
+      const key = race.raceTypeName?.trim() || 'No race type'
+      const currentGroup = groupMap.get(key)
+      if (currentGroup) {
+        currentGroup.push(race)
+        return
+      }
+
+      groupMap.set(key, [race])
+    })
+
+    return Array.from(groupMap.entries())
+      .map(([raceTypeName, races]) => ({ raceTypeName, races }))
+      .sort((left, right) => left.raceTypeName.localeCompare(right.raceTypeName))
+  }, [filteredInListRaces])
+  const visibleBucketListGroups = selectedBucketListRaceType
+    ? bucketListGroups.filter((group) => group.raceTypeName === selectedBucketListRaceType)
+    : bucketListGroups
   const allVisibleRaces = visibleYears.flatMap((yearGroup) => yearGroup.races)
   const weekUpcomingRaces = allVisibleRaces
     .filter((race) => isUpcomingRace(race, now))
@@ -409,6 +448,7 @@ export function RacesTableView({
   const loadTableData = async () => {
     if (!token) {
       setYears([])
+      setInListYears([])
       setUndatedRaces([])
       setIsLoading(false)
       return
@@ -416,11 +456,9 @@ export function RacesTableView({
 
     try {
       setIsLoading(true)
-      const datedStatuses = filters.statuses.filter((status) => status !== IN_LIST_WITHOUT_DATE_STATUS)
       const [tablePayload, undatedPayload] = await Promise.all([
         fetchRaceTable(token, {
           ...filters,
-          statuses: datedStatuses,
         }),
         fetchRaceTable(token, {
           ...filters,
@@ -429,6 +467,7 @@ export function RacesTableView({
       ])
 
       setYears(tablePayload.years ?? [])
+      setInListYears(undatedPayload?.years ?? [])
       setUndatedRaces(undatedPayload?.undatedRaces ?? [])
       setError(null)
     } catch (loadError) {
@@ -449,6 +488,26 @@ export function RacesTableView({
 
     return () => window.clearInterval(intervalId)
   }, [])
+
+  useEffect(() => {
+    onBucketListCountChange?.(filteredInListRaces.length)
+  }, [filteredInListRaces.length, onBucketListCountChange])
+
+  useEffect(() => {
+    setOpenBucketListSections((current) => {
+      const next = { ...current }
+      let changed = false
+
+      bucketListGroups.forEach((group) => {
+        if (!(group.raceTypeName in next)) {
+          next[group.raceTypeName] = false
+          changed = true
+        }
+      })
+
+      return changed ? next : current
+    })
+  }, [bucketListGroups])
 
   useEffect(() => {
     setOpenYearSections((current) => {
@@ -561,7 +620,7 @@ export function RacesTableView({
   })
 
   return (
-    <Card className={styles.pageCard} variant="borderless">
+    <Card className={styles.pageCard} variant="borderless" style={hideContent ? { display: 'none' } : undefined}>
       {isLoading ? (
         <div className={styles.loadingState}>
           <Space size="middle">
@@ -582,13 +641,13 @@ export function RacesTableView({
         <Alert type="error" showIcon message="Could not load the race table" description={error} />
       ) : null}
 
-      {!isLoading && years.length === 0 && undatedRaces.length === 0 ? (
+      {!isLoading && years.length === 0 && inListYears.length === 0 && undatedRaces.length === 0 ? (
         <div className={styles.emptyWrap}>
           <Empty description="No races available." />
         </div>
       ) : null}
 
-      {!isLoading && years.length > 0 && visibleYears.length === 0 && filteredInListRaces.length === 0 ? (
+      {!isLoading && (years.length > 0 || inListYears.length > 0) && visibleYears.length === 0 && filteredInListRaces.length === 0 ? (
         <div className={styles.emptyWrap}>
           <Empty
             description={tableYearSelection.selectedYears.length === 1 && tableYearSelection.selectedYears[0] === currentYear
@@ -598,90 +657,14 @@ export function RacesTableView({
         </div>
       ) : null}
 
-      {!isLoading && regularYears.length === 0 && filteredInListRaces.length === 0 && (visibleYears.length > 0 || undatedRaces.length > 0) ? (
+      {!isLoading && regularYears.length === 0 && filteredInListRaces.length === 0 && (visibleYears.length > 0 || visibleInListYears.length > 0 || undatedRaces.length > 0) ? (
         <div className={styles.emptyWrap}>
           <Empty description="No races match the current filters." />
         </div>
       ) : null}
 
-      {!isLoading && filteredInListRaces.length > 0 ? (
-        <section className={styles.yearSection}>
-          <div className={`${styles.yearHeader} ${styles.yearHeaderWithAction}`.trim()}>
-            <div className={styles.sectionHeaderGroup}>
-              <Tooltip
-                title="These are races you are tracking in your list, with or without a confirmed date."
-              >
-                <span className={styles.sectionTitleWrap}>
-                  <span className={`${styles.yearTitle} ${styles.sectionTitle}`.trim()}>
-                    In List
-                  </span>
-                </span>
-              </Tooltip>
-            </div>
-            <div className={styles.headerLine} />
-            <Button
-              type="text"
-              className={styles.collapseToggle}
-              onClick={() => setIsUndatedSectionOpen((current) => !current)}
-              aria-expanded={isUndatedSectionOpen}
-              aria-label={isUndatedSectionOpen ? 'Collapse In List section' : 'Expand In List section'}
-              icon={<FontAwesomeIcon icon={faChevronDown} className={isUndatedSectionOpen ? styles.collapseIconOpen : styles.collapseIcon} />}
-            />
-          </div>
-
-          {isUndatedSectionOpen ? (
-            <div className={styles.yearCard}>
-              <div className={styles.monthSection}>
-                <div className={styles.inListRows}>
-                  {filteredInListRaces.map((race) => (
-                    <article key={race.id} className={styles.inListRow} onClick={() => void handleOpenDetails(race)}>
-                      <div className={styles.inListMain}>
-                        <div className={styles.inListTitleRow}>
-                          <OverflowTooltip title={race.name} className={styles.inListName}>
-                            {race.name}
-                          </OverflowTooltip>
-                          <span className={`${styles.raceStatusBadge} ${styles.inListStatusBadge} ${getRaceStatusClassName(race.raceStatus)}`.trim()}>
-                            {race.raceDate ? 'In List (with date)' : 'In List (without date)'}
-                          </span>
-                        </div>
-                        <div className={styles.inListMetaRow}>
-                          {race.raceDate ? <span className={styles.inListMeta}>{getShortDateWithYear(race.raceDate)}</span> : null}
-                          {race.location ? <span className={styles.inListMeta}>{race.location}</span> : null}
-                          <span className={styles.inListMeta}>{race.raceTypeName ?? 'No race type'}</span>
-                        </div>
-                      </div>
-
-                      <Dropdown
-                        menu={getRaceActionsMenu(race)}
-                        trigger={['click']}
-                        placement="bottomRight"
-                      >
-                        <Button
-                          type="text"
-                          className={styles.moreAction}
-                          aria-label="Race actions"
-                          icon={<FontAwesomeIcon icon={faEllipsisVertical} />}
-                          onClick={(event) => event.stopPropagation()}
-                        />
-                      </Dropdown>
-                    </article>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ) : null}
-        </section>
-      ) : null}
-
       {!isLoading && filteredVisibleYears.length > 0 && upcomingRaces.length > 0 ? (
         <section className={styles.yearSection}>
-          <div className={styles.yearHeader}>
-            {renderSectionTitle(
-              'Coming Up',
-              'These are your next registered races, with today and the nearest upcoming entries highlighted first.',
-            )}
-          </div>
-
           <div className={styles.yearCard}>
             <div className={styles.monthSection}>
               <div className={styles.raceList}>
@@ -781,21 +764,26 @@ export function RacesTableView({
 
       {!isLoading && filteredVisibleYears.length > 0 ? regularYears.map((yearGroup) => (
         <section key={yearGroup.year} className={styles.yearSection}>
-          <div className={`${styles.yearHeader} ${styles.yearHeaderWithAction}`.trim()}>
-            <h3 className={`${styles.yearTitle} ${styles.yearNumberTitle}`.trim()}>{yearGroup.year}</h3>
-            <div className={styles.headerLine} />
-            <Button
-              type="text"
-              className={styles.collapseToggle}
-              onClick={() => setOpenYearSections((current) => ({
-                ...current,
-                [yearGroup.year]: !(current[yearGroup.year] ?? true),
-              }))}
-              aria-expanded={openYearSections[yearGroup.year] ?? true}
-              aria-label={(openYearSections[yearGroup.year] ?? true) ? `Collapse ${yearGroup.year} section` : `Expand ${yearGroup.year} section`}
-              icon={<FontAwesomeIcon icon={faChevronDown} className={(openYearSections[yearGroup.year] ?? true) ? styles.collapseIconOpen : styles.collapseIcon} />}
-            />
-          </div>
+          <button
+            type="button"
+            className={`${styles.yearHeader} ${styles.yearHeaderButton}`.trim()}
+            onClick={() => setOpenYearSections((current) => ({
+              ...current,
+              [yearGroup.year]: !(current[yearGroup.year] ?? true),
+            }))}
+            aria-expanded={openYearSections[yearGroup.year] ?? true}
+            aria-label={(openYearSections[yearGroup.year] ?? true) ? `Collapse ${yearGroup.year} section` : `Expand ${yearGroup.year} section`}
+          >
+            <span className={styles.yearHeaderLineLeft} aria-hidden="true" />
+            <span className={styles.yearHeaderContent}>
+              <h3 className={`${styles.yearTitle} ${styles.yearNumberTitle}`.trim()}>{yearGroup.year}</h3>
+              <FontAwesomeIcon
+                icon={faChevronDown}
+                className={(openYearSections[yearGroup.year] ?? true) ? styles.collapseIconOpen : styles.collapseIcon}
+              />
+            </span>
+            <span className={styles.yearHeaderLineRight} aria-hidden="true" />
+          </button>
 
           {(openYearSections[yearGroup.year] ?? true) ? (
             <div className={styles.yearCard}>
@@ -944,6 +932,100 @@ export function RacesTableView({
             ? `This will permanently delete "${racePendingDelete.name}".`
             : 'This will permanently delete this race.'}
         </p>
+      </Modal>
+
+      <Modal
+        open={isInListModalOpen}
+        title={(
+          <div className={styles.bucketListModalHeader}>
+            <span className={styles.bucketListModalTitle}>Bucket List</span>
+            <Select
+              allowClear
+              showSearch
+              className={styles.bucketListFilter}
+              placeholder="Filter race type"
+              optionFilterProp="label"
+              value={selectedBucketListRaceType}
+              onChange={(value) => setSelectedBucketListRaceType(value)}
+              options={bucketListGroups.map((group) => ({
+                value: group.raceTypeName,
+                label: group.raceTypeName,
+              }))}
+            />
+          </div>
+        )}
+        footer={null}
+        onCancel={() => {
+          setIsInListModalOpen(false)
+          setSelectedBucketListRaceType(undefined)
+        }}
+        width={860}
+      >
+        <div className={styles.inListModalList}>
+          {visibleBucketListGroups.map((group) => {
+            const isOpen = openBucketListSections[group.raceTypeName] ?? false
+
+            return (
+              <div key={group.raceTypeName} className={styles.bucketListGroup}>
+                <button
+                  type="button"
+                  className={styles.bucketListGroupHeader}
+                  onClick={() => setOpenBucketListSections((current) => ({
+                    ...current,
+                    [group.raceTypeName]: !(current[group.raceTypeName] ?? false),
+                  }))}
+                  aria-expanded={isOpen}
+                  aria-label={isOpen ? `Collapse ${group.raceTypeName}` : `Expand ${group.raceTypeName}`}
+                >
+                  <span className={styles.bucketListGroupTitle}>{group.raceTypeName}</span>
+                  <span className={styles.bucketListGroupMeta}>
+                    <span className={styles.bucketListGroupCount}>
+                      {group.races.length} race{group.races.length === 1 ? '' : 's'}
+                    </span>
+                    <FontAwesomeIcon icon={faChevronDown} className={isOpen ? styles.collapseIconOpen : styles.collapseIcon} />
+                  </span>
+                </button>
+
+                {isOpen ? (
+                  <div className={styles.bucketListGroupBody}>
+                    {group.races.map((race) => (
+                      <div
+                        key={race.id}
+                        className={`${styles.bucketListRow} ${styles.clickableBucketListRow}`.trim()}
+                        onClick={() => {
+                          setIsInListModalOpen(false)
+                          void handleOpenDetails(race)
+                        }}
+                      >
+                        <div className={styles.inListModalHeader}>
+                          <div className={styles.inListModalMain}>
+                            <div className={styles.inListModalTitleBlock}>
+                              <OverflowTooltip title={race.name} className={styles.inListModalTitle}>
+                                {race.name}
+                              </OverflowTooltip>
+                              <div className={styles.inListModalSubtitle}>
+                                {race.raceDate ? <span>{getShortDateWithYear(race.raceDate)}</span> : null}
+                                {race.location ? <span>{race.location}</span> : null}
+                              </div>
+                            </div>
+                          </div>
+
+                          <span className={`${styles.raceStatusBadge} ${getRaceStatusClassName(race.raceStatus)}`.trim()}>
+                            {race.raceTypeName ?? '-'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            )
+          })}
+
+          {visibleBucketListGroups.length === 0 ? (
+            <Empty description="No bucket-list races found for the current filters." />
+          ) : null}
+        </div>
       </Modal>
 
       <RaceDetailsDrawer

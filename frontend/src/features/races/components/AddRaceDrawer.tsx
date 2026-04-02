@@ -49,7 +49,7 @@ const { TextArea } = Input
 
 type AddRaceDrawerProps = {
   createOptions: RaceCreateOptions
-  onCreated: () => void | Promise<void>
+  onCreated: (payload?: CreateRacePayload) => void | Promise<void>
   onCreateOptionsChange?: (nextOptions: RaceCreateOptions) => void
   mode?: 'create' | 'edit'
   triggerLabel?: string
@@ -131,7 +131,7 @@ const CREATE_RACE_STATUS_OPTIONS = RACE_STATUS_OPTIONS
   .filter((status) => status.value !== 'IN_LIST_WITHOUT_DATE')
   .map((status) => ({
     ...status,
-    label: status.value === 'IN_LIST' ? 'In List' : status.label,
+    label: status.value === 'IN_LIST' ? 'Add to Bucket List' : status.label,
   }))
   .sort((left, right) => CREATE_RACE_STATUS_ORDER.indexOf(left.value as typeof CREATE_RACE_STATUS_ORDER[number]) - CREATE_RACE_STATUS_ORDER.indexOf(right.value as typeof CREATE_RACE_STATUS_ORDER[number]))
 
@@ -534,7 +534,7 @@ function getRaceStatusGuidance(raceStatus: string | undefined) {
   }
 
   if (normalizeRaceStatus(raceStatus) === 'IN_LIST') {
-    return 'In list keeps this entry lightweight while you are only tracking the race plan.'
+    return 'Bucket List keeps this entry lightweight while you are only tracking a race you want to do.'
   }
 
   return ''
@@ -903,7 +903,7 @@ export function AddRaceDrawer({
       }
 
       closeDrawer()
-      await onCreated()
+      await onCreated(payload)
     } catch (submitError) {
       if (submitError instanceof Error && !('errorFields' in submitError)) {
         const fieldName = getFieldNameFromError(submitError.message)

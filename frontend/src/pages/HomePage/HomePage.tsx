@@ -1,4 +1,4 @@
-import { faAngleDown, faAngleUp, faBroom, faMagnifyingGlass, faPenToSquare } from '@fortawesome/free-solid-svg-icons'
+import { faAngleDown, faAngleUp, faBroom, faBucket, faMagnifyingGlass, faPenToSquare } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Checkbox, Input, Typography } from 'antd'
@@ -8,7 +8,6 @@ import {
   RacesCalendarView,
   RacesCalendarModeSwitcher,
   getRaceStatusColor,
-  IN_LIST_WITHOUT_DATE_STATUS,
   RACE_STATUS_OPTIONS,
   RacesTableView,
   RacesViewSwitcher,
@@ -21,6 +20,7 @@ import {
   type RacesCalendarMode,
   type RacesViewMode,
   type TableYearSelection,
+  type CreateRacePayload,
 } from '../../features/races'
 import { STORAGE_KEYS } from '../../constants/storage'
 import styles from './HomePage.module.css'
@@ -31,6 +31,10 @@ const DEFAULT_FILTER_PANEL_STATE = {
   isStatusesOpen: true,
   isRaceTypesOpen: true,
 } as const
+
+const VISIBLE_RACE_STATUS_OPTIONS = RACE_STATUS_OPTIONS.filter((option) => (
+  option.value !== 'IN_LIST' && option.value !== 'IN_LIST_WITHOUT_DATE'
+))
 
 function getStatusesFromTablePayload(payload: Awaited<ReturnType<typeof fetchRaceTable>>) {
   const collectedStatuses = new Set<string>()
@@ -46,12 +50,12 @@ function getStatusesFromTablePayload(payload: Awaited<ReturnType<typeof fetchRac
   })
 
   payload.undatedRaces.forEach((race) => {
-    if (race.raceStatus === 'IN_LIST') {
-      collectedStatuses.add(IN_LIST_WITHOUT_DATE_STATUS)
+    if (race.raceStatus) {
+      collectedStatuses.add(race.raceStatus)
     }
   })
 
-  return RACE_STATUS_OPTIONS
+  return VISIBLE_RACE_STATUS_OPTIONS
     .map((option) => option.value)
     .filter((status) => collectedStatuses.has(status))
 }
@@ -99,7 +103,9 @@ function readPersistedRacesFilters(): PersistedRacesFiltersState | null {
       ? {
         search: typeof parsed.filters.search === 'string' ? parsed.filters.search : '',
         statuses: Array.isArray(parsed.filters.statuses)
-          ? parsed.filters.statuses.filter((status): status is string => typeof status === 'string')
+          ? parsed.filters.statuses.filter((status): status is string => (
+            typeof status === 'string' && status !== 'IN_LIST' && status !== 'IN_LIST_WITHOUT_DATE'
+          ))
           : [],
         year: null,
         raceTypeIds: Array.isArray(parsed.filters.raceTypeIds)
@@ -184,6 +190,8 @@ export function HomePage() {
   const [isFilterOptionsLoading, setIsFilterOptionsLoading] = useState(true)
   const [refreshKey, setRefreshKey] = useState(0)
   const [hasAnyRaces, setHasAnyRaces] = useState(false)
+  const [isBucketListModalOpen, setIsBucketListModalOpen] = useState(false)
+  const [bucketListCount, setBucketListCount] = useState(0)
 
   const raceTypeOptions = useMemo(
     () => filterOptions.raceTypes.map((raceType) => ({ value: raceType.id, label: raceType.name })),
@@ -212,54 +220,87 @@ export function HomePage() {
     [filters.raceTypeIds, filters.search, filters.statuses],
   )
 
-  useEffect(() => {
-    if (selectedView !== 'calendar') {
+  const reloadRacesPageData = async () => {
+    if (!token) {
+      setFilterOptions({ years: [], raceTypes: [] })
+      setCreateOptions({ raceTypes: [], teams: [], circuits: [], shoes: [] })
+      setHasAnyRaces(false)
+      setRefreshKey((current) => current + 1)
+      setIsFilterOptionsLoading(false)
       return
     }
 
-    setFilters((current) => (
-      current.statuses.includes(IN_LIST_WITHOUT_DATE_STATUS)
-        ? {
-          ...current,
-          statuses: current.statuses.filter((status) => status !== IN_LIST_WITHOUT_DATE_STATUS),
-        }
-        : current
-    ))
-  }, [selectedView])
+    try {
+      setIsFilterOptionsLoading(true)
+      const [tablePayload, createOptionsPayload] = await Promise.all([
+        fetchRaceTable(token),
+        fetchRaceCreateOptions(token),
+      ])
 
-  useEffect(() => {
-    const loadFilterOptions = async () => {
-      if (!token) {
-        setFilterOptions({ years: [], raceTypes: [] })
-        setCreateOptions({ raceTypes: [], teams: [], circuits: [], shoes: [] })
-        setHasAnyRaces(false)
-        setIsFilterOptionsLoading(false)
-        return
-      }
+      const years = tablePayload.years.map((yearGroup) => yearGroup.year)
+      const hasRaces = years.length > 0 || (tablePayload.undatedRaces?.length ?? 0) > 0
+      setFilterOptions({
+        years,
+        raceTypes: createOptionsPayload.raceTypes,
+      })
+      setAllYearsAvailableStatuses(getStatusesFromTablePayload(tablePayload))
+      setHasAnyRaces(hasRaces)
+      setCreateOptions(createOptionsPayload)
+      setRefreshKey((current) => current + 1)
+    } finally {
+      setIsFilterOptionsLoading(false)
+    }
+  }
 
-      try {
-        setIsFilterOptionsLoading(true)
-        const [tablePayload, createOptionsPayload] = await Promise.all([
-          fetchRaceTable(token),
-          fetchRaceCreateOptions(token),
-        ])
-
-        const years = tablePayload.years.map((yearGroup) => yearGroup.year)
-        const hasRaces = years.length > 0 || (tablePayload.undatedRaces?.length ?? 0) > 0
-        setFilterOptions({
-          years,
-          raceTypes: createOptionsPayload.raceTypes,
-        })
-        setAllYearsAvailableStatuses(getStatusesFromTablePayload(tablePayload))
-        setHasAnyRaces(hasRaces)
-        setCreateOptions(createOptionsPayload)
-      } finally {
-        setIsFilterOptionsLoading(false)
-      }
+  const applyCreatedRaceVisibility = (payload?: CreateRacePayload) => {
+    if (!payload) {
+      return
     }
 
-    void loadFilterOptions()
-  }, [refreshKey, token])
+    const { race } = payload
+
+    setFilters((current) => ({
+      ...current,
+      search: '',
+      statuses: current.statuses.length > 0
+        && race.raceStatus
+        && race.raceStatus !== 'IN_LIST'
+        && !current.statuses.includes(race.raceStatus)
+        ? [...current.statuses, race.raceStatus]
+        : current.statuses,
+      raceTypeIds: current.raceTypeIds.length > 0 && race.raceTypeId && !current.raceTypeIds.includes(race.raceTypeId)
+        ? [...current.raceTypeIds, race.raceTypeId]
+        : current.raceTypeIds,
+    }))
+
+    setTableYearSelection((current) => {
+      if (!race.raceDate) {
+        return defaultTableYearSelection
+      }
+
+      const createdYear = new Date(race.raceDate).getFullYear()
+      if (!Number.isInteger(createdYear)) {
+        return current
+      }
+
+      if (current.allRaces) {
+        return current
+      }
+
+      if (current.selectedYears.includes(createdYear)) {
+        return current
+      }
+
+      return {
+        allRaces: false,
+        selectedYears: [...current.selectedYears, createdYear].sort((left, right) => right - left),
+      }
+    })
+  }
+
+  useEffect(() => {
+    void reloadRacesPageData()
+  }, [token])
 
   useEffect(() => {
     if (isFilterOptionsLoading) {
@@ -450,6 +491,16 @@ export function HomePage() {
         </div>
 
         <div className={styles.headerActions}>
+          <Button
+            type="text"
+            className={styles.bucketListButton}
+            icon={<FontAwesomeIcon icon={faBucket} />}
+            onClick={() => setIsBucketListModalOpen(true)}
+            disabled={bucketListCount === 0}
+          >
+            Bucket List
+          </Button>
+
           <RacesViewSwitcher selectedView={selectedView} onViewChange={setSelectedView} />
 
           <AddRaceDrawer
@@ -468,7 +519,10 @@ export function HomePage() {
                 )),
               }))
             }}
-            onCreated={() => setRefreshKey((current) => current + 1)}
+            onCreated={async (payload) => {
+              applyCreatedRaceVisibility(payload)
+              await reloadRacesPageData()
+            }}
           />
         </div>
       </div>
@@ -477,27 +531,31 @@ export function HomePage() {
         <div className={styles.mainSection}>
           {selectedView === 'calendar'
             ? <RacesCalendarView selectedMode={selectedCalendarMode} onModeChange={setSelectedCalendarMode} filters={filters} refreshKey={refreshKey} />
-            : (
-              <RacesTableView
-                tableYearSelection={tableYearSelection}
-                filters={filters}
-                refreshKey={refreshKey}
-                createOptions={createOptions}
-                onCreateOptionsChange={(nextOptions) => {
-                  setCreateOptions(nextOptions)
-                  setFilterOptions((current) => ({
-                    ...current,
-                    raceTypes: nextOptions.raceTypes,
-                  }))
-                  setFilters((current) => ({
-                    ...current,
-                    raceTypeIds: current.raceTypeIds.filter((raceTypeId) => (
-                      nextOptions.raceTypes.some((raceType) => raceType.id === raceTypeId)
-                    )),
-                  }))
-                }}
-              />
-            )}
+            : null}
+
+          <RacesTableView
+            tableYearSelection={tableYearSelection}
+            filters={filters}
+            refreshKey={refreshKey}
+            createOptions={createOptions}
+            hideContent={selectedView !== 'table'}
+            bucketListOpen={isBucketListModalOpen}
+            onBucketListOpenChange={setIsBucketListModalOpen}
+            onBucketListCountChange={setBucketListCount}
+            onCreateOptionsChange={(nextOptions) => {
+              setCreateOptions(nextOptions)
+              setFilterOptions((current) => ({
+                ...current,
+                raceTypes: nextOptions.raceTypes,
+              }))
+              setFilters((current) => ({
+                ...current,
+                raceTypeIds: current.raceTypeIds.filter((raceTypeId) => (
+                  nextOptions.raceTypes.some((raceType) => raceType.id === raceTypeId)
+                )),
+              }))
+            }}
+          />
         </div>
 
         <aside className={styles.sidebar}>
@@ -574,17 +632,13 @@ export function HomePage() {
               onToggle={() => setIsStatusesOpen((current) => !current)}
             >
               <div className={styles.checkboxList}>
-                {RACE_STATUS_OPTIONS.map((status) => {
-                  const disabled = selectedView === 'calendar' && status.value === IN_LIST_WITHOUT_DATE_STATUS
-
-                  return (
-                    <label
-                      key={status.value}
-                      className={`${styles.checkboxOption} ${disabled ? styles.checkboxOptionDisabled : ''}`.trim()}
-                    >
+                {VISIBLE_RACE_STATUS_OPTIONS.map((status) => (
+                  <label
+                    key={status.value}
+                    className={styles.checkboxOption}
+                  >
                       <Checkbox
                         checked={filters.statuses.includes(status.value)}
-                        disabled={disabled}
                         onChange={(event) => setFilters((current) => ({
                           ...current,
                           statuses: event.target.checked
@@ -599,9 +653,8 @@ export function HomePage() {
                         />
                         <span className={styles.checkboxOptionLabel}>{status.label}</span>
                       </span>
-                    </label>
-                  )
-                })}
+                  </label>
+                ))}
               </div>
             </CheckboxFilterSection>
 

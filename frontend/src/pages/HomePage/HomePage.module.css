@@ -46,6 +46,33 @@
   white-space: nowrap;
 }
 
+.bucketListButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding-inline: 12px !important;
+  border-radius: 999px !important;
+  border: 1px solid rgba(249, 115, 22, 0.18) !important;
+  background: rgba(255, 247, 237, 0.78) !important;
+  color: #9a3412 !important;
+  font-weight: 700;
+  box-shadow: none !important;
+}
+
+.bucketListButton:hover,
+.bucketListButton:focus {
+  border-color: rgba(249, 115, 22, 0.26) !important;
+  background: rgba(255, 237, 213, 0.92) !important;
+  color: #9a3412 !important;
+}
+
+.bucketListButton:disabled,
+.bucketListButton:global(.ant-btn-disabled) {
+  border-color: rgba(208, 213, 221, 0.9) !important;
+  background: #f8fafc !important;
+  color: #98a2b3 !important;
+}
+
 .contentLayout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 280px;
