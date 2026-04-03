@@ -1010,9 +1010,24 @@ export function RacesTableView({
                             </div>
                           </div>
 
-                          <span className={`${styles.raceStatusBadge} ${getRaceStatusClassName(race.raceStatus)}`.trim()}>
-                            {race.raceTypeName ?? '-'}
-                          </span>
+                          <div className={styles.inListModalActions}>
+                            <span className={`${styles.raceStatusBadge} ${getRaceStatusClassName(race.raceStatus)}`.trim()}>
+                              {race.raceTypeName ?? '-'}
+                            </span>
+                            <Dropdown
+                              menu={getRaceActionsMenu(race)}
+                              trigger={['click']}
+                              placement="bottomRight"
+                            >
+                              <Button
+                                type="text"
+                                className={styles.moreAction}
+                                aria-label="Race actions"
+                                icon={<FontAwesomeIcon icon={faEllipsisVertical} />}
+                                onClick={(event) => event.stopPropagation()}
+                              />
+                            </Dropdown>
+                          </div>
                         </div>
                       </div>
                     ))}

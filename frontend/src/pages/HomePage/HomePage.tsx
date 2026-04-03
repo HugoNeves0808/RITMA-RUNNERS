@@ -36,30 +36,6 @@ const VISIBLE_RACE_STATUS_OPTIONS = RACE_STATUS_OPTIONS.filter((option) => (
   option.value !== 'IN_LIST' && option.value !== 'IN_LIST_WITHOUT_DATE'
 ))
 
-function getStatusesFromTablePayload(payload: Awaited<ReturnType<typeof fetchRaceTable>>) {
-  const collectedStatuses = new Set<string>()
-
-  payload.years.forEach((yearGroup) => {
-    yearGroup.races.forEach((race) => {
-      if (!race.raceStatus) {
-        return
-      }
-
-      collectedStatuses.add(race.raceStatus)
-    })
-  })
-
-  payload.undatedRaces.forEach((race) => {
-    if (race.raceStatus) {
-      collectedStatuses.add(race.raceStatus)
-    }
-  })
-
-  return VISIBLE_RACE_STATUS_OPTIONS
-    .map((option) => option.value)
-    .filter((status) => collectedStatuses.has(status))
-}
-
 function getDefaultTableYearSelection(): TableYearSelection {
   return {
     allRaces: true,
@@ -182,7 +158,6 @@ export function HomePage() {
   const [filters, setFilters] = useState<RaceFilters>(persistedState?.filters ?? EMPTY_RACE_FILTERS)
   const [filterOptions, setFilterOptions] = useState<RaceFilterOptions>({ years: [], raceTypes: [] })
   const [createOptions, setCreateOptions] = useState<RaceCreateOptions>({ raceTypes: [], teams: [], circuits: [], shoes: [] })
-  const [allYearsAvailableStatuses, setAllYearsAvailableStatuses] = useState<string[]>([])
   const [isYearsOpen, setIsYearsOpen] = useState(persistedState?.isYearsOpen ?? DEFAULT_FILTER_PANEL_STATE.isYearsOpen)
   const [isStatusesOpen, setIsStatusesOpen] = useState(persistedState?.isStatusesOpen ?? DEFAULT_FILTER_PANEL_STATE.isStatusesOpen)
   const [isRaceTypesOpen, setIsRaceTypesOpen] = useState(persistedState?.isRaceTypesOpen ?? DEFAULT_FILTER_PANEL_STATE.isRaceTypesOpen)
@@ -243,7 +218,6 @@ export function HomePage() {
         years,
         raceTypes: createOptionsPayload.raceTypes,
       })
-      setAllYearsAvailableStatuses(getStatusesFromTablePayload(tablePayload))
       setHasAnyRaces(hasRaces)
       setCreateOptions(createOptionsPayload)
       setRefreshKey((current) => current + 1)
@@ -332,27 +306,6 @@ export function HomePage() {
       }
     })
   }, [currentYear, defaultTableYearSelection, filterOptions.years, hasAnyRaces, isFilterOptionsLoading])
-
-  useEffect(() => {
-    if (selectedView !== 'table' || !tableYearSelection.allRaces || filters.statuses.length > 0) {
-      return
-    }
-
-    setFilters((current) => {
-      const nextStatuses = allYearsAvailableStatuses
-      if (
-        current.statuses.length === nextStatuses.length
-        && current.statuses.every((status, index) => status === nextStatuses[index])
-      ) {
-        return current
-      }
-
-      return {
-        ...current,
-        statuses: nextStatuses,
-      }
-    })
-  }, [allYearsAvailableStatuses, selectedView, tableYearSelection.allRaces])
 
   useEffect(() => {
     if (selectedView === 'table' && !tableYearSelection.allRaces && tableYearSelection.selectedYears.length === 0) {
@@ -599,7 +552,7 @@ export function HomePage() {
             {selectedView === 'table' ? (
               <CheckboxFilterSection
                 title="Years"
-                count={tableYearSelection.allRaces ? 1 : tableYearSelection.selectedYears.length}
+                count={tableYearSelection.allRaces ? 0 : tableYearSelection.selectedYears.length}
                 isOpen={isYearsOpen}
                 onToggle={() => setIsYearsOpen((current) => !current)}
               >

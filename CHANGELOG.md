@@ -13,6 +13,9 @@ This file keeps a short, slightly more detailed record of what was done in each 
 
 ### `current` - Restore single-race deletion and document the latest races flow
 
+- Refined the web `Races` filters so the page now opens with a truly neutral filter state, showing all races without auto-selecting existing `race status` values while still preserving the same refresh-only filter persistence and clear-on-leave behavior.
+- Completed the web `Bucket List` modal actions by adding the same per-race `Edit` and `Delete` menu used in the main `Races` cards, so in-list races now support the full management flow directly from the grouped modal.
+- Updated the web `Best Efforts` podium rendering so every category keeps a visible `Top 3` / `Top 5` podium layout even when there are not enough valid races yet, filling missing slots with informative empty-state cards instead of collapsing the board.
 - Reworked the web `Races` list around a dedicated `Bucket List` flow by moving `IN_LIST` races out of the main status filters and yearly list, adding a header-level `Bucket List` action with a modal, grouping bucket-list races by `race type` inside collapsible sections, and aligning the add-race status copy so `IN_LIST` now reads as `Add to Bucket List` in the creation flow.
 - Refined the web `Races` post-create refresh behavior so saving a race now reloads the table and filter sources immediately, clears stale name search, keeps the new race visible by widening only already-active filters, and avoids unexpectedly narrowing the page to the newly created `race type`.
 - Polished the web `Races` yearly headers with lighter centered year labels, click-anywhere collapse toggles, and subtle orange fade lines that frame each year without competing with the race cards below.

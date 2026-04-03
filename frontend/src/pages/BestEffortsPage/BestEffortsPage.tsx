@@ -336,14 +336,77 @@ function PodiumCard({ item }: { item: BestEffortItem }) {
   )
 }
 
-function PodiumShowcase({ items }: { items: BestEffortItem[] }) {
-  const orderedIndexes = getPodiumOrder(items)
+function getEmptyPodiumMessage(expectedDistanceKm: number | null, missingCount: number) {
+  if (expectedDistanceKm == null) {
+    return 'Define target km'
+  }
+
+  if (missingCount === 1) {
+    return 'Need 1 more valid race'
+  }
+
+  return `Need ${missingCount} more valid races`
+}
+
+function PodiumEmptyCard({
+  rank,
+  expectedDistanceKm,
+  missingCount,
+}: {
+  rank: number
+  expectedDistanceKm: number | null
+  missingCount: number
+}) {
+  return (
+    <article
+      className={[
+        styles.podiumCard,
+        styles.podiumEmptyCard,
+        getPodiumHeight(rank),
+      ].join(' ')}
+    >
+      <div className={styles.podiumRankBadge}>{getPodiumLabel(rank)}</div>
+      <div className={styles.podiumEmptyContent}>
+        <span className={styles.podiumEmptyTitle}>Empty podium slot</span>
+        <span className={styles.podiumEmptyMessage}>
+          {getEmptyPodiumMessage(expectedDistanceKm, missingCount)}
+        </span>
+      </div>
+    </article>
+  )
+}
+
+function PodiumShowcase({
+  items,
+  featuredLimit,
+  expectedDistanceKm,
+}: {
+  items: BestEffortItem[]
+  featuredLimit: number
+  expectedDistanceKm: number | null
+}) {
+  const orderedIndexes = getPodiumOrder(Array.from({ length: featuredLimit }))
+  const filledItems = items.slice(0, featuredLimit)
+  const missingCount = Math.max(featuredLimit - filledItems.length, 0)
 
   return (
     <div className={styles.podiumBoard}>
-      {orderedIndexes.map((index) => (
-        <PodiumCard key={items[index].raceId} item={items[index]} />
-      ))}
+      {orderedIndexes.map((index) => {
+        const item = filledItems[index]
+
+        if (item) {
+          return <PodiumCard key={item.raceId} item={item} />
+        }
+
+        return (
+          <PodiumEmptyCard
+            key={`empty-podium-${expectedDistanceKm ?? 'no-target'}-${index + 1}`}
+            rank={index + 1}
+            expectedDistanceKm={expectedDistanceKm}
+            missingCount={missingCount}
+          />
+        )
+      })}
     </div>
   )
 }
@@ -958,15 +1021,19 @@ export function BestEffortsPage() {
                   })()}
 
                   <div className={styles.entriesList}>
-                    {category.visibleItems.length > 0 ? (
-                      <PodiumShowcase items={category.visibleItems.slice(0, featuredLimit)} />
-                    ) : (
+                    <PodiumShowcase
+                      items={category.visibleItems}
+                      featuredLimit={featuredLimit}
+                      expectedDistanceKm={category.expectedDistanceKm}
+                    />
+
+                    {category.visibleItems.length === 0 ? (
                       <div className={styles.categoryEmptyState}>
                         {category.expectedDistanceKm == null
                           ? 'Define a target km for this race type to unlock the ranking.'
                           : 'No races are currently eligible for this ranking.'}
                       </div>
-                    )}
+                    ) : null}
 
                     {viewMode === 'all' && category.visibleItems.length > featuredLimit ? (
                       <div className={styles.rankListSection}>

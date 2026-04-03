@@ -312,6 +312,14 @@
   width: 100%;
 }
 
+.inListModalActions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 .inListModalMain {
   display: flex;
   min-width: 0;
