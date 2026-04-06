@@ -141,7 +141,7 @@ public class BestEffortService {
             return false;
         }
 
-        return row.realKm().compareTo(expectedDistanceKm) >= 0;
+        return row.realKm().compareTo(getMinimumAcceptedDistance(expectedDistanceKm)) >= 0;
     }
 
     private String buildRankingNote(BestEffortRaceRow row, BigDecimal expectedDistanceKm) {
@@ -160,10 +160,6 @@ public class BestEffortService {
         BigDecimal minimumAcceptedDistance = getMinimumAcceptedDistance(expectedDistanceKm);
         if (row.realKm().compareTo(minimumAcceptedDistance) < 0) {
             return "Excluded from category ranking";
-        }
-
-        if (row.realKm().compareTo(expectedDistanceKm) < 0) {
-            return "Below category distance";
         }
 
         return "Valid for ranking";

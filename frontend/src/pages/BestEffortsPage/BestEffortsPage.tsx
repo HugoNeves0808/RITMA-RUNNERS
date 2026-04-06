@@ -48,7 +48,7 @@ const CATEGORY_DISTANCE_EXCLUDED_MARGIN_KM = 0.3
 
 type PersistedBestEffortsFiltersState = {
   viewMode: BestEffortsViewMode
-  selectedRaceType?: string
+  selectedRaceTypes: string[]
   isRaceTypesOpen: boolean
 }
 
@@ -64,9 +64,14 @@ function readPersistedBestEffortsFilters(): PersistedBestEffortsFiltersState | n
 
   try {
     const parsed = JSON.parse(rawValue) as Partial<PersistedBestEffortsFiltersState>
+    const selectedRaceTypes = Array.isArray(parsed.selectedRaceTypes)
+      ? parsed.selectedRaceTypes.filter((raceType): raceType is string => typeof raceType === 'string')
+      : typeof (parsed as { selectedRaceType?: unknown }).selectedRaceType === 'string'
+        ? [(parsed as { selectedRaceType?: string }).selectedRaceType as string]
+        : []
     return {
       viewMode: parsed.viewMode === 'top-5' || parsed.viewMode === 'all' ? parsed.viewMode : 'top-3',
-      selectedRaceType: typeof parsed.selectedRaceType === 'string' ? parsed.selectedRaceType : undefined,
+      selectedRaceTypes,
       isRaceTypesOpen: parsed.isRaceTypesOpen ?? true,
     }
   } catch {
@@ -173,11 +178,11 @@ function getFilteredItems(
   const visibleItems = items.filter((item) => item.validForBestEffortRanking || item.rankingNote === 'Below category distance')
 
   if (viewMode === 'top-3') {
-    return visibleItems.filter((item) => item.validForBestEffortRanking).slice(0, 3)
+    return visibleItems.slice(0, 3)
   }
 
   if (viewMode === 'top-5') {
-    return visibleItems.filter((item) => item.validForBestEffortRanking).slice(0, 5)
+    return visibleItems.slice(0, 5)
   }
 
   return visibleItems
@@ -192,11 +197,7 @@ function getPodiumOrder(items: BestEffortItem[]) {
 }
 
 function getRankingNoteBadgeClassName(item: BestEffortItem) {
-  if (item.rankingNote === 'Below category distance') {
-    return styles.rankingNoteBelowTarget
-  }
-
-  if (!item.validForBestEffortRanking) {
+  if (!item.validForBestEffortRanking && item.rankingNote !== 'Below category distance') {
     return styles.rankingNoteExcluded
   }
 
@@ -208,11 +209,7 @@ function hasDisplayedRanking(item: BestEffortItem) {
 }
 
 function getCategoryScoreBadgeClassNameForItem(item: BestEffortItem) {
-  if (item.rankingNote === 'Below category distance') {
-    return styles.categoryScoreBelowTarget
-  }
-
-  if (!item.validForBestEffortRanking) {
+  if (!item.validForBestEffortRanking && item.rankingNote !== 'Below category distance') {
     return styles.categoryScoreExcluded
   }
 
@@ -342,10 +339,10 @@ function getEmptyPodiumMessage(expectedDistanceKm: number | null, missingCount: 
   }
 
   if (missingCount === 1) {
-    return 'Need 1 more valid race'
+    return 'Need 1 more ranked race'
   }
 
-  return `Need ${missingCount} more valid races`
+  return `Need ${missingCount} more ranked races`
 }
 
 function PodiumEmptyCard({
@@ -443,11 +440,7 @@ type ManagedOptionConfirmState =
   | { kind: 'detach-delete'; option: RaceTypeOption }
   | null
 
-type CategoryRacesMode = 'valid' | 'total' | 'below-category-distance' | 'excluded'
-
-function getBelowCategoryDistanceItems(category: BestEffortCategory) {
-  return category.efforts.filter((item) => item.rankingNote === 'Below category distance')
-}
+type CategoryRacesMode = 'valid' | 'total' | 'excluded'
 
 function getExcludedItems(category: BestEffortCategory) {
   return category.efforts.filter((item) => !item.validForBestEffortRanking && item.rankingNote !== 'Below category distance')
@@ -457,8 +450,6 @@ function getCategoryScoreBadgeClassName(mode: CategoryRacesMode) {
   switch (mode) {
     case 'valid':
       return styles.categoryScoreValid
-    case 'below-category-distance':
-      return styles.categoryScoreBelowTarget
     case 'excluded':
       return styles.categoryScoreExcluded
     default:
@@ -475,7 +466,7 @@ export function BestEffortsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<BestEffortsViewMode>(persistedFilters?.viewMode ?? 'top-3')
-  const [selectedRaceType, setSelectedRaceType] = useState<string | undefined>(persistedFilters?.selectedRaceType)
+  const [selectedRaceTypes, setSelectedRaceTypes] = useState<string[]>(persistedFilters?.selectedRaceTypes ?? [])
   const [isRaceTypesOpen, setIsRaceTypesOpen] = useState(persistedFilters?.isRaceTypesOpen ?? true)
   const [categoryRacesModal, setCategoryRacesModal] = useState<CategoryRacesModalState | null>(null)
   const [expandedCategoryKeys, setExpandedCategoryKeys] = useState<string[]>([])
@@ -542,8 +533,8 @@ export function BestEffortsPage() {
         visibleItems: items,
       }
     })
-    .filter((category) => !selectedRaceType || category.categoryName === selectedRaceType)
-    .filter((category) => category.totalEffortCount > 0), [payload, selectedRaceType, viewMode])
+    .filter((category) => selectedRaceTypes.length === 0 || selectedRaceTypes.includes(category.categoryName))
+    .filter((category) => category.totalEffortCount > 0), [payload, selectedRaceTypes, viewMode])
 
   const featuredLimit = viewMode === 'top-3' ? 3 : 5
   const raceTypeOptions = raceTypes.map((raceType) => ({
@@ -552,16 +543,16 @@ export function BestEffortsPage() {
   }))
 
   useEffect(() => {
-    if (!selectedRaceType) {
+    if (selectedRaceTypes.length === 0) {
       setIsRaceTypesOpen(false)
     }
-  }, [selectedRaceType])
+  }, [selectedRaceTypes])
 
   useEffect(() => {
-    if (selectedRaceType) {
+    if (selectedRaceTypes.length > 0) {
       setIsRaceTypesOpen(true)
     }
-  }, [selectedRaceType])
+  }, [selectedRaceTypes])
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -570,10 +561,10 @@ export function BestEffortsPage() {
 
     window.sessionStorage.setItem(STORAGE_KEYS.bestEffortsFilters, JSON.stringify({
       viewMode,
-      selectedRaceType,
+      selectedRaceTypes,
       isRaceTypesOpen,
     } satisfies PersistedBestEffortsFiltersState))
-  }, [isRaceTypesOpen, selectedRaceType, viewMode])
+  }, [isRaceTypesOpen, selectedRaceTypes, viewMode])
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -597,7 +588,7 @@ export function BestEffortsPage() {
 
   const handleClearFilters = () => {
     setViewMode('top-3')
-    setSelectedRaceType(undefined)
+    setSelectedRaceTypes([])
     setExpandedCategoryKeys([])
   }
 
@@ -712,8 +703,8 @@ export function BestEffortsPage() {
       const nextRaceTypes = raceTypes.filter((option) => option.id !== managedRaceTypeConfirmState.option.id)
       setRaceTypes(nextRaceTypes)
 
-      if (selectedRaceType === managedRaceTypeConfirmState.option.name) {
-        setSelectedRaceType(undefined)
+      if (selectedRaceTypes.includes(managedRaceTypeConfirmState.option.name)) {
+        setSelectedRaceTypes((current) => current.filter((raceType) => raceType !== managedRaceTypeConfirmState.option.name))
       }
 
       if (editingRaceTypeId === managedRaceTypeConfirmState.option.id) {
@@ -739,10 +730,6 @@ export function BestEffortsPage() {
         return category.efforts.filter((item) => item.validForBestEffortRanking)
       }
 
-      if (mode === 'below-category-distance') {
-        return getBelowCategoryDistanceItems(category)
-      }
-
       if (mode === 'excluded') {
         return getExcludedItems(category)
       }
@@ -753,10 +740,6 @@ export function BestEffortsPage() {
     const title = (() => {
       if (mode === 'valid') {
         return 'Valid races'
-      }
-
-      if (mode === 'below-category-distance') {
-        return 'Below target'
       }
 
       if (mode === 'excluded') {
@@ -791,11 +774,9 @@ export function BestEffortsPage() {
 
     const items = currentModal.mode === 'valid'
       ? category.efforts.filter((item) => item.validForBestEffortRanking)
-      : currentModal.mode === 'below-category-distance'
-        ? getBelowCategoryDistanceItems(category)
-        : currentModal.mode === 'excluded'
-          ? getExcludedItems(category)
-          : category.efforts
+      : currentModal.mode === 'excluded'
+        ? getExcludedItems(category)
+        : category.efforts
 
     setCategoryRacesModal({
       ...currentModal,
@@ -922,8 +903,10 @@ export function BestEffortsPage() {
               {visibleCategories.map((category) => (
                 <Card key={category.categoryKey} className={styles.categoryCard} styles={{ body: { padding: 24 } }}>
                   {(() => {
-                    const belowCategoryDistanceCount = getBelowCategoryDistanceItems(category).length
                     const excludedCount = getExcludedItems(category).length
+                    const effectiveValidCount = category.efforts.filter((item) => (
+                      item.validForBestEffortRanking || item.rankingNote === 'Below category distance'
+                    )).length
                     const minimumAcceptedDistance = getMinimumAcceptedDistance(category.expectedDistanceKm)
                     const minimumAcceptedDistanceLabel = minimumAcceptedDistance != null
                       ? formatDistance(minimumAcceptedDistance)
@@ -946,7 +929,7 @@ export function BestEffortsPage() {
 
                     <div className={styles.categoryMetaAside}>
                       <div className={styles.metaRow}>
-                        <Tooltip title="Valid races are eligible for best effort ranking. They need to be marked as valid for category ranking, have chip time, and meet the target distance threshold.">
+                        <Tooltip title="Valid races are eligible for best effort ranking. They need to be marked as valid for category ranking, have chip time, and stay within the accepted distance threshold for the category.">
                           <span
                             className={`${styles.categoryScoreBadge} ${getCategoryScoreBadgeClassName('valid')} ${styles.clickableTag}`.trim()}
                             onClick={() => openCategoryRacesModal(category, 'valid')}
@@ -959,27 +942,9 @@ export function BestEffortsPage() {
                             role="button"
                             tabIndex={0}
                           >
-                            {category.validEffortCount} valid
+                            {effectiveValidCount} valid
                           </span>
                         </Tooltip>
-                        {belowCategoryDistanceCount > 0 ? (
-                          <Tooltip title={`Below target races are within 300 meters of the target and stay visible in this category, but they still fall short of the target distance (${formatDistance(category.expectedDistanceKm)}).`}>
-                            <span
-                              className={`${styles.categoryScoreBadge} ${getCategoryScoreBadgeClassName('below-category-distance')} ${styles.clickableTag}`.trim()}
-                              onClick={() => openCategoryRacesModal(category, 'below-category-distance')}
-                              onKeyDown={(event) => {
-                                if (event.key === 'Enter' || event.key === ' ') {
-                                  event.preventDefault()
-                                  openCategoryRacesModal(category, 'below-category-distance')
-                                }
-                              }}
-                              role="button"
-                              tabIndex={0}
-                            >
-                              {belowCategoryDistanceCount} below target
-                            </span>
-                          </Tooltip>
-                        ) : null}
                         {excludedCount > 0 ? (
                           <Tooltip title={`Excluded races are outside the ranking because they are either marked as not valid for category ranking, more than 300 meters below the target (${minimumAcceptedDistanceLabel}), or the race type still has no target km defined.`}>
                             <span
@@ -1111,7 +1076,7 @@ export function BestEffortsPage() {
 
             <CheckboxFilterSection
               title="Race types"
-              count={selectedRaceType ? 1 : 0}
+              count={selectedRaceTypes.length}
               isOpen={isRaceTypesOpen}
               onToggle={() => setIsRaceTypesOpen((current) => !current)}
               titleAction={(
@@ -1133,10 +1098,12 @@ export function BestEffortsPage() {
                 ) : raceTypeOptions.map((raceType) => (
                   <label key={raceType.value} className={styles.checkboxOption}>
                     <Checkbox
-                      checked={selectedRaceType === raceType.value}
-                      onChange={() => setSelectedRaceType(
-                        selectedRaceType === raceType.value ? undefined : raceType.value,
-                      )}
+                      checked={selectedRaceTypes.includes(raceType.value)}
+                      onChange={(event) => setSelectedRaceTypes((current) => (
+                        event.target.checked
+                          ? [...current, raceType.value]
+                          : current.filter((value) => value !== raceType.value)
+                      ))}
                     />
                     <span className={styles.checkboxOptionLabel}>{raceType.label}</span>
                   </label>
