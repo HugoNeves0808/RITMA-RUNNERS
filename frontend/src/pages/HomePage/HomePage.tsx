@@ -1,6 +1,6 @@
 import { faAngleDown, faAngleUp, faBroom, faBucket, faMagnifyingGlass, faPenToSquare } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Checkbox, Input, Typography } from 'antd'
 import { useAuth } from '../../features/auth'
 import {
@@ -13,7 +13,7 @@ import {
   RacesViewSwitcher,
   EMPTY_RACE_FILTERS,
   fetchRaceCreateOptions,
-  fetchRaceTable,
+  fetchRaceFilterOptions,
   type RaceFilterOptions,
   type RaceCreateOptions,
   type RaceFilters,
@@ -167,6 +167,12 @@ export function HomePage() {
   const [hasAnyRaces, setHasAnyRaces] = useState(false)
   const [isBucketListModalOpen, setIsBucketListModalOpen] = useState(false)
   const [bucketListCount, setBucketListCount] = useState(0)
+  const deferredSearch = useDeferredValue(filters.search)
+
+  const viewFilters = useMemo<RaceFilters>(() => ({
+    ...filters,
+    search: deferredSearch,
+  }), [deferredSearch, filters])
 
   const raceTypeOptions = useMemo(
     () => filterOptions.raceTypes.map((raceType) => ({ value: raceType.id, label: raceType.name })),
@@ -207,13 +213,13 @@ export function HomePage() {
 
     try {
       setIsFilterOptionsLoading(true)
-      const [tablePayload, createOptionsPayload] = await Promise.all([
-        fetchRaceTable(token),
+      const [filterOptionsPayload, createOptionsPayload] = await Promise.all([
+        fetchRaceFilterOptions(token),
         fetchRaceCreateOptions(token),
       ])
 
-      const years = tablePayload.years.map((yearGroup) => yearGroup.year)
-      const hasRaces = years.length > 0 || (tablePayload.undatedRaces?.length ?? 0) > 0
+      const years = filterOptionsPayload.years
+      const hasRaces = years.length > 0
       setFilterOptions({
         years,
         raceTypes: createOptionsPayload.raceTypes,
@@ -483,12 +489,12 @@ export function HomePage() {
       <div className={styles.contentLayout}>
         <div className={styles.mainSection}>
           {selectedView === 'calendar'
-            ? <RacesCalendarView selectedMode={selectedCalendarMode} onModeChange={setSelectedCalendarMode} filters={filters} refreshKey={refreshKey} />
+            ? <RacesCalendarView selectedMode={selectedCalendarMode} onModeChange={setSelectedCalendarMode} filters={viewFilters} refreshKey={refreshKey} />
             : null}
 
           <RacesTableView
             tableYearSelection={tableYearSelection}
-            filters={filters}
+            filters={viewFilters}
             refreshKey={refreshKey}
             createOptions={createOptions}
             hideContent={selectedView !== 'table'}
@@ -650,27 +656,29 @@ export function HomePage() {
               </div>
             </CheckboxFilterSection>
 
-            <AddRaceDrawer
-              createOptions={createOptions}
-              onCreated={() => Promise.resolve()}
-              onCreateOptionsChange={(nextOptions) => {
-                setCreateOptions(nextOptions)
-                setFilterOptions((current) => ({
-                  ...current,
-                  raceTypes: nextOptions.raceTypes,
-                }))
-                setFilters((current) => ({
-                  ...current,
-                  raceTypeIds: current.raceTypeIds.filter((raceTypeId) => (
-                    nextOptions.raceTypes.some((raceType) => raceType.id === raceTypeId)
-                  )),
-                }))
-              }}
-              hideTrigger
-              forceManageOptionType={managedOptionModalType}
-              onManageOptionModalClose={() => setManagedOptionModalType(null)}
-              onClose={() => setManagedOptionModalType(null)}
-            />
+            {managedOptionModalType ? (
+              <AddRaceDrawer
+                createOptions={createOptions}
+                onCreated={() => Promise.resolve()}
+                onCreateOptionsChange={(nextOptions) => {
+                  setCreateOptions(nextOptions)
+                  setFilterOptions((current) => ({
+                    ...current,
+                    raceTypes: nextOptions.raceTypes,
+                  }))
+                  setFilters((current) => ({
+                    ...current,
+                    raceTypeIds: current.raceTypeIds.filter((raceTypeId) => (
+                      nextOptions.raceTypes.some((raceType) => raceType.id === raceTypeId)
+                    )),
+                  }))
+                }}
+                hideTrigger
+                forceManageOptionType={managedOptionModalType}
+                onManageOptionModalClose={() => setManagedOptionModalType(null)}
+                onClose={() => setManagedOptionModalType(null)}
+              />
+            ) : null}
           </div>
         </aside>
       </div>

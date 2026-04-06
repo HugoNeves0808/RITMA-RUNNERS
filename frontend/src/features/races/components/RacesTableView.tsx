@@ -1,6 +1,6 @@
 import { faChevronDown, faEllipsisVertical, faPenToSquare, faTrashCan } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import dayjs from 'dayjs'
 import {
@@ -22,7 +22,7 @@ import {
   fetchRaceTable,
   deleteRace,
 } from '../services/racesTableService'
-import type { RaceFilters } from '../types/raceFilters'
+import { EMPTY_RACE_FILTERS, type RaceFilters } from '../types/raceFilters'
 import type {
   RaceCreateOptions,
   RaceDetailResponse,
@@ -188,32 +188,18 @@ function OverflowTooltip({ title, className, children }: OverflowTooltipProps) {
   const contentRef = useRef<HTMLSpanElement | null>(null)
   const [isOverflowing, setIsOverflowing] = useState(false)
 
-  useEffect(() => {
+  const updateOverflow = () => {
     const element = contentRef.current
     if (!element) {
       return
     }
 
-    const updateOverflow = () => {
-      setIsOverflowing(element.scrollWidth > element.clientWidth || element.scrollHeight > element.clientHeight)
-    }
-
-    updateOverflow()
-
-    if (typeof ResizeObserver === 'undefined') {
-      window.addEventListener('resize', updateOverflow)
-      return () => window.removeEventListener('resize', updateOverflow)
-    }
-
-    const resizeObserver = new ResizeObserver(() => updateOverflow())
-    resizeObserver.observe(element)
-
-    return () => resizeObserver.disconnect()
-  }, [title])
+    setIsOverflowing(element.scrollWidth > element.clientWidth || element.scrollHeight > element.clientHeight)
+  }
 
   return (
     <Tooltip title={isOverflowing ? title : null}>
-      <span ref={contentRef} className={className}>
+      <span ref={contentRef} className={className} onMouseEnter={updateOverflow}>
         {children}
       </span>
     </Tooltip>
@@ -392,26 +378,51 @@ export function RacesTableView({
   const [selectedBucketListRaceType, setSelectedBucketListRaceType] = useState<string | undefined>(undefined)
   const [openYearSections, setOpenYearSections] = useState<Record<number, boolean>>({})
   const [openBucketListSections, setOpenBucketListSections] = useState<Record<string, boolean>>({})
+  const raceDetailsCacheRef = useRef<Map<string, RaceDetailResponse>>(new Map())
+  const hasLoadedTableDataRef = useRef(false)
   const isInListModalOpen = bucketListOpen ?? isInListModalOpenInternal
   const setIsInListModalOpen = onBucketListOpenChange ?? setIsInListModalOpenInternal
+  const shouldLoadTableData = !hideContent || isInListModalOpen || !hasLoadedTableDataRef.current
 
-  const visibleYears = tableYearSelection.allRaces
-    ? years
-    : years.filter((yearGroup) => tableYearSelection.selectedYears.includes(yearGroup.year))
-  const visibleInListYears = tableYearSelection.allRaces
-    ? inListYears
-    : inListYears.filter((yearGroup) => tableYearSelection.selectedYears.includes(yearGroup.year))
+  const visibleYears = useMemo(() => (
+    tableYearSelection.allRaces
+      ? years
+      : years.filter((yearGroup) => tableYearSelection.selectedYears.includes(yearGroup.year))
+  ), [tableYearSelection.allRaces, tableYearSelection.selectedYears, years])
+  const visibleInListYears = useMemo(() => (
+    tableYearSelection.allRaces
+      ? inListYears
+      : inListYears.filter((yearGroup) => tableYearSelection.selectedYears.includes(yearGroup.year))
+  ), [inListYears, tableYearSelection.allRaces, tableYearSelection.selectedYears])
   const normalizedSearch = filters.search.trim().toLowerCase()
-  const filteredVisibleYears = filterYearsByRaceName(visibleYears, filters.search)
+  const serverFilters = useMemo(() => ({
+    ...filters,
+    search: '',
+  }), [filters.raceTypeIds, filters.statuses, filters.year])
+  const filteredVisibleYears = useMemo(
+    () => filterYearsByRaceName(visibleYears, filters.search),
+    [filters.search, visibleYears],
+  )
   const allowsUndatedRacesForYearFilter = tableYearSelection.allRaces
-  const filteredVisibleInListYears = filterYearsByRaceName(visibleInListYears, filters.search)
-  const filteredDatedInListRaces = extractRacesByStatus(filteredVisibleInListYears, 'IN_LIST')
-  const filteredUndatedRaces = !allowsUndatedRacesForYearFilter
-    ? []
-    : normalizedSearch
-    ? undatedRaces.filter((race) => race.name.toLowerCase().includes(normalizedSearch))
-    : undatedRaces
-  const filteredInListRaces = sortInListRaces([...filteredDatedInListRaces, ...filteredUndatedRaces])
+  const filteredVisibleInListYears = useMemo(
+    () => filterYearsByRaceName(visibleInListYears, filters.search),
+    [filters.search, visibleInListYears],
+  )
+  const filteredDatedInListRaces = useMemo(
+    () => extractRacesByStatus(filteredVisibleInListYears, 'IN_LIST'),
+    [filteredVisibleInListYears],
+  )
+  const filteredUndatedRaces = useMemo(() => (
+    !allowsUndatedRacesForYearFilter
+      ? []
+      : normalizedSearch
+      ? undatedRaces.filter((race) => race.name.toLowerCase().includes(normalizedSearch))
+      : undatedRaces
+  ), [allowsUndatedRacesForYearFilter, normalizedSearch, undatedRaces])
+  const filteredInListRaces = useMemo(
+    () => sortInListRaces([...filteredDatedInListRaces, ...filteredUndatedRaces]),
+    [filteredDatedInListRaces, filteredUndatedRaces],
+  )
   const bucketListGroups = useMemo(() => {
     const groupMap = new Map<string, RaceTableItem[]>()
 
@@ -430,46 +441,54 @@ export function RacesTableView({
       .map(([raceTypeName, races]) => ({ raceTypeName, races }))
       .sort((left, right) => left.raceTypeName.localeCompare(right.raceTypeName))
   }, [filteredInListRaces])
-  const visibleBucketListGroups = selectedBucketListRaceType
-    ? bucketListGroups.filter((group) => group.raceTypeName === selectedBucketListRaceType)
-    : bucketListGroups
-  const allVisibleRaces = visibleYears.flatMap((yearGroup) => yearGroup.races)
-  const weekUpcomingRaces = allVisibleRaces
-    .filter((race) => isUpcomingRace(race, now))
-    .sort((left, right) => getRaceDateTime(left).diff(getRaceDateTime(right)))
-  const baseUpcomingRaces = weekUpcomingRaces.length > 0
-    ? weekUpcomingRaces
-    : getFallbackUpcomingRaces(allVisibleRaces, now)
-  const upcomingRaces = normalizedSearch
-    ? baseUpcomingRaces.filter((race) => race.name.toLowerCase().includes(normalizedSearch))
-    : baseUpcomingRaces
-  const yearsWithoutInList = removeRacesByStatus(filteredVisibleYears, 'IN_LIST')
-  const regularYears = removeUpcomingRaces(yearsWithoutInList, new Set(upcomingRaces.map((race) => race.id)))
+  const visibleBucketListGroups = useMemo(() => (
+    selectedBucketListRaceType
+      ? bucketListGroups.filter((group) => group.raceTypeName === selectedBucketListRaceType)
+      : bucketListGroups
+  ), [bucketListGroups, selectedBucketListRaceType])
+  const allVisibleRaces = useMemo(
+    () => visibleYears.flatMap((yearGroup) => yearGroup.races),
+    [visibleYears],
+  )
+  const weekUpcomingRaces = useMemo(
+    () => allVisibleRaces
+      .filter((race) => isUpcomingRace(race, now))
+      .sort((left, right) => getRaceDateTime(left).diff(getRaceDateTime(right))),
+    [allVisibleRaces, now],
+  )
+  const baseUpcomingRaces = useMemo(
+    () => (weekUpcomingRaces.length > 0 ? weekUpcomingRaces : getFallbackUpcomingRaces(allVisibleRaces, now)),
+    [allVisibleRaces, now, weekUpcomingRaces],
+  )
+  const upcomingRaces = useMemo(() => (
+    normalizedSearch
+      ? baseUpcomingRaces.filter((race) => race.name.toLowerCase().includes(normalizedSearch))
+      : baseUpcomingRaces
+  ), [baseUpcomingRaces, normalizedSearch])
+  const yearsWithoutInList = useMemo(
+    () => removeRacesByStatus(filteredVisibleYears, 'IN_LIST'),
+    [filteredVisibleYears],
+  )
+  const regularYears = useMemo(
+    () => removeUpcomingRaces(yearsWithoutInList, new Set(upcomingRaces.map((race) => race.id))),
+    [upcomingRaces, yearsWithoutInList],
+  )
   const loadTableData = async () => {
     if (!token) {
       setYears([])
-      setInListYears([])
-      setUndatedRaces([])
       setIsLoading(false)
       return
     }
 
     try {
       setIsLoading(true)
-      const [tablePayload, undatedPayload] = await Promise.all([
-        fetchRaceTable(token, {
-          ...filters,
-        }),
-        fetchRaceTable(token, {
-          ...filters,
-          statuses: ['IN_LIST'],
-        }),
-      ])
+      const tablePayload = await fetchRaceTable(token, {
+        ...serverFilters,
+      })
 
       setYears(tablePayload.years ?? [])
-      setInListYears(undatedPayload?.years ?? [])
-      setUndatedRaces(undatedPayload?.undatedRaces ?? [])
       setError(null)
+      hasLoadedTableDataRef.current = true
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Unknown error')
     } finally {
@@ -478,20 +497,53 @@ export function RacesTableView({
   }
 
   useEffect(() => {
+    if (!shouldLoadTableData) {
+      return
+    }
+
     void loadTableData()
-  }, [filters, refreshKey, token])
+  }, [refreshKey, serverFilters, shouldLoadTableData, token])
 
   useEffect(() => {
+    if (!token) {
+      setInListYears([])
+      setUndatedRaces([])
+      return
+    }
+
+    const loadBucketListData = async () => {
+      try {
+        const bucketListPayload = await fetchRaceTable(token, {
+          ...EMPTY_RACE_FILTERS,
+          statuses: ['IN_LIST'],
+        })
+
+        setInListYears(bucketListPayload.years ?? [])
+        setUndatedRaces(bucketListPayload.undatedRaces ?? [])
+      } catch {
+        setInListYears([])
+        setUndatedRaces([])
+      }
+    }
+
+    void loadBucketListData()
+  }, [refreshKey, token])
+
+  useEffect(() => {
+    if (hideContent) {
+      return
+    }
+
     const intervalId = window.setInterval(() => {
       setNow(dayjs())
-    }, 1000)
+    }, 60000)
 
     return () => window.clearInterval(intervalId)
-  }, [])
+  }, [hideContent])
 
   useEffect(() => {
-    onBucketListCountChange?.(filteredInListRaces.length)
-  }, [filteredInListRaces.length, onBucketListCountChange])
+    onBucketListCountChange?.(inListYears.flatMap((yearGroup) => yearGroup.races).length + undatedRaces.length)
+  }, [inListYears, onBucketListCountChange, undatedRaces.length])
 
   useEffect(() => {
     setOpenBucketListSections((current) => {
@@ -525,36 +577,52 @@ export function RacesTableView({
     })
   }, [regularYears])
 
-  const handleOpenEdit = async (race: RaceTableItem) => {
+  const handleOpenEdit = useCallback(async (race: RaceTableItem) => {
     if (!token) {
       return
     }
 
     try {
-      setIsPreparingEdit(true)
+      const cachedDetails = raceDetailsCacheRef.current.get(race.id)
+      setIsPreparingEdit(!cachedDetails)
       setError(null)
       setReturnToDetailsAfterEditClose(false)
-      const details = await fetchRaceDetail(race.id, token)
-      setEditingRace(details)
+      setEditingRace(cachedDetails ?? null)
       setIsEditDrawerOpen(true)
+
+      if (cachedDetails) {
+        return
+      }
+
+      const details = await fetchRaceDetail(race.id, token)
+      raceDetailsCacheRef.current.set(race.id, details)
+      setEditingRace(details)
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Could not load this race for editing right now.')
     } finally {
       setIsPreparingEdit(false)
     }
-  }
+  }, [token])
 
-  const handleOpenDetails = async (race: RaceTableItem) => {
+  const handleOpenDetails = useCallback(async (race: RaceTableItem) => {
     if (!token) {
       return
     }
 
     try {
+      const cachedDetails = raceDetailsCacheRef.current.get(race.id)
       setIsDetailsOpen(true)
-      setIsDetailsLoading(true)
       setDetailsError(null)
       setSelectedDetailsRace(race)
+      setRaceDetails(cachedDetails ?? null)
+      setIsDetailsLoading(!cachedDetails)
+
+      if (cachedDetails) {
+        return
+      }
+
       const details = await fetchRaceDetail(race.id, token)
+      raceDetailsCacheRef.current.set(race.id, details)
       setRaceDetails(details)
     } catch (loadError) {
       setRaceDetails(null)
@@ -562,13 +630,13 @@ export function RacesTableView({
     } finally {
       setIsDetailsLoading(false)
     }
-  }
+  }, [token])
 
-  const handleRequestDelete = (race: RaceTableItem) => {
+  const handleRequestDelete = useCallback((race: RaceTableItem) => {
     setRacePendingDelete(race)
-  }
+  }, [])
 
-  const handleConfirmDelete = async () => {
+  const handleConfirmDelete = useCallback(async () => {
     if (!token || !racePendingDelete) {
       return
     }
@@ -577,6 +645,7 @@ export function RacesTableView({
       setIsDeletingRace(true)
       setError(null)
       await deleteRace(racePendingDelete.id, token)
+      raceDetailsCacheRef.current.delete(racePendingDelete.id)
       setRacePendingDelete(null)
       setIsDetailsOpen(false)
       setRaceDetails(null)
@@ -588,9 +657,9 @@ export function RacesTableView({
     } finally {
       setIsDeletingRace(false)
     }
-  }
+  }, [loadTableData, racePendingDelete, token])
 
-  const getRaceActionsMenu = (race: RaceTableItem) => ({
+  const getRaceActionsMenu = useCallback((race: RaceTableItem) => ({
     items: [
       {
         key: 'edit',
@@ -617,10 +686,10 @@ export function RacesTableView({
         handleRequestDelete(race)
       }
     },
-  })
+  }), [handleOpenEdit, handleRequestDelete])
 
-  return (
-    <Card className={styles.pageCard} variant="borderless" style={hideContent ? { display: 'none' } : undefined}>
+  const tableContent = useMemo(() => (
+    <>
       {isLoading ? (
         <div className={styles.loadingState}>
           <Space size="middle">
@@ -680,13 +749,13 @@ export function RacesTableView({
                         <span className={styles.dateBadgeMonth}>{getCompactMonthLabel(race.raceDate)}</span>
                       </div>
 
-                        <div className={styles.raceContent}>
-                          <div className={styles.raceTopRow}>
-                            <div className={styles.raceTitleBlock}>
-                              <OverflowTooltip title={race.name} className={styles.raceCardTitle}>
-                                {race.name}
-                              </OverflowTooltip>
-                            </div>
+                      <div className={styles.raceContent}>
+                        <div className={styles.raceTopRow}>
+                          <div className={styles.raceTitleBlock}>
+                            <OverflowTooltip title={race.name} className={styles.raceCardTitle}>
+                              {race.name}
+                            </OverflowTooltip>
+                          </div>
 
                           <div className={styles.raceTopMeta}>
                             <span className={`${styles.raceStatusBadge} ${getRaceStatusClassName(race.raceStatus)}`.trim()}>
@@ -750,7 +819,6 @@ export function RacesTableView({
                               )}
                             </div>
                           </div>
-
                         </div>
                       </div>
                     </article>
@@ -787,112 +855,137 @@ export function RacesTableView({
 
           {(openYearSections[yearGroup.year] ?? true) ? (
             <div className={styles.yearCard}>
-            {groupRacesByMonth(yearGroup.races).map((monthGroup) => (
-              <div key={monthGroup.key} className={styles.monthSection}>
-                <div className={styles.raceList}>
-                  {monthGroup.races.map((race) => {
-                    const isTodayRace = race.raceDate === now.format('YYYY-MM-DD')
+              {groupRacesByMonth(yearGroup.races).map((monthGroup) => (
+                <div key={monthGroup.key} className={styles.monthSection}>
+                  <div className={styles.raceList}>
+                    {monthGroup.races.map((race) => {
+                      const isTodayRace = race.raceDate === now.format('YYYY-MM-DD')
 
-                    return (
-                      <article
-                        key={race.id}
-                        className={isTodayRace ? `${styles.raceRow} ${styles.raceRowToday}` : styles.raceRow}
-                        onClick={() => void handleOpenDetails(race)}
-                      >
-                        <div className={styles.dateBadge}>
-                          <span className={styles.dateBadgeDay}>{getDayLabel(race.raceDate)}</span>
-                          <span className={styles.dateBadgeMonth}>{getCompactMonthLabel(race.raceDate)}</span>
-                        </div>
-
-                        <div className={styles.raceContent}>
-                          <div className={styles.raceTopRow}>
-                            <div className={styles.raceTitleBlock}>
-                              <OverflowTooltip title={race.name} className={styles.raceCardTitle}>
-                                {race.name}
-                              </OverflowTooltip>
-                            </div>
-
-                            <div className={styles.raceTopMeta}>
-                              <span className={`${styles.raceStatusBadge} ${getRaceStatusClassName(race.raceStatus)}`.trim()}>
-                                {getRaceStatusLabel(race.raceStatus)}
-                              </span>
-                              <Dropdown
-                                menu={getRaceActionsMenu(race)}
-                                trigger={['click']}
-                                placement="bottomRight"
-                              >
-                                <Button
-                                  type="text"
-                                  className={styles.moreAction}
-                                  aria-label="Race actions"
-                                  icon={<FontAwesomeIcon icon={faEllipsisVertical} />}
-                                  onClick={(event) => event.stopPropagation()}
-                                />
-                              </Dropdown>
-                            </div>
+                      return (
+                        <article
+                          key={race.id}
+                          className={isTodayRace ? `${styles.raceRow} ${styles.raceRowToday}` : styles.raceRow}
+                          onClick={() => void handleOpenDetails(race)}
+                        >
+                          <div className={styles.dateBadge}>
+                            <span className={styles.dateBadgeDay}>{getDayLabel(race.raceDate)}</span>
+                            <span className={styles.dateBadgeMonth}>{getCompactMonthLabel(race.raceDate)}</span>
                           </div>
 
-                          <div className={styles.raceBottomRow}>
-                            <div className={styles.metricsGrid}>
-                              <div className={styles.metricItem}>
-                                <span className={styles.metricLabel}>Location</span>
-                                {renderMetricValueWithTooltip(
-                                  race.location ?? <span className={styles.emptyValue}>-</span>,
-                                  race.location ?? '-',
-                                )}
+                          <div className={styles.raceContent}>
+                            <div className={styles.raceTopRow}>
+                              <div className={styles.raceTitleBlock}>
+                                <OverflowTooltip title={race.name} className={styles.raceCardTitle}>
+                                  {race.name}
+                                </OverflowTooltip>
                               </div>
 
-                              <div className={styles.metricItem}>
-                                <span className={styles.metricLabel}>Race type</span>
-                                {renderMetricValueWithTooltip(
-                                  race.raceTypeName ?? <span className={styles.emptyValue}>-</span>,
-                                  race.raceTypeName ?? '-',
-                                )}
-                              </div>
-
-                              <div className={styles.metricItem}>
-                                <span className={styles.metricLabel}>Official time</span>
-                                {renderMetricValueWithTooltip(
-                                  formatDuration(race.officialTimeSeconds),
-                                  formatDurationText(race.officialTimeSeconds),
-                                )}
-                              </div>
-
-                              <div className={styles.metricItem}>
-                                <span className={styles.metricLabel}>Chip time</span>
-                                {renderMetricValueWithTooltip(
-                                  formatDuration(race.chipTimeSeconds),
-                                  formatDurationText(race.chipTimeSeconds),
-                                )}
-                              </div>
-
-                              <div className={styles.metricItem}>
-                                <span className={styles.metricLabel}>Pace per km</span>
-                                {renderMetricValueWithTooltip(
-                                  formatPace(race.pacePerKmSeconds),
-                                  formatPaceText(race.pacePerKmSeconds),
-                                )}
+                              <div className={styles.raceTopMeta}>
+                                <span className={`${styles.raceStatusBadge} ${getRaceStatusClassName(race.raceStatus)}`.trim()}>
+                                  {getRaceStatusLabel(race.raceStatus)}
+                                </span>
+                                <Dropdown
+                                  menu={getRaceActionsMenu(race)}
+                                  trigger={['click']}
+                                  placement="bottomRight"
+                                >
+                                  <Button
+                                    type="text"
+                                    className={styles.moreAction}
+                                    aria-label="Race actions"
+                                    icon={<FontAwesomeIcon icon={faEllipsisVertical} />}
+                                    onClick={(event) => event.stopPropagation()}
+                                  />
+                                </Dropdown>
                               </div>
                             </div>
 
+                            <div className={styles.raceBottomRow}>
+                              <div className={styles.metricsGrid}>
+                                <div className={styles.metricItem}>
+                                  <span className={styles.metricLabel}>Location</span>
+                                  {renderMetricValueWithTooltip(
+                                    race.location ?? <span className={styles.emptyValue}>-</span>,
+                                    race.location ?? '-',
+                                  )}
+                                </div>
+
+                                <div className={styles.metricItem}>
+                                  <span className={styles.metricLabel}>Race type</span>
+                                  {renderMetricValueWithTooltip(
+                                    race.raceTypeName ?? <span className={styles.emptyValue}>-</span>,
+                                    race.raceTypeName ?? '-',
+                                  )}
+                                </div>
+
+                                <div className={styles.metricItem}>
+                                  <span className={styles.metricLabel}>Official time</span>
+                                  {renderMetricValueWithTooltip(
+                                    formatDuration(race.officialTimeSeconds),
+                                    formatDurationText(race.officialTimeSeconds),
+                                  )}
+                                </div>
+
+                                <div className={styles.metricItem}>
+                                  <span className={styles.metricLabel}>Chip time</span>
+                                  {renderMetricValueWithTooltip(
+                                    formatDuration(race.chipTimeSeconds),
+                                    formatDurationText(race.chipTimeSeconds),
+                                  )}
+                                </div>
+
+                                <div className={styles.metricItem}>
+                                  <span className={styles.metricLabel}>Pace per km</span>
+                                  {renderMetricValueWithTooltip(
+                                    formatPace(race.pacePerKmSeconds),
+                                    formatPaceText(race.pacePerKmSeconds),
+                                  )}
+                                </div>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </article>
-                    )
-                  })}
+                        </article>
+                      )
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
             </div>
           ) : null}
         </section>
       )) : null}
+    </>
+  ), [
+    currentYear,
+    error,
+    filteredInListRaces.length,
+    filteredVisibleYears.length,
+    getRaceActionsMenu,
+    handleOpenDetails,
+    inListYears.length,
+    isLoading,
+    isPreparingEdit,
+    now,
+    openYearSections,
+    regularYears,
+    tableYearSelection,
+    upcomingRaces,
+    undatedRaces.length,
+    visibleInListYears.length,
+    visibleYears,
+    years.length,
+  ])
+
+  return (
+    <Card className={styles.pageCard} variant="borderless" style={hideContent ? { display: 'none' } : undefined}>
+      {tableContent}
 
       <AddRaceDrawer
         mode="edit"
         open={isEditDrawerOpen}
         raceId={editingRace?.id ?? null}
         initialRace={editingRace}
+        isLoadingInitialRace={isPreparingEdit}
         createOptions={createOptions}
         onCreateOptionsChange={onCreateOptionsChange}
         onClose={() => {
@@ -905,6 +998,9 @@ export function RacesTableView({
         }}
         onCreated={async () => {
           setIsEditDrawerOpen(false)
+          if (editingRace?.id) {
+            raceDetailsCacheRef.current.delete(editingRace.id)
+          }
           setEditingRace(null)
           setReturnToDetailsAfterEditClose(false)
           await loadTableData()

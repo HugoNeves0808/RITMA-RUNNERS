@@ -15,6 +15,7 @@ import {
   InputNumber,
   Modal,
   Select,
+  Spin,
   Space,
   Tabs,
   TimePicker,
@@ -62,6 +63,7 @@ type AddRaceDrawerProps = {
   open?: boolean
   raceId?: string | null
   initialRace?: RaceDetailResponse | null
+  isLoadingInitialRace?: boolean
   onClose?: () => void
 }
 
@@ -555,6 +557,7 @@ export function AddRaceDrawer({
   open,
   raceId = null,
   initialRace = null,
+  isLoadingInitialRace = false,
   onClose,
 }: AddRaceDrawerProps) {
   const { token } = useAuth()
@@ -702,8 +705,6 @@ export function AddRaceDrawer({
     setIsDiscardModalOpen(false)
     setError(null)
     closeManageOptionsModal()
-    form.resetFields()
-    form.setFieldsValue(initialFormValues)
   }
 
   const handleSaveManagedOption = async () => {
@@ -947,7 +948,7 @@ export function AddRaceDrawer({
         open={isOpen}
         onClose={handleClose}
         className={styles.drawer}
-        destroyOnHidden={false}
+        destroyOnHidden
         extra={(
           <Space>
             <Button className={styles.cancelButton} onClick={handleClose}>Cancel</Button>
@@ -967,6 +968,12 @@ export function AddRaceDrawer({
           />
         ) : null}
 
+        {isEditMode && isLoadingInitialRace && !initialRace ? (
+          <div className={styles.initialLoadingState}>
+            <Spin size="large" />
+            <span className={styles.initialLoadingText}>Loading race editor</span>
+          </div>
+        ) : (
         <Form
           form={form}
           layout="vertical"
@@ -1402,6 +1409,7 @@ export function AddRaceDrawer({
             ]}
           />
         </Form>
+        )}
 
         <Modal
           title="Discard changes?"

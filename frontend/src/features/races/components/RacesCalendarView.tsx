@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Drawer, Tooltip } from 'antd'
 import { useAuth } from '../../auth'
 import { fetchRaceCalendarMonth, fetchRaceCalendarYear } from '../services/racesCalendarService'
@@ -132,13 +132,20 @@ function filterCalendarYearPayload(payload: RaceCalendarYearPayload, search: str
 
 export function RacesCalendarView({ selectedMode, filters, refreshKey = 0 }: RacesCalendarViewProps) {
   const { token } = useAuth()
+  const raceDetailsCacheRef = useRef<Map<string, RaceDetailResponse>>(new Map())
+  const serverFilters = useMemo(() => ({
+    ...filters,
+    search: '',
+  }), [filters.raceTypeIds, filters.statuses, filters.year])
   const [visibleYear, setVisibleYear] = useState(() => new Date().getFullYear())
   const [visibleMonth, setVisibleMonth] = useState(() => {
     const today = new Date()
     return { year: today.getFullYear(), month: today.getMonth() + 1 }
   })
   const [calendarData, setCalendarData] = useState<RaceCalendarMonthPayload | null>(null)
+  const [rawCalendarData, setRawCalendarData] = useState<RaceCalendarMonthPayload | null>(null)
   const [yearCalendarData, setYearCalendarData] = useState<RaceCalendarYearPayload | null>(null)
+  const [rawYearCalendarData, setRawYearCalendarData] = useState<RaceCalendarYearPayload | null>(null)
   const [isMonthlyLoading, setIsMonthlyLoading] = useState(true)
   const [isYearlyLoading, setIsYearlyLoading] = useState(false)
   const [monthlyErrorMessage, setMonthlyErrorMessage] = useState<string | null>(null)
@@ -158,8 +165,8 @@ export function RacesCalendarView({ selectedMode, filters, refreshKey = 0 }: Rac
     const loadMonthlyCalendar = async () => {
       try {
         setIsMonthlyLoading(true)
-        const response = await fetchRaceCalendarMonth(visibleMonth.year, visibleMonth.month, token, filters)
-        setCalendarData(filterCalendarMonthPayload(response, filters.search))
+        const response = await fetchRaceCalendarMonth(visibleMonth.year, visibleMonth.month, token, serverFilters)
+        setRawCalendarData(response)
         setMonthlyErrorMessage(null)
       } catch (error) {
         setMonthlyErrorMessage(
@@ -173,7 +180,7 @@ export function RacesCalendarView({ selectedMode, filters, refreshKey = 0 }: Rac
     }
 
     void loadMonthlyCalendar()
-  }, [filters, refreshKey, selectedMode, token, visibleMonth.month, visibleMonth.year])
+  }, [refreshKey, selectedMode, serverFilters, token, visibleMonth.month, visibleMonth.year])
 
   useEffect(() => {
     if (!token || selectedMode !== 'yearly') {
@@ -183,8 +190,8 @@ export function RacesCalendarView({ selectedMode, filters, refreshKey = 0 }: Rac
     const loadYearlyCalendar = async () => {
       try {
         setIsYearlyLoading(true)
-        const response = await fetchRaceCalendarYear(visibleYear, token, filters)
-        setYearCalendarData(filterCalendarYearPayload(response, filters.search))
+        const response = await fetchRaceCalendarYear(visibleYear, token, serverFilters)
+        setRawYearCalendarData(response)
         setYearlyErrorMessage(null)
       } catch (error) {
         setYearlyErrorMessage(
@@ -198,7 +205,15 @@ export function RacesCalendarView({ selectedMode, filters, refreshKey = 0 }: Rac
     }
 
     void loadYearlyCalendar()
-  }, [filters, refreshKey, selectedMode, token, visibleYear])
+  }, [refreshKey, selectedMode, serverFilters, token, visibleYear])
+
+  useEffect(() => {
+    setCalendarData(rawCalendarData ? filterCalendarMonthPayload(rawCalendarData, filters.search) : null)
+  }, [filters.search, rawCalendarData])
+
+  useEffect(() => {
+    setYearCalendarData(rawYearCalendarData ? filterCalendarYearPayload(rawYearCalendarData, filters.search) : null)
+  }, [filters.search, rawYearCalendarData])
 
   const moveMonth = (direction: -1 | 1) => {
     setVisibleMonth((currentValue) => {
@@ -224,12 +239,19 @@ export function RacesCalendarView({ selectedMode, filters, refreshKey = 0 }: Rac
     }
 
     try {
+      const cachedDetails = raceDetailsCacheRef.current.get(race.id)
       setIsDayDrawerOpen(false)
       setIsDetailsOpen(true)
-      setIsDetailsLoading(true)
+      setIsDetailsLoading(!cachedDetails)
       setDetailsError(null)
-      setRaceDetails(null)
+      setRaceDetails(cachedDetails ?? null)
+
+      if (cachedDetails) {
+        return
+      }
+
       const details = await fetchRaceDetail(race.id, token)
+      raceDetailsCacheRef.current.set(race.id, details)
       setRaceDetails(details)
     } catch (loadError) {
       setRaceDetails(null)

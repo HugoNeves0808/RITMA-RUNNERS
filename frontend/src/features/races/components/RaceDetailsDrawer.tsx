@@ -303,6 +303,7 @@ export function RaceDetailsDrawer({
       ) : null}
       onClose={onClose}
       className={styles.drawer}
+      destroyOnHidden
     >
       {isLoading ? (
         <div className={styles.loadingWrap}>

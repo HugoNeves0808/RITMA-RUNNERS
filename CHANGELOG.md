@@ -11,7 +11,12 @@ This file keeps a short, slightly more detailed record of what was done in each 
 
 ## Entries
 
-### `current` - Restore single-race deletion and document the latest races flow
+### `current` - Improve web races performance and document the latest races flow
+
+- Improved perceived performance in the web `Races` experience by stopping hidden list-mode work while `Calendar` is active, avoiding unnecessary table polling, and only mounting the sidebar race-type management drawer when it is actually opened.
+- Reduced modal and drawer close/open latency in web `Races` by destroying heavy drawer content when hidden, removing synchronous React `flushSync` commits from race-detail open flows, and isolating race-detail state changes from the heavier list rendering path.
+- Reduced repeated list-mode backend work in web `Races` by separating the `Bucket List` fetch from the normal table-filter fetches, so search and filter changes no longer re-request the in-list dataset every time.
+- Lowered list-mode render cost in web `Races` by replacing per-row overflow observers with on-demand overflow checks, memoizing the main derived race collections, and lazy-loading route pages so the `Races` screen and related pages are no longer bundled into the initial route payload.
 
 - Refined the web `Races` filters so the page now opens with a truly neutral filter state, showing all races without auto-selecting existing `race status` values while still preserving the same refresh-only filter persistence and clear-on-leave behavior.
 - Completed the web `Bucket List` modal actions by adding the same per-race `Edit` and `Delete` menu used in the main `Races` cards, so in-list races now support the full management flow directly from the grouped modal.
