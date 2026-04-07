@@ -141,13 +141,13 @@ Expected response example:
 [
   {
     "id": "uuid",
-    "email": "admin@ritma.com",
+    "email": "admin@example.com",
     "role": "ADMIN",
     "lastLoginAt": "2026-03-17T17:20:00Z"
   },
   {
     "id": "uuid",
-    "email": "user@ritma.com",
+    "email": "runner@example.com",
     "role": "USER",
     "lastLoginAt": null
   }
@@ -173,15 +173,8 @@ This endpoint:
 
 - validates that the account is still pending
 - generates a temporary password
-- sends the approval email with the temporary password and the approved user's email in the greeting
 - changes `account_status` to `ACTIVE`
 - keeps `force_password_change = true`
-
-Approval email behavior:
-
-- subject: `RITMA account access`
-- recipient: approved user's email
-- body confirms approval, includes the generated temporary password, and instructs the user to change password as soon as possible
 
 Postman:
 
@@ -193,7 +186,12 @@ Postman:
 
 Expected response:
 
-- `204 No Content`
+```json
+{
+  "email": "new.user@example.com",
+  "temporaryPassword": "Ab3!kLm9Pq2@"
+}
+```
 
 Practical flow:
 

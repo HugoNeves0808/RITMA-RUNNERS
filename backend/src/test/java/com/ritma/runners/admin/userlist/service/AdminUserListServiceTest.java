@@ -35,13 +35,13 @@ class AdminUserListServiceTest {
         List<AdminUserListItemResponse> expected = List.of(
                 new AdminUserListItemResponse(
                         UUID.randomUUID(),
-                        "admin@ritma.com",
+                        "admin@example.com",
                         "ADMIN",
                         OffsetDateTime.parse("2026-03-17T14:30:00Z")
                 ),
                 new AdminUserListItemResponse(
                         UUID.randomUUID(),
-                        "user@ritma.com",
+                        "runner@example.com",
                         "USER",
                         null
                 )

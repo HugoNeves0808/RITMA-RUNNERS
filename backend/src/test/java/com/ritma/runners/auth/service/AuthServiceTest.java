@@ -57,18 +57,18 @@ class AuthServiceTest {
         UUID userId = UUID.randomUUID();
         AppUser user = new AppUser(
                 userId,
-                "admin@ritma.com",
+                "admin@example.com",
                 "encoded-password",
                 "ADMIN",
                 false,
                 "ACTIVE"
         );
-        when(appUserRepository.findByEmail("admin@ritma.com")).thenReturn(Optional.of(user));
-        when(passwordEncoder.matches("pass1234", "encoded-password")).thenReturn(true);
-        when(jwtService.generateToken(eq(userId), eq("admin@ritma.com"), eq("ADMIN"), anyMap())).thenReturn("jwt-token");
+        when(appUserRepository.findByEmail("admin@example.com")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("StrongPassword123!", "encoded-password")).thenReturn(true);
+        when(jwtService.generateToken(eq(userId), eq("admin@example.com"), eq("ADMIN"), anyMap())).thenReturn("jwt-token");
         when(jwtService.getExpirationMinutes()).thenReturn(120L);
 
-        AuthResponse response = authService.login(new LoginRequest("admin@ritma.com", "pass1234"), "web");
+        AuthResponse response = authService.login(new LoginRequest("admin@example.com", "StrongPassword123!"), "web");
 
         assertEquals("jwt-token", response.token());
         verify(appUserRepository).updateLastLogin(userId);

@@ -47,13 +47,6 @@ For protected endpoints, send:
 Authorization: Bearer {{token}}
 ```
 
-## Seed Accounts
-
-Current seeded accounts:
-
-- `admin@ritma.com` / `pass1234`
-- `user@ritma.com` / `pass1234`
-
 ## Current Access Flow
 
 The current access flow is:
@@ -62,7 +55,7 @@ The current access flow is:
 2. the backend creates the user with `account_status = PENDING`
 3. an admin reviews the request in the admin area
 4. the admin approves or rejects the request
-5. approval sends the temporary password by email and changes the account to `ACTIVE`
+5. approval generates a temporary password for the admin to share securely and changes the account to `ACTIVE`
 6. on first login, the approved user must change password before using the app
 
 ## Related Client Navigation

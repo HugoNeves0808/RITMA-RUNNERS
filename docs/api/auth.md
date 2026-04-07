@@ -14,8 +14,8 @@ Postman:
 
 ```json
 {
-  "email": "admin@ritma.com",
-  "password": "pass1234"
+  "email": "admin@example.com",
+  "password": "StrongPassword123!"
 }
 ```
 
@@ -27,7 +27,7 @@ Expected response example:
   "expiresInMinutes": 10080,
   "user": {
     "id": "uuid",
-    "email": "admin@ritma.com",
+    "email": "admin@example.com",
     "role": "ADMIN",
     "forcePasswordChange": false
   }
@@ -50,18 +50,10 @@ This endpoint:
 - creates a pending `USER`
 - stores an encoded temporary password placeholder
 - sets `force_password_change = true`
-- sends a notification email to the configured RITMA mailbox
 - does not allow login yet
 - does not send credentials yet
 
 The account must be approved by an admin before it becomes active.
-
-Notification email behavior:
-
-- subject: `RITMA ACCOUNT REQUEST - user_email`
-- recipient: `app.mail.notification-to`
-- fallback recipient: `SMTP_USER` when no explicit notification mailbox is configured
-- body includes the new user's email and asks for review in the administration area
 
 Postman:
 
@@ -109,7 +101,7 @@ Expected response example:
 ```json
 {
   "id": "uuid",
-  "email": "user@ritma.com",
+  "email": "runner@example.com",
   "role": "USER",
   "forcePasswordChange": false
 }

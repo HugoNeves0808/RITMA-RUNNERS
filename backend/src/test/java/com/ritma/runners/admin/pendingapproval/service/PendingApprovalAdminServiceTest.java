@@ -47,7 +47,7 @@ class PendingApprovalAdminServiceTest {
                 appUserRepository,
                 passwordEncoder
         );
-        adminUser = new JwtAuthenticatedUser(UUID.randomUUID(), "admin@ritma.com", "ADMIN", false);
+        adminUser = new JwtAuthenticatedUser(UUID.randomUUID(), "admin@example.com", "ADMIN", false);
     }
 
     @Test

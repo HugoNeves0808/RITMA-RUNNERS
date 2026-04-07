@@ -41,7 +41,6 @@ RITMA RUNNERS is now a working multi-client platform for managing running races,
 - Authenticated race listing, calendar, detail, create, update, and delete endpoints
 - Best efforts ranking endpoint
 - Admin overview, user-list, and pending-approval endpoints
-- Seed accounts and mail-backed approval notification support
 
 ## Repository Structure
 
@@ -164,7 +163,7 @@ After startup:
 - open `http://localhost:5173`
 - confirm the login page loads
 - confirm `http://localhost:8081/api/health` responds
-- sign in with a seeded account
+- sign in with an existing account from your local database
 - confirm the authenticated `Races` area opens
 
 Expected health response:
@@ -174,11 +173,6 @@ Expected health response:
   "status": "ok"
 }
 ```
-
-## Seed Accounts
-
-- `admin@ritma.com` / `pass1234`
-- `user@ritma.com` / `pass1234`
 
 ## Useful Commands
 
