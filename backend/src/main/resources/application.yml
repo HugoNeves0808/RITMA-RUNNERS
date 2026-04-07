@@ -29,6 +29,8 @@ spring:
     schemas: public
 
 app:
+  cors:
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173}
   security:
     jwt:
       secret: ${JWT_SECRET:RitmaRunnersJwtSecretKeyForLocalDevelopment1234567890}
@@ -44,4 +46,4 @@ app:
     invite-allowed-domains: ${INVITE_ALLOWED_DOMAINS:}
 
 server:
-  port: 8081
+  port: ${PORT:8081}
