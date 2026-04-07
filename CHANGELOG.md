@@ -1,6 +1,6 @@
 # Changelog
 
-This file keeps a short, slightly more detailed record of what was done in each relevant commit.
+This file keeps a short, slightly more detailed record of what was done in each relevant release or relevant commit.
 
 ## Format
 
@@ -10,6 +10,12 @@ This file keeps a short, slightly more detailed record of what was done in each 
 - Focus on what changed and why it matters
 
 ## Entries
+
+### `1.0.0` - 2026-04-07 - First major project release and completion of phase one
+
+- Formalized `RITMA RUNNERS` as `Release 1.0.0`, marking the end of the first major project phase with a working backend, web client, mobile client, PostgreSQL persistence, and synchronized product documentation.
+- Updated the root project documentation to present the platform as a completed first release instead of an initial setup, including the current feature scope, release framing, setup guidance, and verification flow.
+- Updated the API documentation to align the documented flows with the current authenticated product behavior, the current local release framing, and the latest backend/runtime notes used by the project.
 
 ### `current` - Improve web races performance and document the latest races flow
 

@@ -540,6 +540,7 @@ export function RacesTableView({
   const [undatedRaces, setUndatedRaces] = useState<RaceTableItem[]>([])
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isBucketListLoading, setIsBucketListLoading] = useState(false)
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false)
   const [isPreparingEdit, setIsPreparingEdit] = useState(false)
   const [editingRace, setEditingRace] = useState<RaceDetailResponse | null>(null)
@@ -650,6 +651,32 @@ export function RacesTableView({
     () => removeUpcomingRaces(yearsWithoutInList, new Set(upcomingRaces.map((race) => race.id))),
     [upcomingRaces, yearsWithoutInList],
   )
+
+  const loadBucketListData = useCallback(async () => {
+    if (!token) {
+      setInListYears([])
+      setUndatedRaces([])
+      setIsBucketListLoading(false)
+      return
+    }
+
+    try {
+      setIsBucketListLoading(true)
+      const bucketListPayload = await fetchRaceTable(token, {
+        ...EMPTY_RACE_FILTERS,
+        statuses: ['IN_LIST'],
+      })
+
+      setInListYears(bucketListPayload.years ?? [])
+      setUndatedRaces(bucketListPayload.undatedRaces ?? [])
+    } catch {
+      setInListYears([])
+      setUndatedRaces([])
+    } finally {
+      setIsBucketListLoading(false)
+    }
+  }, [token])
+
   const loadTableData = async () => {
     if (!token) {
       setYears([])
@@ -682,29 +709,8 @@ export function RacesTableView({
   }, [refreshKey, serverFilters, shouldLoadTableData, token])
 
   useEffect(() => {
-    if (!token) {
-      setInListYears([])
-      setUndatedRaces([])
-      return
-    }
-
-    const loadBucketListData = async () => {
-      try {
-        const bucketListPayload = await fetchRaceTable(token, {
-          ...EMPTY_RACE_FILTERS,
-          statuses: ['IN_LIST'],
-        })
-
-        setInListYears(bucketListPayload.years ?? [])
-        setUndatedRaces(bucketListPayload.undatedRaces ?? [])
-      } catch {
-        setInListYears([])
-        setUndatedRaces([])
-      }
-    }
-
     void loadBucketListData()
-  }, [refreshKey, token])
+  }, [loadBucketListData, refreshKey])
 
   useEffect(() => {
     if (hideContent) {
@@ -828,13 +834,16 @@ export function RacesTableView({
       setRaceDetails(null)
       setSelectedDetailsRace(null)
       setDetailsError(null)
-      await loadTableData()
+      await Promise.all([
+        loadTableData(),
+        loadBucketListData(),
+      ])
     } catch (deleteError) {
       setError(deleteError instanceof Error ? deleteError.message : 'Could not delete this race right now.')
     } finally {
       setIsDeletingRace(false)
     }
-  }, [loadTableData, racePendingDelete, token])
+  }, [loadBucketListData, loadTableData, racePendingDelete, token])
 
   const getRaceActionsMenu = useCallback((race: RaceTableItem) => ({
     items: [
@@ -1117,13 +1126,68 @@ export function RacesTableView({
           }
         }}
         onCreated={async () => {
+          const editedRaceId = editingRace?.id ?? selectedDetailsRace?.id ?? null
+          const shouldReturnToDetails = returnToDetailsAfterEditClose && editedRaceId !== null
+
           setIsEditDrawerOpen(false)
-          if (editingRace?.id) {
-            raceDetailsCacheRef.current.delete(editingRace.id)
-          }
           setEditingRace(null)
+
+          if (editedRaceId) {
+            raceDetailsCacheRef.current.delete(editedRaceId)
+          }
+
+          if (shouldReturnToDetails) {
+            setIsDetailsOpen(true)
+            setIsDetailsLoading(true)
+            setDetailsError(null)
+          }
+
           setReturnToDetailsAfterEditClose(false)
-          await loadTableData()
+
+          try {
+            await Promise.all([
+              loadTableData(),
+              loadBucketListData(),
+            ])
+
+            if (!editedRaceId || !token) {
+              return
+            }
+
+            const updatedDetails = await fetchRaceDetail(editedRaceId, token)
+            raceDetailsCacheRef.current.set(editedRaceId, updatedDetails)
+            setRaceDetails(updatedDetails)
+            setSelectedDetailsRace((current) => (
+              current && current.id === editedRaceId
+                ? {
+                  ...current,
+                  raceDate: updatedDetails.race.raceDate,
+                  raceTime: updatedDetails.race.raceTime,
+                  raceStatus: updatedDetails.race.raceStatus,
+                  name: updatedDetails.race.name,
+                  location: updatedDetails.race.location,
+                  circuitId: updatedDetails.race.circuitId,
+                  circuitName: updatedDetails.race.circuitName,
+                  raceTypeId: updatedDetails.race.raceTypeId,
+                  raceTypeName: updatedDetails.race.raceTypeName,
+                  officialTimeSeconds: updatedDetails.results.officialTimeSeconds,
+                  chipTimeSeconds: updatedDetails.results.chipTimeSeconds,
+                  pacePerKmSeconds: updatedDetails.results.pacePerKmSeconds,
+                }
+                : current
+            ))
+          } catch (loadError) {
+            if (shouldReturnToDetails) {
+              setRaceDetails(null)
+              setDetailsError(loadError instanceof Error ? loadError.message : 'Could not refresh this race right now.')
+            } else {
+              setError(loadError instanceof Error ? loadError.message : 'Could not refresh this race right now.')
+            }
+          } finally {
+            if (shouldReturnToDetails) {
+              setIsDetailsLoading(false)
+            }
+          }
         }}
       />
 
@@ -1178,7 +1242,16 @@ export function RacesTableView({
         width={860}
       >
         <div className={styles.inListModalList}>
-          {visibleBucketListGroups.map((group) => {
+          {isBucketListLoading ? (
+            <div className={styles.loadingState}>
+              <Space size="middle">
+                <Spin />
+                <span className={styles.loadingText}>Updating bucket list</span>
+              </Space>
+            </div>
+          ) : null}
+
+          {!isBucketListLoading ? visibleBucketListGroups.map((group) => {
             const isOpen = openBucketListSections[group.raceTypeName] ?? false
 
             return (
@@ -1251,9 +1324,9 @@ export function RacesTableView({
                 ) : null}
               </div>
             )
-          })}
+          }) : null}
 
-          {visibleBucketListGroups.length === 0 ? (
+          {!isBucketListLoading && visibleBucketListGroups.length === 0 ? (
             <Empty description="No bucket-list races found for the current filters." />
           ) : null}
         </div>

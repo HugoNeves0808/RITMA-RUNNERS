@@ -13,9 +13,9 @@
 
     <groupId>com.ritma</groupId>
     <artifactId>ritma-runners-backend</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>1.0.0</version>
     <name>ritma-runners-backend</name>
-    <description>Backend base for RITMA RUNNERS</description>
+    <description>Release 1.0.0 backend for RITMA RUNNERS</description>
 
     <properties>
         <java.version>17</java.version>

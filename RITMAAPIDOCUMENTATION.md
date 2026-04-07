@@ -4,6 +4,13 @@ This document describes the API endpoints currently available in the `RITMA RUNN
 
 It also includes a short summary of the current account-access flow because the frontend now combines login, request-account, admin approval, and forced password change in a single user journey.
 
+## Release Context
+
+- Current release: `1.0.0`
+- Release date: `2026-04-07`
+- Phase status: first major project phase completed
+- API scope: authenticated race management, best efforts, authentication, and admin flows used by both the web and mobile clients
+
 ## Base URL
 
 Use this base URL locally:
@@ -15,6 +22,7 @@ http://localhost:8081
 Current backend note:
 
 - the local datasource and Flyway configuration now explicitly target the `public` schema to avoid PostgreSQL `search_path` issues during startup or after recreating Flyway history
+- the tracked local `.env` currently sets `JWT_EXPIRATION_MINUTES=10080`, while `application.yml` still keeps `120` as the fallback default when no environment override is provided
 
 ## Postman Setup
 
@@ -86,8 +94,6 @@ These are not backend API endpoints, but they are relevant to the current user f
   Admin-only web area for reviewing the active user list with a separate table card and sticky filters card.
 - `/admin-area/pending-approvals`
   Admin-only web area for reviewing pending account approvals with a separate table card and sticky filters card.
-- `/admin/account-requests`
-  Temporary admin frontend page used to review pending accounts.
 
 Authenticated client shell status:
 
@@ -212,6 +218,10 @@ Expected response:
 }
 ```
 
+Current note:
+
+- the endpoint can also return `"degraded"` when the optional health probe is available and reports an unhealthy state
+
 Postman:
 
 - Method: `GET`
@@ -264,7 +274,7 @@ Expected response example:
 ```json
 {
   "token": "jwt-token",
-  "expiresInMinutes": 120,
+  "expiresInMinutes": 10080,
   "user": {
     "id": "uuid",
     "email": "admin@ritma.com",
