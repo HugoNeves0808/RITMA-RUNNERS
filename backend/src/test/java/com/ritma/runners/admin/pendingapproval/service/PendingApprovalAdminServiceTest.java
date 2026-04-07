@@ -1,6 +1,7 @@
 package com.ritma.runners.admin.pendingapproval.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -22,11 +23,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.ritma.runners.admin.pendingapproval.dto.ApprovePendingApprovalResponse;
 import com.ritma.runners.admin.pendingapproval.dto.PendingApprovalResponse;
 import com.ritma.runners.auth.dto.JwtAuthenticatedUser;
 import com.ritma.runners.auth.entity.AppUser;
 import com.ritma.runners.auth.repository.AppUserRepository;
-import com.ritma.runners.mail.service.AccountMailService;
 
 @ExtendWith(MockitoExtension.class)
 class PendingApprovalAdminServiceTest {
@@ -37,9 +38,6 @@ class PendingApprovalAdminServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
-    @Mock
-    private AccountMailService accountMailService;
-
     private PendingApprovalAdminService pendingApprovalAdminService;
     private JwtAuthenticatedUser adminUser;
 
@@ -47,8 +45,7 @@ class PendingApprovalAdminServiceTest {
     void setUp() {
         pendingApprovalAdminService = new PendingApprovalAdminService(
                 appUserRepository,
-                passwordEncoder,
-                accountMailService
+                passwordEncoder
         );
         adminUser = new JwtAuthenticatedUser(UUID.randomUUID(), "admin@ritma.com", "ADMIN", false);
     }
@@ -70,7 +67,7 @@ class PendingApprovalAdminServiceTest {
     }
 
     @Test
-    void approvePendingApprovalSendsTemporaryPasswordAndActivatesUser() {
+    void approvePendingApprovalReturnsTemporaryPasswordAndActivatesUser() {
         UUID userId = UUID.randomUUID();
         AppUser user = new AppUser(
                 userId,
@@ -83,9 +80,11 @@ class PendingApprovalAdminServiceTest {
         when(appUserRepository.findById(userId)).thenReturn(Optional.of(user));
         when(passwordEncoder.encode(anyString())).thenReturn("encoded-password");
 
-        pendingApprovalAdminService.approvePendingApproval(userId, adminUser);
+        ApprovePendingApprovalResponse response = pendingApprovalAdminService.approvePendingApproval(userId, adminUser);
 
-        verify(accountMailService).sendTemporaryPassword(eq("pending@ritma.com"), anyString());
+        assertEquals("pending@ritma.com", response.email());
+        assertNotNull(response.temporaryPassword());
+        assertEquals(12, response.temporaryPassword().length());
         verify(passwordEncoder).encode(anyString());
         verify(appUserRepository).updatePasswordAndStatus(userId, "encoded-password", true, "ACTIVE");
     }
@@ -127,7 +126,6 @@ class PendingApprovalAdminServiceTest {
         );
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
-        verify(accountMailService, never()).sendTemporaryPassword(anyString(), anyString());
         verify(appUserRepository, never()).updatePasswordAndStatus(eq(userId), anyString(), eq(true), eq("ACTIVE"));
     }
 

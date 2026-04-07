@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.ritma.runners.admin.pendingapproval.dto.ApprovePendingApprovalResponse;
 import com.ritma.runners.auth.dto.PendingAccountResponse;
 import com.ritma.runners.auth.dto.JwtAuthenticatedUser;
 import com.ritma.runners.auth.service.AdminAccountRequestService;
@@ -37,11 +38,10 @@ public class AdminAccountRequestController {
     }
 
     @PostMapping("/{userId}/approve")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasRole('ADMIN')")
-    public void approveAccount(@PathVariable UUID userId,
-                               @AuthenticationPrincipal JwtAuthenticatedUser user) {
-        adminAccountRequestService.approveAccount(userId, user);
+    public ApprovePendingApprovalResponse approveAccount(@PathVariable UUID userId,
+                                                         @AuthenticationPrincipal JwtAuthenticatedUser user) {
+        return adminAccountRequestService.approveAccount(userId, user);
     }
 
     @DeleteMapping("/{userId}")

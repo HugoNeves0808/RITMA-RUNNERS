@@ -236,6 +236,39 @@
   background: #2b2b2b !important;
 }
 
+.temporaryPasswordHelp {
+  margin: 0 0 16px;
+  color: #475467;
+}
+
+.temporaryPasswordPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid rgba(16, 24, 40, 0.08);
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.temporaryPasswordPanel + .temporaryPasswordPanel {
+  margin-top: 12px;
+}
+
+.temporaryPasswordLabel {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #667085;
+}
+
+.temporaryPasswordValue {
+  font-size: 18px;
+  font-weight: 700;
+  word-break: break-all;
+}
+
 @media (max-width: 768px) {
   .pageHeader {
     flex-direction: column;

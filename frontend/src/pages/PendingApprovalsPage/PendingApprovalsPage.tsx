@@ -1,7 +1,7 @@
 import { faAngleDown, faAngleUp, faBroom, faMagnifyingGlass, faTriangleExclamation } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
-import { Alert, Button, Card, Checkbox, Empty, Input, Popconfirm, Space, Spin, Table, Typography } from 'antd'
+import { Alert, Button, Card, Checkbox, Empty, Input, Modal, Popconfirm, Space, Spin, Table, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useAuth } from '../../features/auth'
 import { STORAGE_KEYS } from '../../constants/storage'
@@ -145,6 +145,10 @@ export function PendingApprovalsPage() {
   const [search, setSearch] = useState(persistedFilters?.search ?? '')
   const [olderThanThreeDays, setOlderThanThreeDays] = useState(persistedFilters?.olderThanThreeDays ?? false)
   const [isAgeOpen, setIsAgeOpen] = useState(persistedFilters?.isAgeOpen ?? true)
+  const [approvedAccountDetails, setApprovedAccountDetails] = useState<{
+    email: string
+    temporaryPassword: string
+  } | null>(null)
   const deferredSearch = useDeferredValue(search)
   const normalizedSearch = search.trim().toLowerCase()
   const filteredApprovals = approvals.filter((approval) => {
@@ -234,8 +238,9 @@ export function PendingApprovalsPage() {
     setError(null)
 
     try {
-      await approvePendingApproval(userId, token)
+      const approvalResult = await approvePendingApproval(userId, token)
       setApprovals((currentApprovals) => currentApprovals.filter((approval) => approval.id !== userId))
+      setApprovedAccountDetails(approvalResult)
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : 'Unknown error')
     } finally {
@@ -336,6 +341,31 @@ export function PendingApprovalsPage() {
       {error ? (
         <Alert type="error" showIcon message="Could not process pending approvals" description={error} />
       ) : null}
+
+      <Modal
+        open={approvedAccountDetails !== null}
+        title="Temporary password generated"
+        onCancel={() => setApprovedAccountDetails(null)}
+        footer={[
+          <Button key="close" type="primary" onClick={() => setApprovedAccountDetails(null)}>
+            Close
+          </Button>,
+        ]}
+      >
+        <p className={styles.temporaryPasswordHelp}>
+          Share this temporary password securely with the user. They will be asked to change it after sign-in.
+        </p>
+        <div className={styles.temporaryPasswordPanel}>
+          <span className={styles.temporaryPasswordLabel}>User</span>
+          <strong>{approvedAccountDetails?.email}</strong>
+        </div>
+        <div className={styles.temporaryPasswordPanel}>
+          <span className={styles.temporaryPasswordLabel}>Temporary password</span>
+          <Typography.Text copyable={{ text: approvedAccountDetails?.temporaryPassword ?? '' }} className={styles.temporaryPasswordValue}>
+            {approvedAccountDetails?.temporaryPassword}
+          </Typography.Text>
+        </div>
+      </Modal>
 
       <div className={styles.contentLayout}>
         <div className={styles.tableSection}>

@@ -10,11 +10,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.ritma.runners.admin.pendingapproval.dto.ApprovePendingApprovalResponse;
 import com.ritma.runners.admin.pendingapproval.dto.PendingApprovalResponse;
 import com.ritma.runners.auth.dto.JwtAuthenticatedUser;
 import com.ritma.runners.auth.entity.AppUser;
 import com.ritma.runners.auth.repository.AppUserRepository;
-import com.ritma.runners.mail.service.AccountMailService;
 
 @Service
 public class PendingApprovalAdminService {
@@ -27,15 +27,12 @@ public class PendingApprovalAdminService {
 
     private final AppUserRepository appUserRepository;
     private final PasswordEncoder passwordEncoder;
-    private final AccountMailService accountMailService;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public PendingApprovalAdminService(AppUserRepository appUserRepository,
-                                       PasswordEncoder passwordEncoder,
-                                       AccountMailService accountMailService) {
+                                       PasswordEncoder passwordEncoder) {
         this.appUserRepository = appUserRepository;
         this.passwordEncoder = passwordEncoder;
-        this.accountMailService = accountMailService;
     }
 
     public List<PendingApprovalResponse> listPendingApprovals(String search, boolean olderThanThreeDays) {
@@ -43,17 +40,18 @@ public class PendingApprovalAdminService {
     }
 
     @Transactional
-    public void approvePendingApproval(UUID userId, JwtAuthenticatedUser actor) {
+    public ApprovePendingApprovalResponse approvePendingApproval(UUID userId, JwtAuthenticatedUser actor) {
         AppUser user = validatePendingAccount(userId);
         String temporaryPassword = generateTemporaryPassword();
 
-        accountMailService.sendTemporaryPassword(user.email(), temporaryPassword);
         appUserRepository.updatePasswordAndStatus(
                 user.id(),
                 passwordEncoder.encode(temporaryPassword),
                 true,
                 ACCOUNT_ACTIVE
         );
+
+        return new ApprovePendingApprovalResponse(user.email(), temporaryPassword);
     }
 
     @Transactional

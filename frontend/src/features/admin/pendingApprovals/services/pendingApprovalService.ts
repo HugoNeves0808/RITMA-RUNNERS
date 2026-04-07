@@ -1,4 +1,5 @@
 import { apiDeleteWithToken, apiGet, apiPostWithToken } from '../../../../services/apiClient'
+import type { ApprovePendingApprovalResponse } from '../types/pendingApproval'
 
 type PendingAccountApiResponse = {
   id: string
@@ -32,7 +33,7 @@ export function fetchPendingApprovals(token: string, search?: string, olderThanT
 }
 
 export function approvePendingApproval(userId: string, token: string) {
-  return apiPostWithToken<void>(`/api/admin/account-requests/${userId}/approve`, {}, token)
+  return apiPostWithToken<ApprovePendingApprovalResponse>(`/api/admin/account-requests/${userId}/approve`, {}, token)
 }
 
 export function rejectPendingApproval(userId: string, token: string) {

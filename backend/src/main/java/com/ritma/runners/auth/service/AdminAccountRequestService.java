@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 
+import com.ritma.runners.admin.pendingapproval.dto.ApprovePendingApprovalResponse;
 import com.ritma.runners.admin.pendingapproval.dto.PendingApprovalResponse;
 import com.ritma.runners.admin.pendingapproval.service.PendingApprovalAdminService;
 import com.ritma.runners.auth.dto.JwtAuthenticatedUser;
@@ -25,8 +26,8 @@ public class AdminAccountRequestService {
                 .toList();
     }
 
-    public void approveAccount(UUID userId, JwtAuthenticatedUser user) {
-        pendingApprovalAdminService.approvePendingApproval(userId, user);
+    public ApprovePendingApprovalResponse approveAccount(UUID userId, JwtAuthenticatedUser user) {
+        return pendingApprovalAdminService.approvePendingApproval(userId, user);
     }
 
     public void rejectAccount(UUID userId, JwtAuthenticatedUser user) {

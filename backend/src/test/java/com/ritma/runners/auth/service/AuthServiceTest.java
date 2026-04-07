@@ -3,7 +3,6 @@ package com.ritma.runners.auth.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -16,7 +15,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.server.ResponseStatusException;
 
 import com.ritma.runners.auth.dto.AuthResponse;
 import com.ritma.runners.auth.dto.LoginRequest;
@@ -25,7 +23,6 @@ import com.ritma.runners.auth.dto.RequestAccountResponse;
 import com.ritma.runners.auth.entity.AppUser;
 import com.ritma.runners.auth.repository.AppUserRepository;
 import com.ritma.runners.mail.config.MailProperties;
-import com.ritma.runners.mail.service.AccountMailService;
 import com.ritma.runners.security.jwt.JwtService;
 
 @ExtendWith(MockitoExtension.class)
@@ -43,9 +40,6 @@ class AuthServiceTest {
     @Mock
     private MailProperties mailProperties;
 
-    @Mock
-    private AccountMailService accountMailService;
-
     private AuthService authService;
 
     @BeforeEach
@@ -54,8 +48,7 @@ class AuthServiceTest {
                 appUserRepository,
                 passwordEncoder,
                 jwtService,
-                mailProperties,
-                accountMailService
+                mailProperties
         );
     }
 
@@ -83,7 +76,7 @@ class AuthServiceTest {
     }
 
     @Test
-    void requestAccountSucceedsEvenWhenNotificationEmailFails() {
+    void requestAccountCreatesPendingUserWithoutSendingEmail() {
         UUID userId = UUID.randomUUID();
         AppUser user = new AppUser(
                 userId,
@@ -96,14 +89,10 @@ class AuthServiceTest {
         when(appUserRepository.findByEmail("new@ritma.com")).thenReturn(Optional.empty());
         when(passwordEncoder.encode(org.mockito.ArgumentMatchers.anyString())).thenReturn("encoded-password");
         when(appUserRepository.createUser("new@ritma.com", "encoded-password", "USER", true, "PENDING")).thenReturn(user);
-        doThrow(new ResponseStatusException(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE, "Unable to send account email"))
-                .when(accountMailService)
-                .sendAccountRequestNotification("new@ritma.com");
 
         RequestAccountResponse response = authService.requestAccount(new RequestAccountRequest("new@ritma.com"));
 
         assertEquals("Your request has been submitted. An admin must approve the account before sign-in.", response.message());
         verify(appUserRepository).createDefaultUserSettings(userId);
-        verify(accountMailService).sendAccountRequestNotification("new@ritma.com");
     }
 }

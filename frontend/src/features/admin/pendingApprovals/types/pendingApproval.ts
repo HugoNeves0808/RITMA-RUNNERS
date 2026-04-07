@@ -4,3 +4,8 @@ export type PendingApproval = {
   accountStatus: 'PENDING' | 'ACTIVE'
   requestedAt: string
 }
+
+export type ApprovePendingApprovalResponse = {
+  email: string
+  temporaryPassword: string
+}
