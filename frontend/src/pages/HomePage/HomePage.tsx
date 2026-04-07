@@ -326,22 +326,10 @@ export function HomePage() {
   }, [selectedView, tableYearSelection.allRaces, tableYearSelection.selectedYears.length])
 
   useEffect(() => {
-    if (filters.statuses.length === 0) {
-      setIsStatusesOpen(false)
-    }
-  }, [filters.statuses.length])
-
-  useEffect(() => {
     if (filters.statuses.length > 0) {
       setIsStatusesOpen(true)
     }
   }, [filters.statuses.length])
-
-  useEffect(() => {
-    if (filters.raceTypeIds.length === 0) {
-      setIsRaceTypesOpen(false)
-    }
-  }, [filters.raceTypeIds.length])
 
   useEffect(() => {
     if (filters.raceTypeIds.length > 0) {

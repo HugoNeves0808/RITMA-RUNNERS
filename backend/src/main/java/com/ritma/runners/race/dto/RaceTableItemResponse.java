@@ -12,6 +12,8 @@ public record RaceTableItemResponse(
         String raceStatus,
         String name,
         String location,
+        UUID circuitId,
+        String circuitName,
         UUID raceTypeId,
         String raceTypeName,
         Integer officialTimeSeconds,

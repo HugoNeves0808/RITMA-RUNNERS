@@ -633,6 +633,8 @@ Expected response example:
       "raceStatus": "IN_LIST",
       "name": "Possible Autumn Half Marathon",
       "location": "Lisbon, Portugal",
+      "circuitId": null,
+      "circuitName": null,
       "raceTypeId": "uuid",
       "raceTypeName": "Half Marathon",
       "officialTimeSeconds": null,
@@ -649,6 +651,8 @@ Client usage notes:
 - mobile `Races` table consumes the same endpoint, also opens in `Current year` by default, applies race-name search locally in table mode, and uses the same backend-backed status and race-type filters in its compact card layout
 - both clients use `raceStatus` and `raceTime` to drive the `Coming Up` section, which only considers `REGISTERED` races in the current Monday-to-Sunday week or, when none exist, the next future registered race
 - both clients now keep `Coming Up` logically independent from local race-name search, so typing into search no longer redefines which race counts as upcoming; it only filters what is shown
+- the response now includes `circuitId` and `circuitName` for each race row so clients can surface registered-race circuit context directly in list mode without opening race details first
+- the web client now varies list density by race status, keeping cancelled / not-registered / DNS / DNF rows in a compact inline layout while preserving richer metrics for completed and registered races
 - races whose status is `IN_LIST` and do not yet have a `raceDate` are returned in `undatedRaces`; the web client now exposes them through a dedicated `In List (without date)` status filter, renders them in a separate `In List` section after `Coming Up`, and keeps that undated status unavailable in `Calendar` view
 
 ### `GET /api/races/types`

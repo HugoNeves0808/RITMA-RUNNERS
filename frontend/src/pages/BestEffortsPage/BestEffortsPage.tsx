@@ -440,7 +440,7 @@ type ManagedOptionConfirmState =
   | { kind: 'detach-delete'; option: RaceTypeOption }
   | null
 
-type CategoryRacesMode = 'valid' | 'total' | 'excluded'
+type CategoryRacesMode = 'valid' | 'excluded'
 
 function getExcludedItems(category: BestEffortCategory) {
   return category.efforts.filter((item) => !item.validForBestEffortRanking && item.rankingNote !== 'Below category distance')
@@ -452,8 +452,6 @@ function getCategoryScoreBadgeClassName(mode: CategoryRacesMode) {
       return styles.categoryScoreValid
     case 'excluded':
       return styles.categoryScoreExcluded
-    default:
-      return styles.categoryScoreTotal
   }
 }
 
@@ -541,12 +539,6 @@ export function BestEffortsPage() {
     label: raceType.name,
     value: raceType.name,
   }))
-
-  useEffect(() => {
-    if (selectedRaceTypes.length === 0) {
-      setIsRaceTypesOpen(false)
-    }
-  }, [selectedRaceTypes])
 
   useEffect(() => {
     if (selectedRaceTypes.length > 0) {
@@ -725,29 +717,11 @@ export function BestEffortsPage() {
   }
 
   const openCategoryRacesModal = (category: BestEffortCategory, mode: CategoryRacesMode) => {
-    const items = (() => {
-      if (mode === 'valid') {
-        return category.efforts.filter((item) => item.validForBestEffortRanking)
-      }
+    const items = mode === 'valid'
+      ? category.efforts.filter((item) => item.validForBestEffortRanking)
+      : getExcludedItems(category)
 
-      if (mode === 'excluded') {
-        return getExcludedItems(category)
-      }
-
-      return category.efforts
-    })()
-
-    const title = (() => {
-      if (mode === 'valid') {
-        return 'Valid races'
-      }
-
-      if (mode === 'excluded') {
-        return 'Excluded races'
-      }
-
-      return 'All races'
-    })()
+    const title = mode === 'valid' ? 'Valid races' : 'Excluded races'
 
     setCategoryRacesModal({
       categoryName: category.categoryName,
@@ -774,9 +748,7 @@ export function BestEffortsPage() {
 
     const items = currentModal.mode === 'valid'
       ? category.efforts.filter((item) => item.validForBestEffortRanking)
-      : currentModal.mode === 'excluded'
-        ? getExcludedItems(category)
-        : category.efforts
+      : getExcludedItems(category)
 
     setCategoryRacesModal({
       ...currentModal,
@@ -965,16 +937,7 @@ export function BestEffortsPage() {
                         ) : null}
                         <span className={styles.categoryScoreDivider} aria-hidden="true">|</span>
                         <span
-                          className={`${styles.categoryScoreBadge} ${getCategoryScoreBadgeClassName('total')} ${styles.clickableTag}`.trim()}
-                          onClick={() => openCategoryRacesModal(category, 'total')}
-                          onKeyDown={(event) => {
-                            if (event.key === 'Enter' || event.key === ' ') {
-                              event.preventDefault()
-                              openCategoryRacesModal(category, 'total')
-                            }
-                          }}
-                          role="button"
-                          tabIndex={0}
+                          className={`${styles.categoryScoreBadge} ${styles.categoryScoreTotal}`.trim()}
                         >
                           {category.totalEffortCount} total
                         </span>

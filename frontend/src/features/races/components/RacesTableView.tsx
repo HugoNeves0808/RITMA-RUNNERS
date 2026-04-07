@@ -61,6 +61,24 @@ function getCompactMonthLabel(value: string | null) {
   return month.charAt(0).toUpperCase() + month.slice(1).toLowerCase()
 }
 
+function getCompactInlineDateLabel(value: string | null) {
+  if (!value) {
+    return 'No date'
+  }
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
+
+  const day = String(date.getDate()).padStart(2, '0')
+  const month = new Intl.DateTimeFormat('pt-PT', { month: 'short' }).format(date)
+    .replace('.', '')
+  const normalizedMonth = month.charAt(0).toUpperCase() + month.slice(1).toLowerCase()
+
+  return `${day}/${normalizedMonth}`
+}
+
 function getShortDateWithYear(value: string | null) {
   if (!value) {
     return ''
@@ -135,6 +153,45 @@ function getRaceStatusClassName(status: string | null | undefined) {
   }
 }
 
+function getRaceSurfaceClassName(status: string | null | undefined) {
+  switch (status) {
+    case 'REGISTERED':
+      return styles.raceRowRegistered
+    case 'COMPLETED':
+      return styles.raceRowCompleted
+    case 'CANCELLED':
+      return styles.raceRowCancelled
+    case 'DID_NOT_START':
+      return styles.raceRowDns
+    case 'DID_NOT_FINISH':
+      return styles.raceRowDnf
+    default:
+      return ''
+  }
+}
+
+function shouldShowPerformanceMetrics(status: string | null | undefined) {
+  return status === 'COMPLETED'
+}
+
+function shouldUseInlineCompactMeta(status: string | null | undefined) {
+  return status === 'CANCELLED'
+    || status === 'NOT_REGISTERED'
+    || status === 'DID_NOT_START'
+    || status === 'DID_NOT_FINISH'
+}
+
+function shouldHideLocationInCompactMeta(status: string | null | undefined) {
+  return status === 'CANCELLED'
+    || status === 'NOT_REGISTERED'
+    || status === 'DID_NOT_START'
+    || status === 'DID_NOT_FINISH'
+}
+
+function shouldShowRegisteredMeta(status: string | null | undefined) {
+  return status === 'REGISTERED'
+}
+
 function formatDuration(totalSeconds: number | null) {
   if (totalSeconds == null) {
     return <span className={styles.emptyValue}>-</span>
@@ -178,6 +235,22 @@ function formatPaceText(totalSeconds: number | null) {
   return `${minutes}:${String(seconds).padStart(2, '0')} /km`
 }
 
+function formatDisplayTime(value: string | null | undefined) {
+  if (!value) {
+    return '-'
+  }
+
+  const [hoursText = '0', minutesText = '0'] = value.split(':')
+  const hours = Number(hoursText)
+  const minutes = Number(minutesText)
+
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+    return value
+  }
+
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+}
+
 type OverflowTooltipProps = {
   title: string
   className?: string
@@ -211,6 +284,110 @@ function renderMetricValueWithTooltip(value: ReactNode, tooltip: string) {
     <OverflowTooltip title={tooltip} className={styles.metricValue}>
       {value}
     </OverflowTooltip>
+  )
+}
+
+function renderRaceMetrics(race: RaceTableItem) {
+  const showPerformanceMetrics = shouldShowPerformanceMetrics(race.raceStatus)
+  const useInlineCompactMeta = shouldUseInlineCompactMeta(race.raceStatus)
+  const showRegisteredMeta = shouldShowRegisteredMeta(race.raceStatus)
+
+  if (useInlineCompactMeta) {
+    return (
+      <div className={styles.inlineMetaRow}>
+        <span className={styles.inlineMetaLabel}>Location</span>
+        <span className={styles.inlineMetaValue}>{race.location ?? '-'}</span>
+        <span className={styles.inlineMetaDivider}>•</span>
+        <span className={styles.inlineMetaLabel}>Race type</span>
+        <span className={styles.inlineMetaValue}>{race.raceTypeName ?? '-'}</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className={styles.metricsGrid}>
+      <div className={styles.metricItem}>
+        <span className={styles.metricLabel}>Location</span>
+        {renderMetricValueWithTooltip(
+          race.location ?? <span className={styles.emptyValue}>-</span>,
+          race.location ?? '-',
+        )}
+      </div>
+
+      <div className={styles.metricItem}>
+        <span className={styles.metricLabel}>Race type</span>
+        {renderMetricValueWithTooltip(
+          race.raceTypeName ?? <span className={styles.emptyValue}>-</span>,
+          race.raceTypeName ?? '-',
+        )}
+      </div>
+
+      {showRegisteredMeta ? (
+        <>
+          <div className={styles.metricItem}>
+            <span className={styles.metricLabel}>Circuit</span>
+            {renderMetricValueWithTooltip(
+              race.circuitName ?? <span className={styles.emptyValue}>-</span>,
+              race.circuitName ?? '-',
+            )}
+          </div>
+
+          <div className={styles.metricItem}>
+            <span className={styles.metricLabel}>Time</span>
+            {renderMetricValueWithTooltip(
+              formatDisplayTime(race.raceTime),
+              formatDisplayTime(race.raceTime),
+            )}
+          </div>
+        </>
+      ) : null}
+
+      {showPerformanceMetrics ? (
+        <>
+          <div className={styles.metricItem}>
+            <span className={styles.metricLabel}>Official time</span>
+            {renderMetricValueWithTooltip(
+              formatDuration(race.officialTimeSeconds),
+              formatDurationText(race.officialTimeSeconds),
+            )}
+          </div>
+
+          <div className={styles.metricItem}>
+            <span className={styles.metricLabel}>Chip time</span>
+            {renderMetricValueWithTooltip(
+              formatDuration(race.chipTimeSeconds),
+              formatDurationText(race.chipTimeSeconds),
+            )}
+          </div>
+
+          <div className={styles.metricItem}>
+            <span className={styles.metricLabel}>Pace per km</span>
+            {renderMetricValueWithTooltip(
+              formatPace(race.pacePerKmSeconds),
+              formatPaceText(race.pacePerKmSeconds),
+            )}
+          </div>
+        </>
+      ) : null}
+    </div>
+  )
+}
+
+function renderCompactInlineMeta(race: RaceTableItem) {
+  const hideLocation = shouldHideLocationInCompactMeta(race.raceStatus)
+
+  if (hideLocation) {
+    return null
+  }
+
+  return (
+    <div className={styles.compactInlineMeta}>
+      <span className={styles.compactInlineMetaLabel}>Location</span>
+      <span className={styles.compactInlineMetaValue}>{race.location ?? '-'}</span>
+      <span className={styles.compactInlineMetaDivider}>•</span>
+      <span className={styles.compactInlineMetaLabel}>Race type</span>
+      <span className={styles.compactInlineMetaValue}>{race.raceTypeName ?? '-'}</span>
+    </div>
   )
 }
 
@@ -738,23 +915,32 @@ export function RacesTableView({
             <div className={styles.monthSection}>
               <div className={styles.raceList}>
                 {upcomingRaces.map((race) => {
+                  const isCompactInlineCard = shouldUseInlineCompactMeta(race.raceStatus)
+
                   return (
                     <article
                       key={race.id}
-                      className={`${styles.raceRow} ${styles.raceRowComingUp}`.trim()}
+                      className={`${styles.raceRow} ${styles.raceRowComingUp} ${getRaceSurfaceClassName(race.raceStatus)} ${isCompactInlineCard ? styles.raceRowInlineCompact : ''}`.trim()}
                       onClick={() => void handleOpenDetails(race)}
                     >
-                      <div className={styles.dateBadge}>
-                        <span className={styles.dateBadgeDay}>{getDayLabel(race.raceDate)}</span>
-                        <span className={styles.dateBadgeMonth}>{getCompactMonthLabel(race.raceDate)}</span>
-                      </div>
+                      {isCompactInlineCard ? (
+                        <div className={styles.compactDateLabel}>{getCompactInlineDateLabel(race.raceDate)}</div>
+                      ) : (
+                        <div className={styles.dateBadge}>
+                          <span className={styles.dateBadgeDay}>{getDayLabel(race.raceDate)}</span>
+                          <span className={styles.dateBadgeMonth}>{getCompactMonthLabel(race.raceDate)}</span>
+                        </div>
+                      )}
 
                       <div className={styles.raceContent}>
                         <div className={styles.raceTopRow}>
                           <div className={styles.raceTitleBlock}>
-                            <OverflowTooltip title={race.name} className={styles.raceCardTitle}>
-                              {race.name}
-                            </OverflowTooltip>
+                            <div className={isCompactInlineCard ? styles.compactHeaderLine : undefined}>
+                              <OverflowTooltip title={race.name} className={styles.raceCardTitle}>
+                                {race.name}
+                              </OverflowTooltip>
+                              {isCompactInlineCard ? renderCompactInlineMeta(race) : null}
+                            </div>
                           </div>
 
                           <div className={styles.raceTopMeta}>
@@ -777,49 +963,11 @@ export function RacesTableView({
                           </div>
                         </div>
 
-                        <div className={styles.raceBottomRow}>
-                          <div className={styles.metricsGrid}>
-                            <div className={styles.metricItem}>
-                              <span className={styles.metricLabel}>Location</span>
-                              {renderMetricValueWithTooltip(
-                                race.location ?? <span className={styles.emptyValue}>-</span>,
-                                race.location ?? '-',
-                              )}
-                            </div>
-
-                            <div className={styles.metricItem}>
-                              <span className={styles.metricLabel}>Race type</span>
-                              {renderMetricValueWithTooltip(
-                                race.raceTypeName ?? <span className={styles.emptyValue}>-</span>,
-                                race.raceTypeName ?? '-',
-                              )}
-                            </div>
-
-                            <div className={styles.metricItem}>
-                              <span className={styles.metricLabel}>Official time</span>
-                              {renderMetricValueWithTooltip(
-                                formatDuration(race.officialTimeSeconds),
-                                formatDurationText(race.officialTimeSeconds),
-                              )}
-                            </div>
-
-                            <div className={styles.metricItem}>
-                              <span className={styles.metricLabel}>Chip time</span>
-                              {renderMetricValueWithTooltip(
-                                formatDuration(race.chipTimeSeconds),
-                                formatDurationText(race.chipTimeSeconds),
-                              )}
-                            </div>
-
-                            <div className={styles.metricItem}>
-                              <span className={styles.metricLabel}>Pace per km</span>
-                              {renderMetricValueWithTooltip(
-                                formatPace(race.pacePerKmSeconds),
-                                formatPaceText(race.pacePerKmSeconds),
-                              )}
-                            </div>
+                        {!isCompactInlineCard ? (
+                          <div className={styles.raceBottomRow}>
+                            {renderRaceMetrics(race)}
                           </div>
-                        </div>
+                        ) : null}
                       </div>
                     </article>
                   )
@@ -860,24 +1008,34 @@ export function RacesTableView({
                   <div className={styles.raceList}>
                     {monthGroup.races.map((race) => {
                       const isTodayRace = race.raceDate === now.format('YYYY-MM-DD')
+                      const isCompactInlineCard = shouldUseInlineCompactMeta(race.raceStatus)
 
                       return (
                         <article
                           key={race.id}
-                          className={isTodayRace ? `${styles.raceRow} ${styles.raceRowToday}` : styles.raceRow}
+                          className={isTodayRace
+                            ? `${styles.raceRow} ${styles.raceRowToday} ${getRaceSurfaceClassName(race.raceStatus)} ${isCompactInlineCard ? styles.raceRowInlineCompact : ''}`.trim()
+                            : `${styles.raceRow} ${getRaceSurfaceClassName(race.raceStatus)} ${isCompactInlineCard ? styles.raceRowInlineCompact : ''}`.trim()}
                           onClick={() => void handleOpenDetails(race)}
                         >
-                          <div className={styles.dateBadge}>
-                            <span className={styles.dateBadgeDay}>{getDayLabel(race.raceDate)}</span>
-                            <span className={styles.dateBadgeMonth}>{getCompactMonthLabel(race.raceDate)}</span>
-                          </div>
+                          {isCompactInlineCard ? (
+                            <div className={styles.compactDateLabel}>{getCompactInlineDateLabel(race.raceDate)}</div>
+                          ) : (
+                            <div className={styles.dateBadge}>
+                              <span className={styles.dateBadgeDay}>{getDayLabel(race.raceDate)}</span>
+                              <span className={styles.dateBadgeMonth}>{getCompactMonthLabel(race.raceDate)}</span>
+                            </div>
+                          )}
 
                           <div className={styles.raceContent}>
                             <div className={styles.raceTopRow}>
                               <div className={styles.raceTitleBlock}>
-                                <OverflowTooltip title={race.name} className={styles.raceCardTitle}>
-                                  {race.name}
-                                </OverflowTooltip>
+                                <div className={isCompactInlineCard ? styles.compactHeaderLine : undefined}>
+                                  <OverflowTooltip title={race.name} className={styles.raceCardTitle}>
+                                    {race.name}
+                                  </OverflowTooltip>
+                                  {isCompactInlineCard ? renderCompactInlineMeta(race) : null}
+                                </div>
                               </div>
 
                               <div className={styles.raceTopMeta}>
@@ -900,49 +1058,11 @@ export function RacesTableView({
                               </div>
                             </div>
 
-                            <div className={styles.raceBottomRow}>
-                              <div className={styles.metricsGrid}>
-                                <div className={styles.metricItem}>
-                                  <span className={styles.metricLabel}>Location</span>
-                                  {renderMetricValueWithTooltip(
-                                    race.location ?? <span className={styles.emptyValue}>-</span>,
-                                    race.location ?? '-',
-                                  )}
-                                </div>
-
-                                <div className={styles.metricItem}>
-                                  <span className={styles.metricLabel}>Race type</span>
-                                  {renderMetricValueWithTooltip(
-                                    race.raceTypeName ?? <span className={styles.emptyValue}>-</span>,
-                                    race.raceTypeName ?? '-',
-                                  )}
-                                </div>
-
-                                <div className={styles.metricItem}>
-                                  <span className={styles.metricLabel}>Official time</span>
-                                  {renderMetricValueWithTooltip(
-                                    formatDuration(race.officialTimeSeconds),
-                                    formatDurationText(race.officialTimeSeconds),
-                                  )}
-                                </div>
-
-                                <div className={styles.metricItem}>
-                                  <span className={styles.metricLabel}>Chip time</span>
-                                  {renderMetricValueWithTooltip(
-                                    formatDuration(race.chipTimeSeconds),
-                                    formatDurationText(race.chipTimeSeconds),
-                                  )}
-                                </div>
-
-                                <div className={styles.metricItem}>
-                                  <span className={styles.metricLabel}>Pace per km</span>
-                                  {renderMetricValueWithTooltip(
-                                    formatPace(race.pacePerKmSeconds),
-                                    formatPaceText(race.pacePerKmSeconds),
-                                  )}
-                                </div>
+                            {!isCompactInlineCard ? (
+                              <div className={styles.raceBottomRow}>
+                                {renderRaceMetrics(race)}
                               </div>
-                            </div>
+                            ) : null}
                           </div>
                         </article>
                       )

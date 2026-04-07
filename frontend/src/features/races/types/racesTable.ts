@@ -6,6 +6,8 @@ export type RaceTableItem = {
   raceStatus?: string | null
   name: string
   location: string | null
+  circuitId: string | null
+  circuitName: string | null
   raceTypeId: string | null
   raceTypeName: string | null
   officialTimeSeconds: number | null

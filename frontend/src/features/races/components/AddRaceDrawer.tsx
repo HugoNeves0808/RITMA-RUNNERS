@@ -903,8 +903,8 @@ export function AddRaceDrawer({
         await createRace(payload, token)
       }
 
-      closeDrawer()
       await onCreated(payload)
+      closeDrawer()
     } catch (submitError) {
       if (submitError instanceof Error && !('errorFields' in submitError)) {
         const fieldName = getFieldNameFromError(submitError.message)

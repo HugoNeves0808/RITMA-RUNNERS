@@ -82,7 +82,12 @@ export function LoginPage() {
           ) : null}
 
           <Form<LoginFormValues> layout="vertical" onFinish={handleFinish}>
-            <Form.Item label="Email" name="email" rules={[{ required: true, type: 'email' }]}>
+            <Form.Item
+              label="Email"
+              name="email"
+              validateTrigger="onBlur"
+              rules={[{ required: true, type: 'email' }]}
+            >
               <Input placeholder="Enter your email" size="large" />
             </Form.Item>
 

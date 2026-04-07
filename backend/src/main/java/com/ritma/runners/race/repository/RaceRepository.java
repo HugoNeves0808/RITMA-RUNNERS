@@ -96,12 +96,15 @@ public class RaceRepository {
                     ur.race_status::text AS race_status,
                     ur.name,
                     ur.location,
+                    ur.circuit_id,
+                    uc.name AS circuit_name,
                     ur.race_type_id,
                     urt.name AS race_type_name,
                     ur.official_time,
                     ur.chip_time,
                     ur.pace_per_km
                 FROM user_races ur
+                LEFT JOIN user_circuits uc ON uc.id = ur.circuit_id
                 LEFT JOIN user_race_types urt ON urt.id = ur.race_type_id
                 WHERE ur.user_id = ?
                 """);
@@ -126,6 +129,8 @@ public class RaceRepository {
                         rs.getString("race_status"),
                         rs.getString("name"),
                         rs.getString("location"),
+                        rs.getObject("circuit_id", UUID.class),
+                        rs.getString("circuit_name"),
                         rs.getObject("race_type_id", UUID.class),
                         rs.getString("race_type_name"),
                         getNullableInteger(rs, "official_time"),
