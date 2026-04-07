@@ -1,6 +1,5 @@
 package com.ritma.runners.race.service;
 
-import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
