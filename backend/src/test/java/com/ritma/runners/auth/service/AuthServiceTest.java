@@ -3,6 +3,7 @@ package com.ritma.runners.auth.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -15,9 +16,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.ritma.runners.auth.dto.AuthResponse;
 import com.ritma.runners.auth.dto.LoginRequest;
+import com.ritma.runners.auth.dto.RequestAccountRequest;
+import com.ritma.runners.auth.dto.RequestAccountResponse;
 import com.ritma.runners.auth.entity.AppUser;
 import com.ritma.runners.auth.repository.AppUserRepository;
 import com.ritma.runners.mail.config.MailProperties;
@@ -76,5 +80,30 @@ class AuthServiceTest {
         assertEquals("jwt-token", response.token());
         verify(appUserRepository).updateLastLogin(userId);
         verify(appUserRepository).recordUserAccess(userId, "WEB");
+    }
+
+    @Test
+    void requestAccountSucceedsEvenWhenNotificationEmailFails() {
+        UUID userId = UUID.randomUUID();
+        AppUser user = new AppUser(
+                userId,
+                "new@ritma.com",
+                "encoded-password",
+                "USER",
+                true,
+                "PENDING"
+        );
+        when(appUserRepository.findByEmail("new@ritma.com")).thenReturn(Optional.empty());
+        when(passwordEncoder.encode(org.mockito.ArgumentMatchers.anyString())).thenReturn("encoded-password");
+        when(appUserRepository.createUser("new@ritma.com", "encoded-password", "USER", true, "PENDING")).thenReturn(user);
+        doThrow(new ResponseStatusException(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE, "Unable to send account email"))
+                .when(accountMailService)
+                .sendAccountRequestNotification("new@ritma.com");
+
+        RequestAccountResponse response = authService.requestAccount(new RequestAccountRequest("new@ritma.com"));
+
+        assertEquals("Your request has been submitted. An admin must approve the account before sign-in.", response.message());
+        verify(appUserRepository).createDefaultUserSettings(userId);
+        verify(accountMailService).sendAccountRequestNotification("new@ritma.com");
     }
 }

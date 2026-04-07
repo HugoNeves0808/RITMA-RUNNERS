@@ -5,6 +5,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -28,6 +30,8 @@ import static org.springframework.http.HttpStatus.BAD_REQUEST;
 
 @Service
 public class AuthService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(AuthService.class);
 
     private static final String REQUEST_ACCOUNT_SUCCESS_MESSAGE =
             "Your request has been submitted. An admin must approve the account before sign-in.";
@@ -126,7 +130,7 @@ public class AuthService {
                 ACCOUNT_PENDING
         );
         appUserRepository.createDefaultUserSettings(user.id());
-        accountMailService.sendAccountRequestNotification(user.email());
+        sendAccountRequestNotificationBestEffort(user.email());
 
         return new RequestAccountResponse(REQUEST_ACCOUNT_SUCCESS_MESSAGE);
     }
@@ -204,6 +208,14 @@ public class AuthService {
         }
 
         return PLATFORM_UNKNOWN;
+    }
+
+    private void sendAccountRequestNotificationBestEffort(String userEmail) {
+        try {
+            accountMailService.sendAccountRequestNotification(userEmail);
+        } catch (ResponseStatusException exception) {
+            LOGGER.warn("Unable to send account request notification for {}", userEmail, exception);
+        }
     }
 
     private static final class SecureRandomHolder {
