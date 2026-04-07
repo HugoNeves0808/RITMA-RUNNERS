@@ -48,8 +48,7 @@ RITMA RUNNERS is now a working multi-client platform for managing running races,
 - `backend/`: Spring Boot API and Flyway migrations
 - `frontend/`: React + TypeScript web client built with Vite
 - `mobile/`: Expo + React Native mobile client
-- `CHANGELOG.md`: release history and implementation milestones
-- `RITMAAPIDOCUMENTATION.md`: working API reference and flow notes
+- `docs/`: centralized documentation, changelog, and release notes
 
 ## Tech Stack
 
@@ -216,8 +215,12 @@ cd backend
 
 ## Documentation
 
-- See `CHANGELOG.md` for the implementation history and release framing.
-- See `RITMAAPIDOCUMENTATION.md` for endpoint details, authentication flow, and Postman guidance.
+- See `docs/README.md` for the documentation index.
+- See `docs/changelog/README.md` for the release-organized changelog.
+- See `docs/changelog/releases/1.0.0.md` for the release 1 notes.
+- See `docs/api/README.md` for the API documentation index.
+- See `docs/api/overview.md` for setup, access flow, and client navigation notes.
+- See `docs/api/auth.md`, `docs/api/races.md`, `docs/api/best-efforts.md`, `docs/api/admin.md`, and `docs/api/system.md` for the endpoint reference split by domain.
 
 ## Release Summary
 
