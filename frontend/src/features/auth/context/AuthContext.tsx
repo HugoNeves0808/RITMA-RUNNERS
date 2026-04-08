@@ -1,6 +1,12 @@
 import { createContext, useEffect, useState } from 'react'
 import { changePassword, getCurrentUser, loginRequest, logoutRequest } from '../services/authService'
-import { clearStoredToken, getStoredToken, setStoredToken } from '../../../utils/tokenStorage'
+import {
+  clearStoredToken,
+  getStoredToken,
+  isStoredTokenRemembered,
+  persistStoredTokenPreference,
+  setStoredToken,
+} from '../../../utils/tokenStorage'
 import { isApiError } from '../../../services/apiClient'
 import type { AuthenticatedUser, ChangePasswordPayload, LoginPayload } from '../types/auth'
 
@@ -10,7 +16,9 @@ export type AuthContextValue = {
   isAuthenticated: boolean
   isAdmin: boolean
   isLoading: boolean
+  rememberSession: boolean
   login: (payload: LoginPayload, options?: { remember?: boolean }) => Promise<AuthenticatedUser>
+  updateRememberSession: (remember: boolean) => void
   submitPasswordChange: (payload: ChangePasswordPayload) => Promise<void>
   logout: () => void
 }
@@ -21,6 +29,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(() => getStoredToken())
   const [user, setUser] = useState<AuthenticatedUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [rememberSession, setRememberSession] = useState(() => isStoredTokenRemembered())
 
   useEffect(() => {
     const handleUnauthorized = (event: Event) => {
@@ -33,6 +42,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearStoredToken()
       setToken(null)
       setUser(null)
+      setRememberSession(false)
       setIsLoading(false)
     }
 
@@ -59,6 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           clearStoredToken()
           setToken(null)
           setUser(null)
+          setRememberSession(false)
         }
       } finally {
         setIsLoading(false)
@@ -73,7 +84,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setStoredToken(response.token, options?.remember ?? false)
     setToken(response.token)
     setUser(response.user)
+    setRememberSession(options?.remember ?? false)
     return response.user
+  }
+
+  const updateRememberSession = (remember: boolean) => {
+    persistStoredTokenPreference(remember)
+    setRememberSession(remember)
   }
 
   const submitPasswordChange = async (payload: ChangePasswordPayload) => {
@@ -96,6 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearStoredToken()
     setToken(null)
     setUser(null)
+    setRememberSession(false)
   }
 
   return (
@@ -106,7 +124,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated: Boolean(user),
         isAdmin: user?.role === 'ADMIN',
         isLoading,
+        rememberSession,
         login,
+        updateRememberSession,
         submitPasswordChange,
         logout,
       }}

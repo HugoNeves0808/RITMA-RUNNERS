@@ -11,6 +11,7 @@ import {
   Empty,
   type MenuProps,
   Modal,
+  Popconfirm,
   Select,
   Space,
   Spin,
@@ -545,6 +546,7 @@ export function RacesTableView({
   const [isPreparingEdit, setIsPreparingEdit] = useState(false)
   const [editingRace, setEditingRace] = useState<RaceDetailResponse | null>(null)
   const [returnToDetailsAfterEditClose, setReturnToDetailsAfterEditClose] = useState(false)
+  const [returnToBucketListAfterDetailsClose, setReturnToBucketListAfterDetailsClose] = useState(false)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [isDetailsLoading, setIsDetailsLoading] = useState(false)
   const [raceDetails, setRaceDetails] = useState<RaceDetailResponse | null>(null)
@@ -787,12 +789,13 @@ export function RacesTableView({
     }
   }, [token])
 
-  const handleOpenDetails = useCallback(async (race: RaceTableItem) => {
+  const handleOpenDetails = useCallback(async (race: RaceTableItem, options?: { source?: 'table' | 'bucket-list' }) => {
     if (!token) {
       return
     }
 
     try {
+      setReturnToBucketListAfterDetailsClose(options?.source === 'bucket-list')
       const cachedDetails = raceDetailsCacheRef.current.get(race.id)
       setIsDetailsOpen(true)
       setDetailsError(null)
@@ -819,16 +822,16 @@ export function RacesTableView({
     setRacePendingDelete(race)
   }, [])
 
-  const handleConfirmDelete = useCallback(async () => {
-    if (!token || !racePendingDelete) {
+  const handleDeleteRace = useCallback(async (race: RaceTableItem) => {
+    if (!token) {
       return
     }
 
     try {
       setIsDeletingRace(true)
       setError(null)
-      await deleteRace(racePendingDelete.id, token)
-      raceDetailsCacheRef.current.delete(racePendingDelete.id)
+      await deleteRace(race.id, token)
+      raceDetailsCacheRef.current.delete(race.id)
       setRacePendingDelete(null)
       setIsDetailsOpen(false)
       setRaceDetails(null)
@@ -843,7 +846,15 @@ export function RacesTableView({
     } finally {
       setIsDeletingRace(false)
     }
-  }, [loadBucketListData, loadTableData, racePendingDelete, token])
+  }, [loadBucketListData, loadTableData, token])
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!racePendingDelete) {
+      return
+    }
+
+    await handleDeleteRace(racePendingDelete)
+  }, [handleDeleteRace, racePendingDelete])
 
   const getRaceActionsMenu = useCallback((race: RaceTableItem) => ({
     items: [
@@ -1283,15 +1294,20 @@ export function RacesTableView({
                         className={`${styles.bucketListRow} ${styles.clickableBucketListRow}`.trim()}
                         onClick={() => {
                           setIsInListModalOpen(false)
-                          void handleOpenDetails(race)
+                          void handleOpenDetails(race, { source: 'bucket-list' })
                         }}
                       >
                         <div className={styles.inListModalHeader}>
                           <div className={styles.inListModalMain}>
                             <div className={styles.inListModalTitleBlock}>
-                              <OverflowTooltip title={race.name} className={styles.inListModalTitle}>
-                                {race.name}
-                              </OverflowTooltip>
+                              <div className={styles.inListModalTitleRow}>
+                                <OverflowTooltip title={race.name} className={styles.inListModalTitle}>
+                                  {race.name}
+                                </OverflowTooltip>
+                                <span className={`${styles.raceStatusBadge} ${getRaceStatusClassName(race.raceStatus)}`.trim()}>
+                                  {race.raceTypeName ?? '-'}
+                                </span>
+                              </div>
                               <div className={styles.inListModalSubtitle}>
                                 {race.raceDate ? <span>{getShortDateWithYear(race.raceDate)}</span> : null}
                                 {race.location ? <span>{race.location}</span> : null}
@@ -1300,22 +1316,38 @@ export function RacesTableView({
                           </div>
 
                           <div className={styles.inListModalActions}>
-                            <span className={`${styles.raceStatusBadge} ${getRaceStatusClassName(race.raceStatus)}`.trim()}>
-                              {race.raceTypeName ?? '-'}
-                            </span>
-                            <Dropdown
-                              menu={getRaceActionsMenu(race)}
-                              trigger={['click']}
-                              placement="bottomRight"
+                            <Button
+                              type="text"
+                              className={`${styles.bucketListActionButton} ${styles.bucketListEditAction}`.trim()}
+                              aria-label="Edit race"
+                              icon={<FontAwesomeIcon icon={faPenToSquare} />}
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                setIsInListModalOpen(false)
+                                void handleOpenEdit(race)
+                              }}
+                            />
+                            <Popconfirm
+                              title="Delete race?"
+                              description={`This will permanently delete "${race.name}".`}
+                              okText="Delete"
+                              cancelText="Cancel"
+                              okButtonProps={{ danger: true, loading: isDeletingRace }}
+                              onConfirm={() => {
+                                setIsInListModalOpen(false)
+                                void handleDeleteRace(race)
+                              }}
+                              onPopupClick={(event) => event.stopPropagation()}
                             >
                               <Button
                                 type="text"
-                                className={styles.moreAction}
-                                aria-label="Race actions"
-                                icon={<FontAwesomeIcon icon={faEllipsisVertical} />}
+                                danger
+                                className={`${styles.bucketListActionButton} ${styles.bucketListDeleteAction}`.trim()}
+                                aria-label="Delete race"
+                                icon={<FontAwesomeIcon icon={faTrashCan} />}
                                 onClick={(event) => event.stopPropagation()}
                               />
-                            </Dropdown>
+                            </Popconfirm>
                           </div>
                         </div>
                       </div>
@@ -1367,6 +1399,10 @@ export function RacesTableView({
           setSelectedDetailsRace(null)
           setDetailsError(null)
           setReturnToDetailsAfterEditClose(false)
+          if (returnToBucketListAfterDetailsClose) {
+            setIsInListModalOpen(true)
+          }
+          setReturnToBucketListAfterDetailsClose(false)
         }}
       />
 

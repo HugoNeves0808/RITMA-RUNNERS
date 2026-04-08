@@ -4,13 +4,17 @@ import {
   faFlagCheckered,
   faHourglassHalf,
   faMap,
+  faCircleUser,
+  faGear,
+  faRoad,
   faRankingStar,
   faRightFromBracket,
+  faShoePrints,
   faShieldHalved,
   faUsers,
 } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { Button, Layout, Popconfirm } from 'antd'
+import { Button, Layout, Modal } from 'antd'
 import { useEffect, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../features/auth'
@@ -19,10 +23,68 @@ import styles from './AppShell.module.css'
 
 const { Content } = Layout
 
+function getDocumentTitle(pathname: string) {
+  if (pathname === ROUTES.login) {
+    return 'RITMA - Login'
+  }
+
+  if (pathname === ROUTES.futureGoals) {
+    return 'RITMA - Future Goals'
+  }
+
+  if (pathname === ROUTES.profile) {
+    return 'RITMA - Profile'
+  }
+
+  if (pathname === ROUTES.settings) {
+    return 'RITMA - Settings'
+  }
+
+  if (pathname === ROUTES.personalOptionRaceTypes) {
+    return 'RITMA - Race Types'
+  }
+
+  if (pathname === ROUTES.personalOptionTeams) {
+    return 'RITMA - Teams'
+  }
+
+  if (pathname === ROUTES.personalOptionCircuits) {
+    return 'RITMA - Circuits'
+  }
+
+  if (pathname === ROUTES.personalOptionShoes) {
+    return 'RITMA - Shoes'
+  }
+
+  if (pathname === ROUTES.bestEfforts) {
+    return 'RITMA - Best Efforts'
+  }
+
+  if (pathname === ROUTES.adminRitmaOverview) {
+    return 'RITMA - Admin Overview'
+  }
+
+  if (pathname === ROUTES.adminUserList) {
+    return 'RITMA - Users'
+  }
+
+  if (pathname === ROUTES.adminPendingApprovals || pathname === ROUTES.adminPendingAccounts) {
+    return 'RITMA - Pending Approvals'
+  }
+
+  if (pathname === ROUTES.home || pathname === ROUTES.races) {
+    return 'RITMA - Races'
+  }
+
+  return 'RITMA'
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const location = useLocation()
   const { isAuthenticated, isAdmin, logout, user } = useAuth()
   const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(false)
+  const [isPersonalOptionsMenuOpen, setIsPersonalOptionsMenuOpen] = useState(false)
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false)
   const isLoginPage = location.pathname === ROUTES.login
   const isPublicPage = location.pathname === ROUTES.login || location.pathname === ROUTES.futureGoals
   const isFutureGoalsPage = location.pathname === ROUTES.futureGoals
@@ -31,12 +93,27 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     location.pathname === ROUTES.adminRitmaOverview
     || location.pathname === ROUTES.adminUserList
     || location.pathname === ROUTES.adminPendingApprovals
+  const isInPersonalOptionsArea =
+    location.pathname === ROUTES.personalOptionRaceTypes
+    || location.pathname === ROUTES.personalOptionTeams
+    || location.pathname === ROUTES.personalOptionCircuits
+    || location.pathname === ROUTES.personalOptionShoes
 
   useEffect(() => {
     if (isInAdminArea) {
       setIsAdminMenuOpen(true)
     }
   }, [isInAdminArea])
+
+  useEffect(() => {
+    if (isInPersonalOptionsArea) {
+      setIsPersonalOptionsMenuOpen(true)
+    }
+  }, [isInPersonalOptionsArea])
+
+  useEffect(() => {
+    document.title = getDocumentTitle(location.pathname)
+  }, [location.pathname])
 
   const mainNavigationItems = [
     {
@@ -52,6 +129,37 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       to: ROUTES.bestEfforts,
       icon: faRankingStar,
       isActive: location.pathname === ROUTES.bestEfforts,
+    },
+  ]
+
+  const personalOptionsNavigationItems = [
+    {
+      key: 'personal-option-race-types',
+      label: 'Race Types',
+      to: ROUTES.personalOptionRaceTypes,
+      isActive: location.pathname === ROUTES.personalOptionRaceTypes,
+      icon: faRoad,
+    },
+    {
+      key: 'personal-option-teams',
+      label: 'Teams',
+      to: ROUTES.personalOptionTeams,
+      isActive: location.pathname === ROUTES.personalOptionTeams,
+      icon: faUsers,
+    },
+    {
+      key: 'personal-option-circuits',
+      label: 'Circuits',
+      to: ROUTES.personalOptionCircuits,
+      isActive: location.pathname === ROUTES.personalOptionCircuits,
+      icon: faMap,
+    },
+    {
+      key: 'personal-option-shoes',
+      label: 'Shoes',
+      to: ROUTES.personalOptionShoes,
+      isActive: location.pathname === ROUTES.personalOptionShoes,
+      icon: faShoePrints,
     },
   ]
 
@@ -126,6 +234,36 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </div>
             ) : null}
 
+            <div className={styles.adminSection}>
+              <button
+                type="button"
+                className={isInPersonalOptionsArea ? `${styles.navItem} ${styles.navItemActive}` : styles.navItem}
+                onClick={() => setIsPersonalOptionsMenuOpen((currentValue) => !currentValue)}
+              >
+                <FontAwesomeIcon icon={faRoad} className={styles.navIcon} />
+                <span>Personal Options</span>
+                <span className={styles.adminToggle} aria-expanded={isPersonalOptionsMenuOpen}>
+                  <span>Open personal options menu</span>
+                  <FontAwesomeIcon icon={isPersonalOptionsMenuOpen ? faAngleDown : faAngleRight} className={styles.adminToggleIcon} />
+                </span>
+              </button>
+
+              {isPersonalOptionsMenuOpen ? (
+                <div className={styles.adminSubnav}>
+                  {personalOptionsNavigationItems.map((item) => (
+                    <NavLink
+                      key={item.key}
+                      to={item.to}
+                      className={item.isActive ? `${styles.adminSubItem} ${styles.adminSubItemActive}` : styles.adminSubItem}
+                    >
+                      <FontAwesomeIcon icon={item.icon} className={styles.adminSubIcon} />
+                      <span>{item.label}</span>
+                    </NavLink>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+
             {mainNavigationItems.map((item) => (
               <NavLink
                 key={item.key}
@@ -139,22 +277,34 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className={styles.sidebarFooter}>
-            <div className={styles.logoutWrap} aria-label="Account actions">
-              <Popconfirm
-                title="Logout"
-                description="Are you sure you want to logout?"
-                okText="Logout"
-                cancelText="Cancel"
-                onConfirm={logout}
+            <div className={styles.accountActions} aria-label="Account actions">
+              <NavLink
+                to={ROUTES.profile}
+                className={location.pathname === ROUTES.profile ? `${styles.accountButton} ${styles.accountButtonActive}` : styles.accountButton}
+                aria-label="Profile"
+                title="Profile"
               >
-                <Button
-                  type="primary"
-                  className={styles.logoutButton}
-                  icon={<FontAwesomeIcon icon={faRightFromBracket} />}
-                >
-                  Logout
-                </Button>
-              </Popconfirm>
+                <FontAwesomeIcon icon={faCircleUser} />
+              </NavLink>
+
+              <NavLink
+                to={ROUTES.settings}
+                className={location.pathname === ROUTES.settings ? `${styles.accountButton} ${styles.accountButtonActive}` : styles.accountButton}
+                aria-label="Settings"
+                title="Settings"
+              >
+                <FontAwesomeIcon icon={faGear} />
+              </NavLink>
+
+              <Button
+                type="primary"
+                className={styles.logoutButton}
+                icon={<FontAwesomeIcon icon={faRightFromBracket} />}
+                aria-label="Logout"
+                title="Logout"
+                onClick={() => setIsLogoutModalOpen(true)}
+              >
+              </Button>
             </div>
 
             <p className={styles.userEmail}>{user?.email}</p>
@@ -164,6 +314,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <Layout className={styles.authMain}>
           <Content className={styles.authContent}>{children}</Content>
         </Layout>
+
+        <Modal
+          title="Logout"
+          open={isLogoutModalOpen}
+          centered
+          okButtonProps={{ className: styles.logoutModalConfirmButton }}
+          onOk={() => {
+            setIsLogoutModalOpen(false)
+            logout()
+          }}
+          onCancel={() => setIsLogoutModalOpen(false)}
+          okText="Logout"
+          cancelText="Cancel"
+        >
+          <p>Are you sure you want to logout?</p>
+        </Modal>
       </Layout>
     )
   }

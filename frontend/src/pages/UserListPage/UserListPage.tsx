@@ -191,30 +191,6 @@ export function UserListPage() {
   }, [token, deferredSearch, onlyAdmins, staleOnly])
 
   useEffect(() => {
-    if (!onlyAdmins) {
-      setIsRoleOpen(false)
-    }
-  }, [onlyAdmins])
-
-  useEffect(() => {
-    if (onlyAdmins) {
-      setIsRoleOpen(true)
-    }
-  }, [onlyAdmins])
-
-  useEffect(() => {
-    if (!staleOnly) {
-      setIsActivityOpen(false)
-    }
-  }, [staleOnly])
-
-  useEffect(() => {
-    if (staleOnly) {
-      setIsActivityOpen(true)
-    }
-  }, [staleOnly])
-
-  useEffect(() => {
     if (typeof window === 'undefined') {
       return
     }

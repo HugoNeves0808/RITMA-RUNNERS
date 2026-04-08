@@ -14,6 +14,7 @@ import {
   Input,
   InputNumber,
   Modal,
+  Popconfirm,
   Select,
   Spin,
   Space,
@@ -211,7 +212,7 @@ function parseTimeToSeconds(value: string | undefined, mode: 'duration' | 'pace'
       throw new Error(`${fieldLabel ?? 'Time'} must use HH:MM:SS.`)
     }
 
-    if (hours > 23 || minutes > 59 || seconds > 59) {
+    if (minutes > 59 || seconds > 59) {
       throw new Error(`${fieldLabel ?? 'Time'} must use valid HH:MM:SS values.`)
     }
 
@@ -224,7 +225,7 @@ function parseTimeToSeconds(value: string | undefined, mode: 'duration' | 'pace'
       throw new Error(`${fieldLabel ?? 'Pace'} must use MM:SS.`)
     }
 
-    if (minutes > 59 || seconds > 59) {
+    if (seconds > 59) {
       throw new Error(`${fieldLabel ?? 'Pace'} must use valid MM:SS values.`)
     }
 
@@ -238,7 +239,7 @@ function parseTimeToSeconds(value: string | undefined, mode: 'duration' | 'pace'
 
 function formatDigitTimeInput(rawValue: string | undefined, mode: 'duration' | 'pace') {
   const digits = (rawValue ?? '').replace(/\D/g, '')
-  const maxDigits = mode === 'duration' ? 6 : 4
+  const maxDigits = mode === 'duration' ? 12 : 4
   const trimmedDigits = digits.slice(0, maxDigits)
 
   if (mode === 'duration') {
@@ -247,10 +248,10 @@ function formatDigitTimeInput(rawValue: string | undefined, mode: 'duration' | '
     }
 
     if (trimmedDigits.length <= 4) {
-      return `${trimmedDigits.slice(0, 2)}:${trimmedDigits.slice(2)}`
+      return `${trimmedDigits.slice(0, trimmedDigits.length - 2)}:${trimmedDigits.slice(-2)}`
     }
 
-    return `${trimmedDigits.slice(0, 2)}:${trimmedDigits.slice(2, 4)}:${trimmedDigits.slice(4)}`
+    return `${trimmedDigits.slice(0, trimmedDigits.length - 4)}:${trimmedDigits.slice(-4, -2)}:${trimmedDigits.slice(-2)}`
   }
 
   if (trimmedDigits.length <= 2) {
@@ -374,8 +375,8 @@ function getLiveTimeFieldError(
       return null
     }
 
-    const [hours, minutes, seconds] = parts.map((part) => Number(part))
-    return hours > 23 || minutes > 59 || seconds > 59
+    const [, minutes, seconds] = parts.map((part) => Number(part))
+    return minutes > 59 || seconds > 59
       ? `${fieldLabel} must use valid HH:MM:SS values.`
       : null
   }
@@ -384,8 +385,8 @@ function getLiveTimeFieldError(
     return null
   }
 
-  const [minutes, seconds] = parts.map((part) => Number(part))
-  return minutes > 59 || seconds > 59
+  const [, seconds] = parts.map((part) => Number(part))
+  return seconds > 59
     ? `${fieldLabel} must use valid MM:SS values.`
     : null
 }
@@ -406,6 +407,14 @@ function normalizeValue(value: unknown): unknown {
   }
 
   return value ?? null
+}
+
+function normalizeDecimalInput(value: string | number | undefined) {
+  if (value == null) {
+    return ''
+  }
+
+  return String(value).replace(',', '.')
 }
 
 function hasUnsavedChanges(values: AddRaceFormValues, initialValues: DrawerInitialValues) {
@@ -617,9 +626,12 @@ export function AddRaceDrawer({
     setError(null)
   }, [form, initialFormValues, isOpen])
 
-  const syncCreateOptions = (nextOptions: RaceCreateOptions) => {
+  const syncCreateOptions = (nextOptions: RaceCreateOptions, options?: { propagateToParent?: boolean }) => {
     setLocalCreateOptions(nextOptions)
-    onCreateOptionsChange?.(nextOptions)
+
+    if (options?.propagateToParent !== false) {
+      onCreateOptionsChange?.(nextOptions)
+    }
   }
 
   const getOptionsForType = (optionType: ManagedRaceOptionType) => {
@@ -637,7 +649,11 @@ export function AddRaceDrawer({
     }
   }
 
-  const replaceOptionsForType = (optionType: ManagedRaceOptionType, nextValues: RaceTypeOption[]) => {
+  const replaceOptionsForType = (
+    optionType: ManagedRaceOptionType,
+    nextValues: RaceTypeOption[],
+    options?: { propagateToParent?: boolean },
+  ) => {
     const nextOptions: RaceCreateOptions = {
       ...localCreateOptions,
       raceTypes: optionType === 'race-types' ? nextValues : localCreateOptions.raceTypes,
@@ -645,7 +661,7 @@ export function AddRaceDrawer({
       circuits: optionType === 'circuits' ? nextValues : localCreateOptions.circuits,
       shoes: optionType === 'shoes' ? nextValues : localCreateOptions.shoes,
     }
-    syncCreateOptions(nextOptions)
+    syncCreateOptions(nextOptions, options)
   }
 
   const resetManagedOptionState = () => {
@@ -674,7 +690,7 @@ export function AddRaceDrawer({
     try {
       setIsManagedOptionLoading(true)
       const latestOptions = await fetchManagedRaceOptions(optionType, token)
-      replaceOptionsForType(optionType, latestOptions)
+      replaceOptionsForType(optionType, latestOptions, { propagateToParent: false })
     } catch (loadError) {
       setManagedOptionError(loadError instanceof Error ? loadError.message : 'Could not load these options right now.')
     } finally {
@@ -736,7 +752,7 @@ export function AddRaceDrawer({
         ? currentOptions.map((option) => (option.id === savedOption.id ? savedOption : option))
         : [...currentOptions, savedOption].sort((left, right) => left.name.localeCompare(right.name))
 
-      replaceOptionsForType(managedOptionType, nextOptions)
+      replaceOptionsForType(managedOptionType, nextOptions, { propagateToParent: false })
 
       const linkedField = Object.entries(FIELD_OPTION_TYPES).find(([, value]) => value === managedOptionType)?.[0] as keyof AddRaceFormValues | undefined
       if (linkedField) {
@@ -809,7 +825,7 @@ export function AddRaceDrawer({
       await deleteManagedRaceOption(optionType, option.id, token)
 
       const nextOptions = getOptionsForType(optionType).filter((currentOption) => currentOption.id !== option.id)
-      replaceOptionsForType(managedOptionType, nextOptions)
+      replaceOptionsForType(managedOptionType, nextOptions, { propagateToParent: false })
 
       const linkedField = Object.entries(FIELD_OPTION_TYPES).find(([, value]) => value === optionType)?.[0] as keyof AddRaceFormValues | undefined
       if (linkedField && form.getFieldValue(linkedField) === option.id) {
@@ -867,7 +883,7 @@ export function AddRaceDrawer({
               onClick={() => void openManageOptionsModal(optionType)}
               aria-label={`Create or manage ${config.title.toLowerCase()}`}
             >
-              <FontAwesomeIcon icon={faPenToSquare} />
+              <FontAwesomeIcon icon={faPlus} />
             </button>
           </div>
         </Form.Item>
@@ -892,6 +908,12 @@ export function AddRaceDrawer({
 
     try {
       const values = await form.validateFields()
+
+      if (isEditMode && !hasUnsavedChanges(values, initialFormValues)) {
+        closeDrawer()
+        return
+      }
+
       setIsSubmitting(true)
       setError(null)
 
@@ -910,7 +932,10 @@ export function AddRaceDrawer({
         const fieldName = getFieldNameFromError(submitError.message)
         if (fieldName) {
           form.setFields([{ name: fieldName, errors: [submitError.message] }])
+          setError(null)
+          return
         }
+
         setError(submitError.message)
       }
     } finally {
@@ -947,6 +972,7 @@ export function AddRaceDrawer({
         width={560}
         open={isOpen}
         onClose={handleClose}
+        zIndex={1200}
         className={styles.drawer}
         destroyOnHidden
         extra={(
@@ -1038,6 +1064,7 @@ export function AddRaceDrawer({
               {
                 key: 'race',
                 label: 'Race data',
+                forceRender: true,
                 children: (
                   <div className={styles.tabPane}>
                     <div className={styles.statusHighlightCard}>
@@ -1132,7 +1159,7 @@ export function AddRaceDrawer({
                             name="raceTime"
                             className={styles.rowItem}
                           >
-                            <TimePicker use12Hours format="hh:mm A" className={styles.fullWidth} />
+                            <TimePicker use12Hours format="hh:mm A" minuteStep={5} className={styles.fullWidth} />
                           </Form.Item>
                         </div>
 
@@ -1224,13 +1251,14 @@ export function AddRaceDrawer({
               ...(showResultsTab ? [{
                 key: 'results',
                 label: 'Race results',
+                forceRender: true,
                 children: (
                   <div className={styles.tabPane}>
                     <div className={styles.row}>
                       <Form.Item<AddRaceFormValues> label={renderInfoLabel('Official time', 'Official finish time published by the event organization.')} name="officialTime" className={styles.rowItem}>
                         <Input
                           inputMode="numeric"
-                          maxLength={8}
+                          maxLength={14}
                           placeholder="00:00:00"
                           onChange={(event) => {
                             form.setFieldValue('officialTime', formatDigitTimeInput(event.target.value, 'duration'))
@@ -1261,7 +1289,7 @@ export function AddRaceDrawer({
                           >
                             <Input
                               inputMode="numeric"
-                              maxLength={8}
+                              maxLength={14}
                               placeholder="00:00:00"
                               onChange={(event) => {
                                 form.setFieldValue('chipTime', formatDigitTimeInput(event.target.value, 'duration'))
@@ -1294,7 +1322,7 @@ export function AddRaceDrawer({
                         >
                           <Input
                             inputMode="numeric"
-                            maxLength={5}
+                            maxLength={10}
                             placeholder="00:00"
                             onChange={(event) => {
                               form.setFieldValue('pacePerKm', formatDigitTimeInput(event.target.value, 'pace'))
@@ -1364,6 +1392,7 @@ export function AddRaceDrawer({
               ...(showAnalysisTab ? [{
                 key: 'analysis',
                 label: 'Race analysis',
+                forceRender: true,
                 children: (
                   <div className={styles.tabPane}>
                     {showPreRaceConfidence || showRaceDifficulty ? (
@@ -1395,7 +1424,7 @@ export function AddRaceDrawer({
                     ) : null}
 
                     <Form.Item<AddRaceFormValues> label="Analysis notes" name="analysisNotes">
-                      <TextArea rows={5} placeholder="Post-race thoughts, what went well, what to improve..." />
+                      <TextArea rows={12} placeholder="Post-race thoughts, what went well, what to improve..." />
                     </Form.Item>
 
                     {showWouldRepeatThisRace ? (
@@ -1414,6 +1443,7 @@ export function AddRaceDrawer({
         <Modal
           title="Discard changes?"
           open={isDiscardModalOpen}
+          zIndex={1300}
           okText="Discard"
           cancelText="Keep editing"
           okButtonProps={{ danger: true }}
@@ -1426,12 +1456,31 @@ export function AddRaceDrawer({
 
       </Drawer>
 
-      <Modal
+      <Drawer
           className={styles.manageOptionsDialog}
           title={managedOptionType === 'race-types' ? 'Manage race types' : `Manage ${MANAGED_OPTION_CONFIG[managedOptionType].title.toLowerCase()}`}
           open={isManageOptionsModalOpen}
-          footer={null}
-          onCancel={closeManageOptionsModal}
+          zIndex={1300}
+          width={560}
+          placement="right"
+          destroyOnHidden
+          onClose={closeManageOptionsModal}
+          extra={(
+            <Space>
+              <Button className={styles.cancelButton} onClick={closeManageOptionsModal}>Close</Button>
+              {!managedOptionUsage || !pendingDeleteOption ? (
+                <Button
+                  type="primary"
+                  className={styles.saveButton}
+                  loading={isManagedOptionSubmitting}
+                  disabled={isManagedOptionSaveDisabled}
+                  onClick={() => void handleSaveManagedOption()}
+                >
+                  {editingManagedOptionId ? 'Save changes' : 'Add'}
+                </Button>
+              ) : null}
+            </Space>
+          )}
         >
           <div className={styles.manageOptionsModal}>
             {managedOptionError && !managedOptionUsage ? (
@@ -1465,6 +1514,7 @@ export function AddRaceDrawer({
                     className={styles.manageTargetInput}
                     placeholder="Target km"
                     value={managedOptionTargetKm ?? undefined}
+                    parser={(value) => Number(normalizeDecimalInput(value))}
                     onChange={(value) => setManagedOptionTargetKm(typeof value === 'number' ? value : null)}
                   />
                 ) : null}
@@ -1487,20 +1537,6 @@ export function AddRaceDrawer({
                     </button>
                   ) : null}
 
-                  {!managedOptionUsage || !pendingDeleteOption ? (
-                    <Button
-                      type="primary"
-                      className={styles.saveButton}
-                      loading={isManagedOptionSubmitting}
-                      disabled={isManagedOptionSaveDisabled}
-                      onClick={() => void handleSaveManagedOption()}
-                      style={!isManagedOptionSaveDisabled
-                        ? { borderColor: '#111827', background: '#111827', color: '#ffffff', boxShadow: 'none' }
-                        : undefined}
-                    >
-                      {editingManagedOptionId ? 'Save changes' : 'Add'}
-                    </Button>
-                  ) : null}
                 </div>
               </div>
             </div>
@@ -1538,14 +1574,26 @@ export function AddRaceDrawer({
                       >
                         Edit
                       </Button>
-                      <Button
-                        type="text"
-                        danger
-                        icon={<FontAwesomeIcon icon={faTrashCan} />}
-                        onClick={() => void handleDeleteManagedOption(managedOptionType, option)}
+                      <Popconfirm
+                        title="Delete option?"
+                        description={`Delete "${option.name}"? This action cannot be undone.`}
+                        open={managedOptionConfirmState?.kind === 'delete' && managedOptionConfirmState.option.id === option.id}
+                        okText="Delete"
+                        cancelText="Cancel"
+                        okButtonProps={{ danger: true, loading: isManagedOptionSubmitting }}
+                        cancelButtonProps={{ className: styles.cancelButton }}
+                        onConfirm={() => void handleConfirmManagedOptionAction()}
+                        onCancel={() => setManagedOptionConfirmState(null)}
                       >
-                        Delete
-                      </Button>
+                        <Button
+                          type="text"
+                          danger
+                          icon={<FontAwesomeIcon icon={faTrashCan} />}
+                          onClick={() => void handleDeleteManagedOption(managedOptionType, option)}
+                        >
+                          Delete
+                        </Button>
+                      </Popconfirm>
                     </div>
                   </div>
                 ))
@@ -1586,12 +1634,13 @@ export function AddRaceDrawer({
               </div>
             ) : null}
           </div>
-        </Modal>
+        </Drawer>
 
         <Modal
-          title={managedOptionConfirmState?.kind === 'detach-delete' ? 'Remove associations and delete?' : 'Delete option?'}
-          open={managedOptionConfirmState != null}
-          okText={managedOptionConfirmState?.kind === 'detach-delete' ? 'Remove and delete' : 'Delete'}
+          title="Remove associations and delete?"
+          open={managedOptionConfirmState?.kind === 'detach-delete'}
+          zIndex={1310}
+          okText="Remove and delete"
           cancelText="Cancel"
           okButtonProps={{ danger: true }}
           cancelButtonProps={{ className: styles.cancelButton }}
@@ -1600,12 +1649,9 @@ export function AddRaceDrawer({
           onCancel={() => setManagedOptionConfirmState(null)}
         >
           <p>
-            {managedOptionConfirmState?.kind === 'detach-delete'
-              ? `This will remove "${managedOptionConfirmState.option.name}" from the listed records and then delete it.`
-              : `Delete "${managedOptionConfirmState?.option.name ?? ''}"? This action cannot be undone.`}
+            This will remove "{managedOptionConfirmState?.option.name ?? ''}" from the listed records and then delete it.
           </p>
         </Modal>
     </>
   )
 }
-

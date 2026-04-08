@@ -316,8 +316,43 @@
   display: flex;
   align-items: flex-start;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 14px;
   flex-shrink: 0;
+}
+
+.bucketListActionButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0 !important;
+  border-radius: 999px;
+}
+
+.bucketListActionButton:hover,
+.bucketListActionButton:focus {
+  background: rgba(15, 23, 42, 0.04) !important;
+}
+
+.bucketListEditAction {
+  color: #667085 !important;
+}
+
+.bucketListEditAction:hover,
+.bucketListEditAction:focus {
+  color: #475467 !important;
+  background: rgba(102, 112, 133, 0.1) !important;
+}
+
+.bucketListDeleteAction {
+  color: #ef4444 !important;
+}
+
+.bucketListDeleteAction:hover,
+.bucketListDeleteAction:focus {
+  color: #dc2626 !important;
+  background: rgba(239, 68, 68, 0.1) !important;
 }
 
 .inListModalMain {
@@ -333,8 +368,16 @@
   min-width: 0;
 }
 
+.inListModalTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
 .inListModalTitle {
   display: block;
+  flex: 0 1 auto;
   color: #101828;
   font-size: 20px;
   font-weight: 800;
@@ -837,6 +880,11 @@
 
   .inListModalTitle {
     white-space: normal;
+  }
+
+  .inListModalTitleRow {
+    align-items: flex-start;
+    flex-wrap: wrap;
   }
 
   .raceRow {

@@ -1,0 +1,104 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.title:global(.ant-typography) {
+  margin-bottom: 0;
+}
+
+.settingsButton:global(.ant-btn) {
+  border-color: #111827 !important;
+  border-radius: 12px;
+  height: 42px;
+  padding: 0 16px;
+  font-weight: 700;
+  background: #111827 !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.settingsButton:global(.ant-btn):hover,
+.settingsButton:global(.ant-btn):focus {
+  border-color: #000000 !important;
+  background: #000000 !important;
+  color: #ffffff !important;
+}
+
+.card:global(.ant-card) {
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.06);
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+.sectionHeader {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.sectionIntro {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.sectionIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: rgba(249, 115, 22, 0.12);
+  color: #c2410c;
+}
+
+.sectionEyebrow {
+  color: #98a2b3;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sectionTitle:global(.ant-typography) {
+  margin: 0;
+}
+
+.descriptions :global(.ant-descriptions-item-label) {
+  color: #667085;
+  font-weight: 700;
+}
+
+.descriptions :global(.ant-descriptions-item-content) {
+  color: #101828;
+  font-weight: 600;
+}
+
+.statusTag:global(.ant-tag) {
+  margin-inline-end: 0;
+  border-radius: 999px;
+  padding-inline: 10px;
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

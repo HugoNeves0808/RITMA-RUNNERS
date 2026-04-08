@@ -162,32 +162,91 @@
 }
 
 .sidebarFooter {
-  padding-top: 24px;
+  padding-top: 10px;
   border-top: 1px solid rgba(16, 24, 40, 0.08);
 }
 
-.logoutWrap {
+.accountActions {
   display: flex;
+  flex-direction: row;
   justify-content: center;
+  align-items: center;
+  gap: 10px;
   margin-bottom: 14px;
+}
+
+.accountButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  color: #667085;
+  text-decoration: none;
+  background: transparent;
+  opacity: 0.72;
+  transition:
+    color 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.accountButton svg {
+  font-size: 1.15rem;
+}
+
+.accountButton:hover {
+  color: #101828;
+  opacity: 1;
+}
+
+.accountButtonActive {
+  color: #101828;
+  opacity: 1;
 }
 
 .logoutButton:global(.ant-btn) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
+  width: 44px;
+  min-width: 44px;
   height: 44px;
+  padding: 0;
   border: none;
-  border-radius: 14px;
-  background: #111111;
+  border-radius: 12px;
+  color: #667085;
+  background: transparent;
   box-shadow: none;
-  font-weight: 600;
+  opacity: 0.72;
 }
 
 .logoutButton:global(.ant-btn):hover,
 .logoutButton:global(.ant-btn):focus {
-  background: #2b2b2b !important;
+  color: #101828 !important;
+  background: transparent !important;
+  opacity: 1;
+}
+
+.logoutButton :global(svg) {
+  font-size: 1.15rem;
+}
+
+.logoutModalConfirmButton:global(.ant-btn),
+.logoutModalConfirmButton:global(.ant-btn-primary) {
+  border-color: #111827 !important;
+  background: #111827 !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.logoutModalConfirmButton:global(.ant-btn):hover,
+.logoutModalConfirmButton:global(.ant-btn):focus,
+.logoutModalConfirmButton:global(.ant-btn-primary):hover,
+.logoutModalConfirmButton:global(.ant-btn-primary):focus {
+  border-color: #000000 !important;
+  background: #000000 !important;
+  color: #ffffff !important;
 }
 
 .userEmail {
@@ -254,7 +313,7 @@
     flex: none;
   }
 
-  .logoutWrap {
+  .accountActions {
     margin-bottom: 10px;
   }
 }

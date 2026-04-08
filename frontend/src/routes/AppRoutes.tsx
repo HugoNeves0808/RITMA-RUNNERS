@@ -39,6 +39,36 @@ const PendingApprovalsPage = lazy(async () => {
   return { default: module.PendingApprovalsPage }
 })
 
+const PersonalOptionsRaceTypesPage = lazy(async () => {
+  const module = await import('../pages/PersonalOptionsPage/PersonalOptionsPage')
+  return { default: () => <module.PersonalOptionsPage optionType="race-types" /> }
+})
+
+const PersonalOptionsTeamsPage = lazy(async () => {
+  const module = await import('../pages/PersonalOptionsPage/PersonalOptionsPage')
+  return { default: () => <module.PersonalOptionsPage optionType="teams" /> }
+})
+
+const PersonalOptionsCircuitsPage = lazy(async () => {
+  const module = await import('../pages/PersonalOptionsPage/PersonalOptionsPage')
+  return { default: () => <module.PersonalOptionsPage optionType="circuits" /> }
+})
+
+const PersonalOptionsShoesPage = lazy(async () => {
+  const module = await import('../pages/PersonalOptionsPage/PersonalOptionsPage')
+  return { default: () => <module.PersonalOptionsPage optionType="shoes" /> }
+})
+
+const ProfilePage = lazy(async () => {
+  const module = await import('../pages/ProfilePage/ProfilePage')
+  return { default: module.ProfilePage }
+})
+
+const SettingsPage = lazy(async () => {
+  const module = await import('../pages/SettingsPage/SettingsPage')
+  return { default: module.SettingsPage }
+})
+
 const UserListPage = lazy(async () => {
   const module = await import('../pages/UserListPage/UserListPage')
   return { default: module.UserListPage }
@@ -58,6 +88,12 @@ export function AppRoutes() {
           <Route path={ROUTES.home} element={<HomePage />} />
           <Route path={ROUTES.races} element={<HomePage />} />
           <Route path={ROUTES.bestEfforts} element={<BestEffortsPage />} />
+          <Route path={ROUTES.personalOptionRaceTypes} element={<PersonalOptionsRaceTypesPage />} />
+          <Route path={ROUTES.personalOptionTeams} element={<PersonalOptionsTeamsPage />} />
+          <Route path={ROUTES.personalOptionCircuits} element={<PersonalOptionsCircuitsPage />} />
+          <Route path={ROUTES.personalOptionShoes} element={<PersonalOptionsShoesPage />} />
+          <Route path={ROUTES.profile} element={<ProfilePage />} />
+          <Route path={ROUTES.settings} element={<SettingsPage />} />
         </Route>
         <Route element={<ProtectedRoute requiredRole="ADMIN" />}>
           <Route path={ROUTES.adminRitmaOverview} element={<AdminRitmaOverviewPage />} />

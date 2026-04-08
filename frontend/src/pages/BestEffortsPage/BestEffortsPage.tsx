@@ -163,6 +163,14 @@ function formatDistance(value: number | null) {
   return `${value.toFixed(2)} km`
 }
 
+function normalizeDecimalInput(value: string | number | undefined) {
+  if (value == null) {
+    return ''
+  }
+
+  return String(value).replace(',', '.')
+}
+
 function getMinimumAcceptedDistance(expectedDistanceKm: number | null) {
   if (expectedDistanceKm == null) {
     return null
@@ -1227,6 +1235,7 @@ export function BestEffortsPage() {
                 className={styles.manageRaceTypeTargetInput}
                 placeholder="Target km"
                 value={managedRaceTypeTargetKm ?? undefined}
+                parser={(value) => Number(normalizeDecimalInput(value))}
                 onChange={(value) => setManagedRaceTypeTargetKm(typeof value === 'number' ? value : null)}
               />
               <div className={styles.manageInputActions}>

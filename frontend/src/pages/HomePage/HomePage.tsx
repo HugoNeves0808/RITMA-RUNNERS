@@ -480,29 +480,31 @@ export function HomePage() {
             ? <RacesCalendarView selectedMode={selectedCalendarMode} onModeChange={setSelectedCalendarMode} filters={viewFilters} refreshKey={refreshKey} />
             : null}
 
-          <RacesTableView
-            tableYearSelection={tableYearSelection}
-            filters={viewFilters}
-            refreshKey={refreshKey}
-            createOptions={createOptions}
-            hideContent={selectedView !== 'table'}
-            bucketListOpen={isBucketListModalOpen}
-            onBucketListOpenChange={setIsBucketListModalOpen}
-            onBucketListCountChange={setBucketListCount}
-            onCreateOptionsChange={(nextOptions) => {
-              setCreateOptions(nextOptions)
-              setFilterOptions((current) => ({
-                ...current,
-                raceTypes: nextOptions.raceTypes,
-              }))
-              setFilters((current) => ({
-                ...current,
-                raceTypeIds: current.raceTypeIds.filter((raceTypeId) => (
-                  nextOptions.raceTypes.some((raceType) => raceType.id === raceTypeId)
-                )),
-              }))
-            }}
-          />
+          {selectedView === 'table' || isBucketListModalOpen ? (
+            <RacesTableView
+              tableYearSelection={tableYearSelection}
+              filters={viewFilters}
+              refreshKey={refreshKey}
+              createOptions={createOptions}
+              hideContent={selectedView !== 'table'}
+              bucketListOpen={isBucketListModalOpen}
+              onBucketListOpenChange={setIsBucketListModalOpen}
+              onBucketListCountChange={setBucketListCount}
+              onCreateOptionsChange={(nextOptions) => {
+                setCreateOptions(nextOptions)
+                setFilterOptions((current) => ({
+                  ...current,
+                  raceTypes: nextOptions.raceTypes,
+                }))
+                setFilters((current) => ({
+                  ...current,
+                  raceTypeIds: current.raceTypeIds.filter((raceTypeId) => (
+                    nextOptions.raceTypes.some((raceType) => raceType.id === raceTypeId)
+                  )),
+                }))
+              }}
+            />
+          ) : null}
         </div>
 
         <aside className={styles.sidebar}>

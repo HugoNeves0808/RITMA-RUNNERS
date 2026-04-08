@@ -92,6 +92,21 @@
   margin-bottom: 24px;
 }
 
+.formCard :global(.ant-checkbox-checked .ant-checkbox-inner) {
+  background-color: #111827 !important;
+  border-color: #111827 !important;
+}
+
+.formCard :global(.ant-checkbox-wrapper:hover .ant-checkbox-inner),
+.formCard :global(.ant-checkbox:hover .ant-checkbox-inner),
+.formCard :global(.ant-checkbox-input:focus-visible + .ant-checkbox-inner) {
+  border-color: #111827 !important;
+}
+
+.formCard :global(.ant-checkbox-checked::after) {
+  border-color: #111827 !important;
+}
+
 .secondaryLink {
   color: #b54708;
   font-weight: 600;

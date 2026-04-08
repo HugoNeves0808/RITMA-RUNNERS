@@ -187,18 +187,6 @@ export function PendingApprovalsPage() {
   }, [token, deferredSearch, olderThanThreeDays])
 
   useEffect(() => {
-    if (!olderThanThreeDays) {
-      setIsAgeOpen(false)
-    }
-  }, [olderThanThreeDays])
-
-  useEffect(() => {
-    if (olderThanThreeDays) {
-      setIsAgeOpen(true)
-    }
-  }, [olderThanThreeDays])
-
-  useEffect(() => {
     if (typeof window === 'undefined') {
       return
     }
