@@ -92,7 +92,7 @@ Compatibility note:
 
 Current client usage:
 
-- web `Pending Approvals` currently consumes the stable `/api/admin/account-requests` endpoint, formats `createdAt` into a relative time label such as `15h 4min ago`, exposes a `Races`-style filters panel with the same search icon and a collapsible `Request age` toggle group, and keeps those filters only across refresh of the same page
+- web `Pending Approvals` currently consumes the stable `/api/admin/account-requests` endpoint, formats `createdAt` into a relative time label such as `15h 4min ago`, exposes a `Races`-style filters panel with the same search icon and a collapsible `Request age` toggle group, keeps those filters only across refresh of the same page, and now shows a temporary approval notification instead of putting both action buttons into visible loading at once
 - mobile `Pending Approvals` consumes the same stable `/api/admin/account-requests` endpoint, applies the same relative-time formatting, and exposes a compact filter panel with email search and an `older than 3 days` toggle
 - both clients paginate the rendered list locally with a maximum of 10 pending users per page
 - both clients show a warning indicator when the pending request is older than three days
@@ -199,6 +199,11 @@ Practical flow:
 2. copy the pending `id`
 3. store it in `{{userId}}`
 4. call approve
+
+Current web UX note:
+
+- the web `Pending Approvals` page and the pending-preview actions on the web `Overview` page now show a temporary `Approving account...` notification while approval is in progress
+- on the web client, `Reject` keeps its loading state limited to the reject action only, while the opposite action is disabled until the request finishes
 
 ### `DELETE /api/admin/account-requests/{userId}`
 

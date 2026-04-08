@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { faRotateLeft } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { Alert, Button, Card, Empty, Space, Spin, Table, Typography } from 'antd'
+import { Alert, Button, Card, Empty, Space, Spin, Table, Typography, message } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useNavigate } from 'react-router-dom'
 import { ROUTES } from '../../constants/routes'
@@ -46,9 +46,10 @@ function formatRequestTime(value: string) {
 export function AdminRitmaOverviewPage() {
   const { token } = useAuth()
   const navigate = useNavigate()
+  const [messageApi, contextHolder] = message.useMessage()
   const [overview, setOverview] = useState<AdminOverviewPayload | null>(null)
   const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([])
-  const [processingId, setProcessingId] = useState<string | null>(null)
+  const [processingAction, setProcessingAction] = useState<{ userId: string, type: 'approve' | 'reject' } | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [overviewError, setOverviewError] = useState<string | null>(null)
@@ -141,15 +142,28 @@ export function AdminRitmaOverviewPage() {
       return
     }
 
+    const notificationKey = `overview-approve-pending-${userId}`
     try {
-      setProcessingId(userId)
+      setProcessingAction({ userId, type: 'approve' })
       setPendingError(null)
+      messageApi.open({
+        key: notificationKey,
+        type: 'loading',
+        content: 'Approving account...',
+        duration: 0,
+      })
       await approvePendingApproval(userId, token)
       await loadDashboard(true)
+      messageApi.success({
+        key: notificationKey,
+        content: 'Account approved.',
+        duration: 2,
+      })
     } catch (actionError) {
+      messageApi.destroy(notificationKey)
       setPendingError(actionError instanceof Error ? actionError.message : 'Unable to approve account.')
     } finally {
-      setProcessingId(null)
+      setProcessingAction(null)
     }
   }
 
@@ -159,14 +173,14 @@ export function AdminRitmaOverviewPage() {
     }
 
     try {
-      setProcessingId(userId)
+      setProcessingAction({ userId, type: 'reject' })
       setPendingError(null)
       await rejectPendingApproval(userId, token)
       await loadDashboard(true)
     } catch (actionError) {
       setPendingError(actionError instanceof Error ? actionError.message : 'Unable to reject account.')
     } finally {
-      setProcessingId(null)
+      setProcessingAction(null)
     }
   }
 
@@ -196,14 +210,15 @@ export function AdminRitmaOverviewPage() {
           <Button
             type="primary"
             className={styles.approveButton}
-            loading={processingId === approval.id}
+            disabled={processingAction?.userId === approval.id}
             onClick={() => void handleApprove(approval.id)}
           >
             Approve
           </Button>
           <Button
             danger
-            loading={processingId === approval.id}
+            loading={processingAction?.userId === approval.id && processingAction.type === 'reject'}
+            disabled={processingAction?.userId === approval.id && processingAction.type === 'approve'}
             onClick={() => void handleReject(approval.id)}
           >
             Reject
@@ -214,50 +229,52 @@ export function AdminRitmaOverviewPage() {
   ]
 
   return (
-    <div className={styles.page}>
-      <div className={styles.pageHeader}>
-        <Title level={1} className={styles.pageTitle}>Overview</Title>
+    <>
+      {contextHolder}
+      <div className={styles.page}>
+        <div className={styles.pageHeader}>
+          <Title level={1} className={styles.pageTitle}>Overview</Title>
 
-        <Space wrap>
-          <Button
-            onClick={() => void loadDashboard(true)}
-            loading={isRefreshing}
-            icon={<FontAwesomeIcon icon={faRotateLeft} />}
-            aria-label="Refresh overview"
-            title="Refresh"
-          />
-        </Space>
-      </div>
-
-      {isLoading ? (
-        <Card className={styles.loadingCard} variant="borderless">
-          <Space>
-            <Spin size="small" />
-            <span>Loading overview</span>
+          <Space wrap>
+            <Button
+              onClick={() => void loadDashboard(true)}
+              loading={isRefreshing}
+              icon={<FontAwesomeIcon icon={faRotateLeft} />}
+              aria-label="Refresh overview"
+              title="Refresh"
+            />
           </Space>
-        </Card>
-      ) : null}
+        </div>
 
-      <div className={styles.metricsGrid}>
-        {metricCards.map((card) => (
-          <Card
-            key={card.key}
-            className={`${styles.metricCard} ${card.highlighted ? styles.metricCardHighlight : ''}`.trim()}
-            variant="borderless"
-          >
-            <span className={styles.metricLabel}>{card.label}</span>
-            <span className={styles.metricValue}>{card.value}</span>
-            <span className={styles.metricHint}>{card.hint}</span>
+        {isLoading ? (
+          <Card className={styles.loadingCard} variant="borderless">
+            <Space>
+              <Spin size="small" />
+              <span>Loading overview</span>
+            </Space>
           </Card>
-        ))}
-      </div>
+        ) : null}
 
-      {overviewError ? (
-        <Alert type="error" showIcon message="Could not load overview metrics" description={overviewError} />
-      ) : null}
+        <div className={styles.metricsGrid}>
+          {metricCards.map((card) => (
+            <Card
+              key={card.key}
+              className={`${styles.metricCard} ${card.highlighted ? styles.metricCardHighlight : ''}`.trim()}
+              variant="borderless"
+            >
+              <span className={styles.metricLabel}>{card.label}</span>
+              <span className={styles.metricValue}>{card.value}</span>
+              <span className={styles.metricHint}>{card.hint}</span>
+            </Card>
+          ))}
+        </div>
 
-      <div className={styles.mainGrid}>
-        <Card className={styles.pendingCard} variant="borderless">
+        {overviewError ? (
+          <Alert type="error" showIcon message="Could not load overview metrics" description={overviewError} />
+        ) : null}
+
+        <div className={styles.mainGrid}>
+          <Card className={styles.pendingCard} variant="borderless">
           <div className={styles.sectionHeader}>
             <Title level={4} className={styles.sectionTitle}>Pending approvals</Title>
             <Button
@@ -290,9 +307,9 @@ export function AdminRitmaOverviewPage() {
               />
             </div>
           ) : null}
-        </Card>
+          </Card>
+        </div>
       </div>
-
-    </div>
+    </>
   )
 }

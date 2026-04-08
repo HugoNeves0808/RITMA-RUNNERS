@@ -1,7 +1,7 @@
 import { faAngleDown, faAngleUp, faBroom, faMagnifyingGlass, faTriangleExclamation } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
-import { Alert, Button, Card, Checkbox, Empty, Input, Modal, Popconfirm, Space, Spin, Table, Typography } from 'antd'
+import { Alert, Button, Card, Checkbox, Empty, Input, Modal, Popconfirm, Space, Spin, Table, Typography, message } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useAuth } from '../../features/auth'
 import { STORAGE_KEYS } from '../../constants/storage'
@@ -138,10 +138,11 @@ export function PendingApprovalsPage() {
   const { token } = useAuth()
   const persistedFilters = useMemo(() => readPersistedPendingApprovalsFilters(), [])
   const isPageRefreshRef = useRef(false)
+  const [messageApi, contextHolder] = message.useMessage()
   const [approvals, setApprovals] = useState<PendingApproval[]>([])
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [processingId, setProcessingId] = useState<string | null>(null)
+  const [processingAction, setProcessingAction] = useState<{ userId: string, type: 'approve' | 'reject' } | null>(null)
   const [search, setSearch] = useState(persistedFilters?.search ?? '')
   const [olderThanThreeDays, setOlderThanThreeDays] = useState(persistedFilters?.olderThanThreeDays ?? false)
   const [isAgeOpen, setIsAgeOpen] = useState(persistedFilters?.isAgeOpen ?? true)
@@ -234,17 +235,30 @@ export function PendingApprovalsPage() {
       return
     }
 
-    setProcessingId(userId)
+    const notificationKey = `approve-pending-${userId}`
+    setProcessingAction({ userId, type: 'approve' })
     setError(null)
 
     try {
+      messageApi.open({
+        key: notificationKey,
+        type: 'loading',
+        content: 'Approving account...',
+        duration: 0,
+      })
       const approvalResult = await approvePendingApproval(userId, token)
       setApprovals((currentApprovals) => currentApprovals.filter((approval) => approval.id !== userId))
       setApprovedAccountDetails(approvalResult)
+      messageApi.success({
+        key: notificationKey,
+        content: 'Account approved.',
+        duration: 2,
+      })
     } catch (actionError) {
+      messageApi.destroy(notificationKey)
       setError(actionError instanceof Error ? actionError.message : 'Unknown error')
     } finally {
-      setProcessingId(null)
+      setProcessingAction(null)
     }
   }
 
@@ -253,7 +267,7 @@ export function PendingApprovalsPage() {
       return
     }
 
-    setProcessingId(userId)
+    setProcessingAction({ userId, type: 'reject' })
     setError(null)
 
     try {
@@ -262,7 +276,7 @@ export function PendingApprovalsPage() {
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : 'Unknown error')
     } finally {
-      setProcessingId(null)
+      setProcessingAction(null)
     }
   }
 
@@ -297,7 +311,7 @@ export function PendingApprovalsPage() {
           <Button
             type="primary"
             className={styles.approveButton}
-            loading={processingId === approval.id}
+            disabled={processingAction?.userId === approval.id}
             onClick={() => void handleApprove(approval.id)}
           >
             Approve
@@ -308,8 +322,13 @@ export function PendingApprovalsPage() {
             okText="Reject"
             cancelText="Cancel"
             onConfirm={() => void handleReject(approval.id)}
+            disabled={processingAction?.userId === approval.id}
           >
-            <Button danger loading={processingId === approval.id}>
+            <Button
+              danger
+              loading={processingAction?.userId === approval.id && processingAction.type === 'reject'}
+              disabled={processingAction?.userId === approval.id && processingAction.type === 'approve'}
+            >
               Reject
             </Button>
           </Popconfirm>
@@ -319,128 +338,131 @@ export function PendingApprovalsPage() {
   ]
 
   return (
-    <div className={styles.page}>
-      <div className={styles.pageHeader}>
-        <div>
-          <Title level={1} className={styles.pageTitle}>Pending approvals</Title>
-        </div>
-
-        <div className={styles.summaryBadge}>
-          <span className={styles.summaryLabel}>Pending</span>
-          <span className={styles.summaryValue}>{filteredApprovals.length}</span>
-        </div>
-      </div>
-
-      {isLoading ? (
-        <Space>
-          <Spin size="small" />
-          <span>Loading pending approvals</span>
-        </Space>
-      ) : null}
-
-      {error ? (
-        <Alert type="error" showIcon message="Could not process pending approvals" description={error} />
-      ) : null}
-
-      <Modal
-        open={approvedAccountDetails !== null}
-        title="Temporary password generated"
-        onCancel={() => setApprovedAccountDetails(null)}
-        footer={[
-          <Button key="close" type="primary" onClick={() => setApprovedAccountDetails(null)}>
-            Close
-          </Button>,
-        ]}
-      >
-        <p className={styles.temporaryPasswordHelp}>
-          Share this temporary password securely with the user. They will be asked to change it after sign-in.
-        </p>
-        <div className={styles.temporaryPasswordPanel}>
-          <span className={styles.temporaryPasswordLabel}>User</span>
-          <strong>{approvedAccountDetails?.email}</strong>
-        </div>
-        <div className={styles.temporaryPasswordPanel}>
-          <span className={styles.temporaryPasswordLabel}>Temporary password</span>
-          <Typography.Text copyable={{ text: approvedAccountDetails?.temporaryPassword ?? '' }} className={styles.temporaryPasswordValue}>
-            {approvedAccountDetails?.temporaryPassword}
-          </Typography.Text>
-        </div>
-      </Modal>
-
-      <div className={styles.contentLayout}>
-        <div className={styles.tableSection}>
-          <Card className={styles.pageCard} variant="borderless">
-            {!isLoading && filteredApprovals.length === 0 ? (
-              <div className={styles.emptyWrap}>
-                <Empty description={approvals.length === 0 ? 'No pending approvals.' : 'No pending approvals match the current filters.'} />
-              </div>
-            ) : null}
-
-            {!isLoading && filteredApprovals.length > 0 ? (
-              <Table
-                rowKey="id"
-                columns={columns}
-                dataSource={filteredApprovals}
-                pagination={{
-                  pageSize: 10,
-                  showSizeChanger: false,
-                  hideOnSinglePage: true,
-                }}
-              />
-            ) : null}
-          </Card>
-        </div>
-
-        <aside className={styles.sidebar}>
-          <div className={styles.sidebarCard}>
-            <div className={styles.sidebarHeader}>
-              <h3 className={styles.sidebarTitle}>Filters</h3>
-              <Button
-                type="text"
-                className={styles.clearButton}
-                icon={<FontAwesomeIcon icon={faBroom} />}
-                title="Clear filters"
-                aria-label="Clear filters"
-                onClick={() => {
-                  setSearch('')
-                  setOlderThanThreeDays(false)
-                }}
-              />
-            </div>
-
-            <div className={styles.sidebarDivider} />
-
-            <label className={styles.filterField}>
-              <span className={styles.filterLabel}>Email</span>
-              <Input
-                allowClear
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search by email"
-                className={styles.searchInput}
-                suffix={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-              />
-            </label>
-
-            <CheckboxFilterSection
-              title="Request age"
-              count={olderThanThreeDays ? 1 : 0}
-              isOpen={isAgeOpen}
-              onToggle={() => setIsAgeOpen((current) => !current)}
-            >
-              <div className={styles.checkboxList}>
-                <label className={styles.checkboxOption}>
-                  <Checkbox
-                    checked={olderThanThreeDays}
-                    onChange={(event) => setOlderThanThreeDays(event.target.checked)}
-                  />
-                  <span className={styles.checkboxOptionLabel}>Waiting for over 3 days</span>
-                </label>
-              </div>
-            </CheckboxFilterSection>
+    <>
+      {contextHolder}
+      <div className={styles.page}>
+        <div className={styles.pageHeader}>
+          <div>
+            <Title level={1} className={styles.pageTitle}>Pending approvals</Title>
           </div>
-        </aside>
+
+          <div className={styles.summaryBadge}>
+            <span className={styles.summaryLabel}>Pending</span>
+            <span className={styles.summaryValue}>{filteredApprovals.length}</span>
+          </div>
+        </div>
+
+        {isLoading ? (
+          <Space>
+            <Spin size="small" />
+            <span>Loading pending approvals</span>
+          </Space>
+        ) : null}
+
+        {error ? (
+          <Alert type="error" showIcon message="Could not process pending approvals" description={error} />
+        ) : null}
+
+        <Modal
+          open={approvedAccountDetails !== null}
+          title="Temporary password generated"
+          onCancel={() => setApprovedAccountDetails(null)}
+          footer={[
+            <Button key="close" type="primary" onClick={() => setApprovedAccountDetails(null)}>
+              Close
+            </Button>,
+          ]}
+        >
+          <p className={styles.temporaryPasswordHelp}>
+            Share this temporary password securely with the user. They will be asked to change it after sign-in.
+          </p>
+          <div className={styles.temporaryPasswordPanel}>
+            <span className={styles.temporaryPasswordLabel}>User</span>
+            <strong>{approvedAccountDetails?.email}</strong>
+          </div>
+          <div className={styles.temporaryPasswordPanel}>
+            <span className={styles.temporaryPasswordLabel}>Temporary password</span>
+            <Typography.Text copyable={{ text: approvedAccountDetails?.temporaryPassword ?? '' }} className={styles.temporaryPasswordValue}>
+              {approvedAccountDetails?.temporaryPassword}
+            </Typography.Text>
+          </div>
+        </Modal>
+
+        <div className={styles.contentLayout}>
+          <div className={styles.tableSection}>
+            <Card className={styles.pageCard} variant="borderless">
+              {!isLoading && filteredApprovals.length === 0 ? (
+                <div className={styles.emptyWrap}>
+                  <Empty description={approvals.length === 0 ? 'No pending approvals.' : 'No pending approvals match the current filters.'} />
+                </div>
+              ) : null}
+
+              {!isLoading && filteredApprovals.length > 0 ? (
+                <Table
+                  rowKey="id"
+                  columns={columns}
+                  dataSource={filteredApprovals}
+                  pagination={{
+                    pageSize: 10,
+                    showSizeChanger: false,
+                    hideOnSinglePage: true,
+                  }}
+                />
+              ) : null}
+            </Card>
+          </div>
+
+          <aside className={styles.sidebar}>
+            <div className={styles.sidebarCard}>
+              <div className={styles.sidebarHeader}>
+                <h3 className={styles.sidebarTitle}>Filters</h3>
+                <Button
+                  type="text"
+                  className={styles.clearButton}
+                  icon={<FontAwesomeIcon icon={faBroom} />}
+                  title="Clear filters"
+                  aria-label="Clear filters"
+                  onClick={() => {
+                    setSearch('')
+                    setOlderThanThreeDays(false)
+                  }}
+                />
+              </div>
+
+              <div className={styles.sidebarDivider} />
+
+              <label className={styles.filterField}>
+                <span className={styles.filterLabel}>Email</span>
+                <Input
+                  allowClear
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search by email"
+                  className={styles.searchInput}
+                  suffix={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+                />
+              </label>
+
+              <CheckboxFilterSection
+                title="Request age"
+                count={olderThanThreeDays ? 1 : 0}
+                isOpen={isAgeOpen}
+                onToggle={() => setIsAgeOpen((current) => !current)}
+              >
+                <div className={styles.checkboxList}>
+                  <label className={styles.checkboxOption}>
+                    <Checkbox
+                      checked={olderThanThreeDays}
+                      onChange={(event) => setOlderThanThreeDays(event.target.checked)}
+                    />
+                    <span className={styles.checkboxOptionLabel}>Waiting for over 3 days</span>
+                  </label>
+                </div>
+              </CheckboxFilterSection>
+            </div>
+          </aside>
+        </div>
       </div>
-    </div>
+    </>
   )
 }

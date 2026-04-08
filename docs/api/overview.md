@@ -6,9 +6,11 @@ It also includes a short summary of the current account-access flow because the 
 
 ## Release Context
 
-- Current release: `1.0.0`
-- Release date: `2026-04-07`
-- Phase status: first major project phase completed
+- Latest completed release: `1.0.0`
+- Current milestone in preparation: `2.0.0`
+- Latest completed release date: `2026-04-07`
+- Current milestone target date: `2026-04-08`
+- Phase status: release 1 completed, release 2 in preparation
 - API scope: authenticated race management, best efforts, authentication, and admin flows used by both the web and mobile clients
 
 ## Base URL

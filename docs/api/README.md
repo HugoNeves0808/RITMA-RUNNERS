@@ -4,9 +4,11 @@ The API documentation is now split into logical files for easier navigation.
 
 ## Release Context
 
-- Current release: `1.0.0`
-- Release date: `2026-04-07`
-- Phase status: first major project phase completed
+- Latest completed release: `1.0.0`
+- Current milestone in preparation: `2.0.0`
+- Latest completed release date: `2026-04-07`
+- Current milestone target date: `2026-04-08`
+- Phase status: release 1 completed, release 2 in preparation
 
 ## Sections
 
