@@ -368,7 +368,7 @@ export function PendingApprovalsPage() {
           title="Temporary password generated"
           onCancel={() => setApprovedAccountDetails(null)}
           footer={[
-            <Button key="close" type="primary" onClick={() => setApprovedAccountDetails(null)}>
+            <Button key="close" type="primary" className={styles.approveButton} onClick={() => setApprovedAccountDetails(null)}>
               Close
             </Button>,
           ]}

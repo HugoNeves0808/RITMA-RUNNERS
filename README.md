@@ -1,13 +1,13 @@
 # RITMA RUNNERS
 
-`Release 1.0.0` remains the latest completed release, and `2.0.0` is now being prepared as the next project milestone.
+`Release 1.0.0` remains the latest completed release, and `2.0.1` is now the current incremental milestone being prepared inside the release 2 cycle.
 
 RITMA RUNNERS is now a working multi-client platform for managing running races, reviewing best efforts, and supporting admin approval flows across web, mobile, and backend layers.
 
 ## Release Status
 
 - Latest completed release: `1.0.0`
-- Current milestone in preparation: `2.0.0`
+- Current milestone in preparation: `2.0.1`
 - Latest completed release date: `2026-04-07`
 - Current milestone target date: `2026-04-08`
 - Phase status: release 1 completed, release 2 in preparation
@@ -213,6 +213,7 @@ cd backend
 
 - See `docs/README.md` for the documentation index.
 - See `docs/changelog/README.md` for the release-organized changelog.
+- See `docs/changelog/releases/2.0.1.md` for the current release 2.0.1 notes in preparation.
 - See `docs/changelog/releases/2.0.0.md` for the release 2 notes in preparation.
 - See `docs/changelog/releases/1.0.0.md` for the release 1 notes.
 - See `docs/api/README.md` for the API documentation index.
@@ -221,4 +222,4 @@ cd backend
 
 ## Release Summary
 
-Release `1.0.0` established the first complete usable platform slice of RITMA RUNNERS. The project is now moving through the `2.0.0` preparation cycle with incremental UX and product refinements on top of that first major milestone.
+Release `1.0.0` established the first complete usable platform slice of RITMA RUNNERS. The project is now moving through the `2.0.1` preparation cycle as part of release 2, with incremental UX and product refinements on top of that first major milestone.

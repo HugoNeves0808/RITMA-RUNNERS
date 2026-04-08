@@ -7,7 +7,7 @@ It also includes a short summary of the current account-access flow because the 
 ## Release Context
 
 - Latest completed release: `1.0.0`
-- Current milestone in preparation: `2.0.0`
+- Current milestone in preparation: `2.0.1`
 - Latest completed release date: `2026-04-07`
 - Current milestone target date: `2026-04-08`
 - Phase status: release 1 completed, release 2 in preparation

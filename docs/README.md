@@ -5,6 +5,7 @@ This folder centralizes the main written documentation for `RITMA RUNNERS`.
 ## Contents
 
 - `changelog/README.md`: changelog index organized by release
+- `changelog/releases/2.0.1.md`: release 2.0.1 notes in preparation
 - `changelog/releases/2.0.0.md`: release 2 notes in preparation
 - `changelog/releases/1.0.0.md`: release 1 notes and implementation history
 - `api/README.md`: API documentation index
