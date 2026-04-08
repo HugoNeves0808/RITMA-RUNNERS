@@ -39,16 +39,6 @@ const PendingApprovalsPage = lazy(async () => {
   return { default: module.PendingApprovalsPage }
 })
 
-const ProfilePage = lazy(async () => {
-  const module = await import('../pages/ProfilePage/ProfilePage')
-  return { default: module.ProfilePage }
-})
-
-const SettingsPage = lazy(async () => {
-  const module = await import('../pages/SettingsPage/SettingsPage')
-  return { default: module.SettingsPage }
-})
-
 const UserListPage = lazy(async () => {
   const module = await import('../pages/UserListPage/UserListPage')
   return { default: module.UserListPage }
@@ -68,8 +58,6 @@ export function AppRoutes() {
           <Route path={ROUTES.home} element={<HomePage />} />
           <Route path={ROUTES.races} element={<HomePage />} />
           <Route path={ROUTES.bestEfforts} element={<BestEffortsPage />} />
-          <Route path={ROUTES.profile} element={<ProfilePage />} />
-          <Route path={ROUTES.settings} element={<SettingsPage />} />
         </Route>
         <Route element={<ProtectedRoute requiredRole="ADMIN" />}>
           <Route path={ROUTES.adminRitmaOverview} element={<AdminRitmaOverviewPage />} />

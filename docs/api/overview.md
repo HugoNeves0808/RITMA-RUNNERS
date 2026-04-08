@@ -77,10 +77,6 @@ These are not backend API endpoints, but they are relevant to the current user f
 - `/best-efforts`
   Authenticated web section for best efforts.
   The page now uses a header-level `Top 3` / `Top 5` / `All races` view switcher, a right-side collapsible `Race types` filter with inline race-type management, category counters for `valid`, `below target`, `excluded`, and `total`, filtered race-list modals, and the shared race-details drawer with working `Edit` / `Delete` actions.
-- `/profile`
-  Authenticated web section reserved for profile.
-- `/settings`
-  Authenticated web section reserved for settings.
 - `/future-goals`
   Public product/roadmap page linked from the login screen.
 - `/admin-area/ritma-overview`
@@ -92,7 +88,7 @@ These are not backend API endpoints, but they are relevant to the current user f
 
 Authenticated client shell status:
 
-- web now uses a fixed left sidebar with admin-aware menu rendering, an `Admin Area` dropdown group for admins, `Races`, `Best Efforts`, account actions, and active route highlighting
+- web now uses a fixed left sidebar with admin-aware menu rendering, an `Admin Area` dropdown group for admins, `Races`, `Best Efforts`, a black `Logout` action with confirmation, and active route highlighting
 - mobile now uses a fixed top bar, fixed bottom navigation, and a fullscreen menu page opened from the hamburger button, including the same admin-only dropdown group and account actions near the end of the menu
 - `Admin Area` is currently a grouped navigation label in both clients, not a standalone page or backend endpoint
 - web `Races` now uses a header-level `List` / `Calendar` switcher beside `Add Race` instead of keeping that view switch inside the filters panel
@@ -108,7 +104,7 @@ Authenticated client shell status:
 - web `Races` create flows now also let the user manage `race types`, `teams`, `circuits`, and `shoes` directly inside the creation UI, including inline create, edit, delete, usage inspection, product-native confirmation modals, illustrated empty states when no options exist yet, and visible race-type target distances in the managed race-type lists
 - web `Races` now refreshes its list and filter sources immediately after a race is created so the new row appears without a manual browser refresh, while only widening already-active filters instead of unexpectedly narrowing the page to the new race type
 - web `Races` time presentation now hides seconds and uses `AM/PM` where race start time is shown in the creation flow and in the race-details drawer
-- web route loading now lazy-loads the `Races`, `Best Efforts`, login, profile, settings, and admin pages so those screens are split out of the initial bundle instead of shipping all page code up front
+- web route loading now lazy-loads the `Races`, `Best Efforts`, login, and admin pages so those screens are split out of the initial bundle instead of shipping all page code up front
 - web `Best Efforts` now shows ranked race-type categories backed by authenticated best-effort data, keeps `Race types` as a sticky collapsible filter with inline management, surfaces per-category `valid` / `below target` / `excluded` / `total` counters with explanatory tooltips, supports `Top 3`, `Top 5`, and `All races` modes, keeps the podium board visible with informative empty slots when a category still lacks enough valid races, reuses the shared race-details drawer plus edit/delete flows from the races feature, and shows managed race-type target distances in the same way as the races drawer
 - mobile `Races` now mirrors the same top-level switcher pattern and renders real monthly and yearly calendars backed by the same authenticated race data, with a compact per-day monthly summary and a single-column yearly overview adapted for smaller screens
 - mobile `Races` also includes a real table mode with a compact card layout, the same `Coming Up` weekly logic for registered races, a shared race-filters sheet for both table and calendar, and a three-dot action menu on each race card

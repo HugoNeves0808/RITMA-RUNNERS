@@ -2,17 +2,15 @@ import {
   faAngleDown,
   faAngleRight,
   faFlagCheckered,
-  faGear,
   faHourglassHalf,
   faMap,
   faRankingStar,
   faRightFromBracket,
   faShieldHalved,
-  faUser,
   faUsers,
 } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { Button, Layout } from 'antd'
+import { Button, Layout, Popconfirm } from 'antd'
 import { useEffect, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../features/auth'
@@ -54,23 +52,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       to: ROUTES.bestEfforts,
       icon: faRankingStar,
       isActive: location.pathname === ROUTES.bestEfforts,
-    },
-  ]
-
-  const utilityItems = [
-    {
-      key: 'profile',
-      label: 'Profile',
-      to: ROUTES.profile,
-      icon: faUser,
-      isActive: location.pathname === ROUTES.profile,
-    },
-    {
-      key: 'settings',
-      label: 'Settings',
-      to: ROUTES.settings,
-      icon: faGear,
-      isActive: location.pathname === ROUTES.settings,
     },
   ]
 
@@ -158,27 +139,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className={styles.sidebarFooter}>
-            <div className={styles.utilityRow} aria-label="Account actions">
-              {utilityItems.map((item) => (
-                <NavLink
-                  key={item.key}
-                  to={item.to}
-                  className={item.isActive ? `${styles.utilityButton} ${styles.utilityButtonActive}` : styles.utilityButton}
-                  aria-label={item.label}
-                  title={item.label}
-                >
-                  <FontAwesomeIcon icon={item.icon} />
-                </NavLink>
-              ))}
-              <Button
-                type="text"
-                className={styles.utilityButton}
-                aria-label="Logout"
+            <div className={styles.logoutWrap} aria-label="Account actions">
+              <Popconfirm
                 title="Logout"
-                onClick={logout}
+                description="Are you sure you want to logout?"
+                okText="Logout"
+                cancelText="Cancel"
+                onConfirm={logout}
               >
-                <FontAwesomeIcon icon={faRightFromBracket} />
-              </Button>
+                <Button
+                  type="primary"
+                  className={styles.logoutButton}
+                  icon={<FontAwesomeIcon icon={faRightFromBracket} />}
+                >
+                  Logout
+                </Button>
+              </Popconfirm>
             </div>
 
             <p className={styles.userEmail}>{user?.email}</p>

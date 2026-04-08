@@ -2,8 +2,6 @@ export const ROUTES = {
   home: '/',
   races: '/',
   bestEfforts: '/best-efforts',
-  profile: '/profile',
-  settings: '/settings',
   adminRitmaOverview: '/admin-area/ritma-overview',
   adminUserList: '/admin-area/user-list',
   adminPendingApprovals: '/admin-area/pending-approvals',

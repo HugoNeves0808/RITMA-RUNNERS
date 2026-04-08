@@ -166,48 +166,28 @@
   border-top: 1px solid rgba(16, 24, 40, 0.08);
 }
 
-.utilityRow {
+.logoutWrap {
   display: flex;
   justify-content: center;
-  gap: 10px;
   margin-bottom: 14px;
 }
 
-.utilityButton,
-.utilityButton:global(.ant-btn) {
+.logoutButton:global(.ant-btn) {
   display: inline-flex;
-  height: 44px;
-  width: 44px;
   align-items: center;
   justify-content: center;
+  width: 100%;
+  height: 44px;
   border: none;
   border-radius: 14px;
-  background: transparent;
-  color: #475467;
-  transition:
-    background-color 0.2s ease,
-    color 0.2s ease,
-    transform 0.2s ease;
+  background: #111111;
+  box-shadow: none;
+  font-weight: 600;
 }
 
-.utilityButton:hover,
-.utilityButton:global(.ant-btn):hover,
-.utilityButton:global(.ant-btn):focus {
-  background: linear-gradient(135deg, rgba(255, 239, 218, 0.88) 0%, rgba(255, 247, 238, 0.7) 55%, rgba(255, 255, 255, 0.45) 100%) !important;
-  color: #101828 !important;
-  transform: translateY(-1px);
-}
-
-.utilityButtonActive {
-  background: linear-gradient(135deg, rgba(255, 234, 208, 0.92) 0%, rgba(255, 244, 229, 0.78) 58%, rgba(255, 255, 255, 0.5) 100%);
-  color: #b54708;
-}
-
-.utilityButtonActive:hover,
-.utilityButtonActive:global(.ant-btn):hover,
-.utilityButtonActive:global(.ant-btn):focus {
-  background: linear-gradient(135deg, rgba(255, 228, 197, 0.94) 0%, rgba(255, 240, 222, 0.82) 58%, rgba(255, 255, 255, 0.54) 100%) !important;
-  color: #b54708 !important;
+.logoutButton:global(.ant-btn):hover,
+.logoutButton:global(.ant-btn):focus {
+  background: #2b2b2b !important;
 }
 
 .userEmail {
@@ -274,7 +254,7 @@
     flex: none;
   }
 
-  .utilityRow {
+  .logoutWrap {
     margin-bottom: 10px;
   }
 }

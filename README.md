@@ -18,7 +18,7 @@ RITMA RUNNERS is now a working multi-client platform for managing running races,
 ### Web
 
 - Authenticated shell with role-aware navigation
-- Login, request-account, remember-me, and forced password change flows
+- Login, request-account, remember-me, forced password change, and logout confirmation flows
 - `Races` area with `List` and `Calendar` modes
 - Monthly and yearly race calendar views
 - Card-based race list with filters, bucket list flow, race details, add/edit/delete actions, and managed race options
