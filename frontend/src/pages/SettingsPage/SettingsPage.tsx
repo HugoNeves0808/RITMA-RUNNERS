@@ -1,4 +1,4 @@
-import { faAngleDown, faKey, faShieldHalved, faUserGear } from '@fortawesome/free-solid-svg-icons'
+import { faAngleDown, faKey, faUserGear } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { useMemo, useState } from 'react'
 import { Alert, Button, Card, Form, Input, Switch, Typography } from 'antd'
@@ -14,10 +14,10 @@ type ChangePasswordFormValues = {
   confirmPassword: string
 }
 
-type SettingsSectionKey = 'password' | 'security' | 'preferences'
+type SettingsSectionKey = 'password' | 'preferences'
 
 export function SettingsPage() {
-  const { user, submitPasswordChange, rememberSession, updateRememberSession } = useAuth()
+  const { submitPasswordChange, rememberSession, updateRememberSession } = useAuth()
   const [form] = Form.useForm<ChangePasswordFormValues>()
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null)
@@ -25,7 +25,6 @@ export function SettingsPage() {
   const [activeSection, setActiveSection] = useState<SettingsSectionKey>('password')
   const [openSections, setOpenSections] = useState<Record<SettingsSectionKey, boolean>>({
     password: true,
-    security: true,
     preferences: true,
   })
 
@@ -37,12 +36,6 @@ export function SettingsPage() {
       icon: faKey,
     },
     {
-      key: 'security' as const,
-      eyebrow: 'Session',
-      title: '',
-      icon: faShieldHalved,
-    },
-    {
       key: 'preferences' as const,
       eyebrow: 'Preferences',
       title: '',
@@ -52,9 +45,7 @@ export function SettingsPage() {
 
   const activeSectionTitle = activeSection === 'password'
     ? 'Change password'
-    : activeSection === 'security'
-      ? 'Account security'
-      : 'Local preferences'
+    : 'Local preferences'
 
   const toggleActiveSection = () => {
     setOpenSections((current) => ({
@@ -94,6 +85,11 @@ export function SettingsPage() {
           || submitError.message === 'Use at least 8 characters, including uppercase, lowercase, a number, and a symbol.'
         ) {
           setPasswordError('Use at least 8 characters, including uppercase, lowercase, a number, and a symbol.')
+          return
+        }
+
+        if (submitError.message === 'New password must be different from the current password.') {
+          setPasswordError('The new password cannot be the same as the current password.')
           return
         }
 
@@ -171,10 +167,22 @@ export function SettingsPage() {
                 <Form.Item
                   label="New password"
                   name="newPassword"
+                  dependencies={['currentPassword']}
                   validateTrigger={['onBlur', 'onSubmit']}
                   rules={[
                     { required: true, message: 'New password is required' },
                     { min: 8, message: 'Use at least 8 characters.' },
+                    ({ getFieldValue }) => ({
+                      validator(_, value) {
+                        if (!value) {
+                          return Promise.resolve()
+                        }
+
+                        return getFieldValue('currentPassword') === value
+                          ? Promise.reject(new Error('The new password cannot be the same as the current password.'))
+                          : Promise.resolve()
+                      },
+                    }),
                     {
                       validator(_, value) {
                         if (!value) {
@@ -224,25 +232,6 @@ export function SettingsPage() {
                   Update password
                 </Button>
               </Form>
-            </div>
-          ) : null}
-
-          {activeSection === 'security' && openSections.security ? (
-            <div className={styles.contentBody}>
-              <div className={styles.infoStack}>
-                <div className={styles.infoRow}>
-                  <span className={styles.infoLabel}>Role</span>
-                  <span className={styles.infoValue}>{user?.role === 'ADMIN' ? 'Admin' : 'User'}</span>
-                </div>
-                <div className={styles.infoRow}>
-                  <span className={styles.infoLabel}>Password reset required</span>
-                  <span className={styles.infoValue}>{user?.forcePasswordChange ? 'Yes' : 'No'}</span>
-                </div>
-                <div className={styles.infoRow}>
-                  <span className={styles.infoLabel}>Signed in email</span>
-                  <span className={styles.infoValue}>{user?.email ?? '-'}</span>
-                </div>
-              </div>
             </div>
           ) : null}
 

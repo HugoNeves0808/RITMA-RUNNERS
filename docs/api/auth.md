@@ -116,6 +116,7 @@ Used mainly for the forced password change flow after first login.
 This endpoint:
 
 - validates current password
+- rejects changing to the same password already in use
 - validates strong password rules
 - updates the encoded password
 - sets `force_password_change = false`
@@ -127,6 +128,10 @@ Strong password rule:
 - lowercase
 - number
 - symbol
+
+Additional change-password rule:
+
+- the new password must be different from the current password
 
 Postman:
 
@@ -147,6 +152,20 @@ Postman:
 Expected response:
 
 - `204 No Content`
+
+Possible validation response examples:
+
+```text
+Current password is incorrect
+```
+
+```text
+Choose a stronger password.
+```
+
+```text
+New password must be different from the current password.
+```
 
 ### `POST /api/auth/logout`
 

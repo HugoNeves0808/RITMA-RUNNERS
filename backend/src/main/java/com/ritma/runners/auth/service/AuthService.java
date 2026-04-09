@@ -35,6 +35,7 @@ public class AuthService {
     private static final String ACCOUNT_PENDING_MESSAGE =
             "This account is still pending administrator approval. Please wait.";
     private static final String STRONG_PASSWORD_MESSAGE = "Choose a stronger password.";
+    private static final String PASSWORD_REUSE_MESSAGE = "New password must be different from the current password.";
     private static final String ACCOUNT_ACTIVE = "ACTIVE";
     private static final String ACCOUNT_PENDING = "PENDING";
     private static final String PLATFORM_WEB = "WEB";
@@ -137,6 +138,10 @@ public class AuthService {
 
         if (!passwordEncoder.matches(request.currentPassword(), user.passwordHash())) {
             throw new BadCredentialsException("Current password is incorrect");
+        }
+
+        if (request.currentPassword().equals(request.newPassword())) {
+            throw new ResponseStatusException(BAD_REQUEST, PASSWORD_REUSE_MESSAGE);
         }
 
         if (!isStrongPassword(request.newPassword())) {

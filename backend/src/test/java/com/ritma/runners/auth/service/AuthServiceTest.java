@@ -1,8 +1,10 @@
 package com.ritma.runners.auth.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -15,8 +17,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.ritma.runners.auth.dto.AuthResponse;
+import com.ritma.runners.auth.dto.ChangePasswordRequest;
+import com.ritma.runners.auth.dto.JwtAuthenticatedUser;
 import com.ritma.runners.auth.dto.LoginRequest;
 import com.ritma.runners.auth.dto.RequestAccountRequest;
 import com.ritma.runners.auth.dto.RequestAccountResponse;
@@ -94,5 +99,31 @@ class AuthServiceTest {
 
         assertEquals("Your request has been submitted. An admin must approve the account before sign-in.", response.message());
         verify(appUserRepository).createDefaultUserSettings(userId);
+    }
+
+    @Test
+    void changePasswordRejectsReusingCurrentPassword() {
+        UUID userId = UUID.randomUUID();
+        AppUser user = new AppUser(
+                userId,
+                "admin@example.com",
+                "encoded-password",
+                "ADMIN",
+                false,
+                "ACTIVE"
+        );
+        JwtAuthenticatedUser authenticatedUser = new JwtAuthenticatedUser(userId, "admin@example.com", "ADMIN", false);
+        ChangePasswordRequest request = new ChangePasswordRequest("StrongPassword123!", "StrongPassword123!");
+
+        when(appUserRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("StrongPassword123!", "encoded-password")).thenReturn(true);
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> authService.changePassword(authenticatedUser, request)
+        );
+
+        assertEquals("New password must be different from the current password.", exception.getReason());
+        verify(appUserRepository, never()).updatePassword(eq(userId), eq("encoded-password"), eq(false));
     }
 }
