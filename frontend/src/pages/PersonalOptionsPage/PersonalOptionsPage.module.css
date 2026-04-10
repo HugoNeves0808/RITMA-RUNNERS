@@ -94,6 +94,11 @@
   font-weight: 700;
 }
 
+.requiredMark {
+  color: #ff4d4f;
+  font-weight: 700;
+}
+
 .infoIcon {
   display: inline-flex;
   align-items: center;
@@ -191,6 +196,25 @@
   font-weight: 600;
 }
 
+.optionMetaRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.defaultOptionBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(16, 24, 40, 0.06);
+  color: #475467;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
 .optionActions {
   display: inline-flex;
   align-items: center;
@@ -201,10 +225,18 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  min-height: 220px;
+  min-height: 320px;
+  padding: 24px 0;
+}
+
+.loadingText {
   color: #667085;
+  font-size: 14px;
   font-weight: 600;
+}
+
+.loadingState :global(.ant-spin-dot-item) {
+  background-color: #f97316;
 }
 
 .emptyWrap {

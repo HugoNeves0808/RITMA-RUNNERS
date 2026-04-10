@@ -19,6 +19,17 @@ type RacesCalendarViewProps = {
   refreshKey?: number
 }
 
+function buildCalendarFiltersKey(filters: RaceFilters) {
+  const normalizedStatuses = [...filters.statuses].sort()
+  const normalizedRaceTypeIds = [...filters.raceTypeIds].sort()
+
+  return JSON.stringify({
+    year: filters.year,
+    statuses: normalizedStatuses,
+    raceTypeIds: normalizedRaceTypeIds,
+  })
+}
+
 function formatDayDrawerDate(value: string) {
   const date = new Date(`${value}T00:00:00`)
   return new Intl.DateTimeFormat('en-US', {
@@ -58,9 +69,9 @@ function formatStatusLabel(status: string | null | undefined) {
     case 'COMPLETED':
       return 'Completed'
     case 'IN_LIST':
-      return 'In list'
+      return 'Future races'
     case 'NOT_REGISTERED':
-      return 'Not registered'
+      return 'Waiting for registration'
     case 'CANCELLED':
       return 'Cancelled'
     case 'DID_NOT_START':
@@ -133,10 +144,13 @@ function filterCalendarYearPayload(payload: RaceCalendarYearPayload, search: str
 export function RacesCalendarView({ selectedMode, filters, refreshKey = 0 }: RacesCalendarViewProps) {
   const { token } = useAuth()
   const raceDetailsCacheRef = useRef<Map<string, RaceDetailResponse>>(new Map())
+  const monthlyCalendarCacheRef = useRef<Map<string, RaceCalendarMonthPayload>>(new Map())
+  const yearlyCalendarCacheRef = useRef<Map<string, RaceCalendarYearPayload>>(new Map())
   const serverFilters = useMemo(() => ({
     ...filters,
     search: '',
   }), [filters.raceTypeIds, filters.statuses, filters.year])
+  const serverFiltersKey = useMemo(() => buildCalendarFiltersKey(serverFilters), [serverFilters])
   const [visibleYear, setVisibleYear] = useState(() => new Date().getFullYear())
   const [visibleMonth, setVisibleMonth] = useState(() => {
     const today = new Date()
@@ -158,7 +172,22 @@ export function RacesCalendarView({ selectedMode, filters, refreshKey = 0 }: Rac
   const [raceDetails, setRaceDetails] = useState<RaceDetailResponse | null>(null)
 
   useEffect(() => {
+    monthlyCalendarCacheRef.current.clear()
+    yearlyCalendarCacheRef.current.clear()
+  }, [refreshKey, token])
+
+  useEffect(() => {
     if (!token || selectedMode !== 'monthly') {
+      return
+    }
+
+    const cacheKey = `${visibleMonth.year}-${visibleMonth.month}-${serverFiltersKey}`
+    const cachedPayload = monthlyCalendarCacheRef.current.get(cacheKey)
+
+    if (cachedPayload) {
+      setRawCalendarData(cachedPayload)
+      setMonthlyErrorMessage(null)
+      setIsMonthlyLoading(false)
       return
     }
 
@@ -166,6 +195,7 @@ export function RacesCalendarView({ selectedMode, filters, refreshKey = 0 }: Rac
       try {
         setIsMonthlyLoading(true)
         const response = await fetchRaceCalendarMonth(visibleMonth.year, visibleMonth.month, token, serverFilters)
+        monthlyCalendarCacheRef.current.set(cacheKey, response)
         setRawCalendarData(response)
         setMonthlyErrorMessage(null)
       } catch (error) {
@@ -180,10 +210,20 @@ export function RacesCalendarView({ selectedMode, filters, refreshKey = 0 }: Rac
     }
 
     void loadMonthlyCalendar()
-  }, [refreshKey, selectedMode, serverFilters, token, visibleMonth.month, visibleMonth.year])
+  }, [selectedMode, serverFilters, serverFiltersKey, token, visibleMonth.month, visibleMonth.year])
 
   useEffect(() => {
     if (!token || selectedMode !== 'yearly') {
+      return
+    }
+
+    const cacheKey = `${visibleYear}-${serverFiltersKey}`
+    const cachedPayload = yearlyCalendarCacheRef.current.get(cacheKey)
+
+    if (cachedPayload) {
+      setRawYearCalendarData(cachedPayload)
+      setYearlyErrorMessage(null)
+      setIsYearlyLoading(false)
       return
     }
 
@@ -191,6 +231,7 @@ export function RacesCalendarView({ selectedMode, filters, refreshKey = 0 }: Rac
       try {
         setIsYearlyLoading(true)
         const response = await fetchRaceCalendarYear(visibleYear, token, serverFilters)
+        yearlyCalendarCacheRef.current.set(cacheKey, response)
         setRawYearCalendarData(response)
         setYearlyErrorMessage(null)
       } catch (error) {
@@ -205,7 +246,7 @@ export function RacesCalendarView({ selectedMode, filters, refreshKey = 0 }: Rac
     }
 
     void loadYearlyCalendar()
-  }, [refreshKey, selectedMode, serverFilters, token, visibleYear])
+  }, [selectedMode, serverFilters, serverFiltersKey, token, visibleYear])
 
   useEffect(() => {
     setCalendarData(rawCalendarData ? filterCalendarMonthPayload(rawCalendarData, filters.search) : null)

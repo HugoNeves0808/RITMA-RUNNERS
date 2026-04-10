@@ -387,11 +387,8 @@ public class RaceRepository {
                            Integer pacePerKmSeconds,
                            UUID shoeId,
                            Integer generalClassification,
-                           Boolean isGeneralClassificationPodium,
                            Integer ageGroupClassification,
-                           Boolean isAgeGroupClassificationPodium,
                            Integer teamClassification,
-                           Boolean isTeamClassificationPodium,
                            String preRaceConfidence,
                            String raceDifficulty,
                            String finalSatisfaction,
@@ -417,11 +414,8 @@ public class RaceRepository {
                             pace_per_km = ?,
                             shoe_id = ?,
                             general_classification = ?,
-                            is_general_classification_podium = ?,
                             age_group_classification = ?,
-                            is_age_group_classification_podium = ?,
                             team_classification = ?,
-                            is_team_classification_podium = ?,
                             pre_race_confidence = ?,
                             race_difficulty = ?,
                             final_satisfaction = ?,
@@ -447,11 +441,8 @@ public class RaceRepository {
                 pacePerKmSeconds,
                 shoeId,
                 generalClassification,
-                isGeneralClassificationPodium != null && isGeneralClassificationPodium,
                 ageGroupClassification,
-                isAgeGroupClassificationPodium != null && isAgeGroupClassificationPodium,
                 teamClassification,
-                isTeamClassificationPodium != null && isTeamClassificationPodium,
                 preRaceConfidence,
                 raceDifficulty,
                 finalSatisfaction,
@@ -516,11 +507,8 @@ public class RaceRepository {
                                         Integer pacePerKmSeconds,
                                         UUID shoeId,
                                         Integer generalClassification,
-                                        Boolean isGeneralClassificationPodium,
                                         Integer ageGroupClassification,
-                                        Boolean isAgeGroupClassificationPodium,
-                                        Integer teamClassification,
-                                        Boolean isTeamClassificationPodium) {
+                                        Integer teamClassification) {
         jdbcTemplate().update(
                 """
                         UPDATE user_races
@@ -529,11 +517,8 @@ public class RaceRepository {
                             pace_per_km = ?,
                             shoe_id = ?,
                             general_classification = ?,
-                            is_general_classification_podium = ?,
                             age_group_classification = ?,
-                            is_age_group_classification_podium = ?,
-                            team_classification = ?,
-                            is_team_classification_podium = ?
+                            team_classification = ?
                         WHERE id = ?
                         """,
                 officialTimeSeconds,
@@ -541,11 +526,8 @@ public class RaceRepository {
                 pacePerKmSeconds,
                 shoeId,
                 generalClassification,
-                isGeneralClassificationPodium != null && isGeneralClassificationPodium,
                 ageGroupClassification,
-                isAgeGroupClassificationPodium != null && isAgeGroupClassificationPodium,
                 teamClassification,
-                isTeamClassificationPodium != null && isTeamClassificationPodium,
                 raceId
         );
     }
@@ -586,11 +568,8 @@ public class RaceRepository {
                             ur.shoe_id,
                             us.name AS shoe_name,
                             ur.general_classification,
-                            ur.is_general_classification_podium,
                             ur.age_group_classification,
-                            ur.is_age_group_classification_podium,
                             ur.team_classification,
-                            ur.is_team_classification_podium,
                             ur.pre_race_confidence,
                             ur.race_difficulty,
                             ur.final_satisfaction,
@@ -630,11 +609,8 @@ public class RaceRepository {
                                 rs.getObject("shoe_id", UUID.class),
                                 rs.getString("shoe_name"),
                                 getNullableInteger(rs, "general_classification"),
-                                rs.getObject("is_general_classification_podium", Boolean.class),
                                 getNullableInteger(rs, "age_group_classification"),
-                                rs.getObject("is_age_group_classification_podium", Boolean.class),
-                                getNullableInteger(rs, "team_classification"),
-                                rs.getObject("is_team_classification_podium", Boolean.class)
+                                getNullableInteger(rs, "team_classification")
                         ),
                         new RaceDetailResponse.RaceAnalysis(
                                 rs.getString("pre_race_confidence"),

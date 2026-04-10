@@ -83,9 +83,9 @@ function formatStatusLabel(status: string | null | undefined) {
     case 'COMPLETED':
       return 'Completed'
     case 'IN_LIST':
-      return 'In list'
+      return 'Future races'
     case 'NOT_REGISTERED':
-      return 'Not registered'
+      return 'Waiting for registration'
     case 'CANCELLED':
       return 'Cancelled'
     case 'DID_NOT_START':
@@ -198,7 +198,7 @@ export function RaceDetailsDrawer({
             { label: 'Team', value: race.race.teamName ?? '-' },
             { label: 'Circuit', value: race.race.circuitName ?? '-' },
             { label: 'Real KM', value: race.race.realKm ?? '-' },
-            { label: 'Elevation', value: race.race.elevation ?? '-' },
+            { label: 'Elevation gain', value: race.race.elevation ?? '-' },
             { label: 'Valid for category ranking', value: formatBoolean(race.race.isValidForCategoryRanking) },
           ])}
         </div>
@@ -233,11 +233,8 @@ export function RaceDetailsDrawer({
           {renderFieldsGrid([
             { label: 'Shoe', value: race.results.shoeName ?? '-' },
             { label: 'General classification', value: race.results.generalClassification ?? '-' },
-            { label: 'General classification podium', value: formatBoolean(race.results.isGeneralClassificationPodium) },
             { label: 'Age group classification', value: race.results.ageGroupClassification ?? '-' },
-            { label: 'Age group podium', value: formatBoolean(race.results.isAgeGroupClassificationPodium) },
             { label: 'Team classification', value: race.results.teamClassification ?? '-' },
-            { label: 'Team podium', value: formatBoolean(race.results.isTeamClassificationPodium) },
           ])}
         </div>
       ) : null,

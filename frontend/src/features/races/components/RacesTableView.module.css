@@ -3,6 +3,10 @@
   background: #ffffff;
 }
 
+.bucketListModalAlert {
+  margin-bottom: 12px;
+}
+
 .yearSection {
   margin-top: 48px;
 }
@@ -202,6 +206,13 @@
   margin-top: 18px;
 }
 
+.pendingUpdatesModalList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
 .bucketListModalHeader {
   display: flex;
   align-items: center;
@@ -235,9 +246,7 @@
   padding: 14px 16px;
   border: 1px solid rgba(16, 24, 40, 0.08);
   border-radius: 14px;
-  background:
-    linear-gradient(180deg, rgba(241, 245, 249, 0.98), rgba(226, 232, 240, 0.98)),
-    radial-gradient(circle at top right, rgba(249, 115, 22, 0.08), transparent 28%);
+  background: #0000000d;
   cursor: pointer;
   text-align: left;
   transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
@@ -304,6 +313,10 @@
   background: rgba(248, 250, 252, 0.8);
 }
 
+.bucketListRowUpdating {
+  opacity: 0.76;
+}
+
 .inListModalHeader {
   display: flex;
   align-items: flex-start;
@@ -314,10 +327,55 @@
 
 .inListModalActions {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: flex-end;
-  gap: 14px;
+  gap: 8px;
   flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.bucketListInlineLoading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #667085;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.bucketListQuickActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: 320px;
+}
+
+.bucketListQuickActionButton {
+  height: 28px;
+  padding: 0 10px !important;
+  border-radius: 999px !important;
+  border-width: 1px !important;
+  border-style: solid !important;
+  box-shadow: none !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.01em;
+}
+
+.bucketListQuickActionButton:hover,
+.bucketListQuickActionButton:focus {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08) !important;
+  filter: brightness(0.97);
+}
+
+.bucketListIconActions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
 }
 
 .bucketListActionButton {
@@ -371,7 +429,7 @@
 .inListModalTitleRow {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
 }
 
@@ -379,9 +437,9 @@
   display: block;
   flex: 0 1 auto;
   color: #101828;
-  font-size: 20px;
-  font-weight: 800;
-  line-height: 1.35;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -390,9 +448,9 @@
 .inListModalSubtitle {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 18px;
+  gap: 6px 14px;
   color: #667085;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
 }
 
@@ -646,11 +704,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 6px 10px;
+  padding: 5px 8px;
   border-radius: 999px;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
   white-space: nowrap;
 }
@@ -716,6 +774,39 @@
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 4px;
+}
+
+.statusWarningBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #ffffff;
+  box-shadow: 0 10px 20px rgba(220, 38, 38, 0.24);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  flex: 0 0 auto;
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease;
+}
+
+.statusWarningBadge:hover,
+.statusWarningBadge:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 26px rgba(220, 38, 38, 0.32);
+  filter: brightness(1.04);
+  outline: none;
+}
+
+.statusWarningIcon {
+  font-size: 11px;
 }
 
 .metricsGrid {
@@ -874,6 +965,20 @@
     flex-direction: column;
   }
 
+  .inListModalActions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .bucketListQuickActions {
+    max-width: none;
+    justify-content: flex-start;
+  }
+
+  .bucketListIconActions {
+    justify-content: flex-start;
+  }
+
   .inListModalHeader .raceStatusBadge {
     align-self: flex-end;
   }
@@ -916,6 +1021,10 @@
   .raceBottomRow {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .statusWarningBadge {
+    align-self: flex-start;
   }
 
   .metricsGrid {

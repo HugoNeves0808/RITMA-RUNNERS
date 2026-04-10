@@ -44,9 +44,17 @@ public class RaceService {
     private static final int MAX_RACE_NAME_LENGTH = 150;
     private static final int MAX_LOCATION_LENGTH = 150;
     private static final int MAX_OPTION_NAME_LENGTH = 100;
-    private static final BigDecimal MAX_REAL_KM = new BigDecimal("999.99");
+    private static final BigDecimal MAX_REAL_KM = new BigDecimal("999999.99");
     private static final BigDecimal MAX_TARGET_KM = new BigDecimal("9999.99");
     private static final int MAX_ANALYSIS_RATING_LENGTH = 30;
+    private static final List<DefaultRaceType> DEFAULT_RACE_TYPES = List.of(
+            new DefaultRaceType("10km Race", new BigDecimal("10.00")),
+            new DefaultRaceType("Half Marathon", new BigDecimal("21.10")),
+            new DefaultRaceType("Marathon", new BigDecimal("42.20")),
+            new DefaultRaceType("Short Trail", new BigDecimal("15.00")),
+            new DefaultRaceType("Long Trail", new BigDecimal("30.00")),
+            new DefaultRaceType("Ultra Marathon", new BigDecimal("50.00"))
+    );
 
     private static final Set<String> ALLOWED_RACE_STATUSES = Set.of(
             "IN_LIST",
@@ -145,12 +153,14 @@ public class RaceService {
     }
 
     public List<RaceTypeOptionResponse> getRaceTypes(UUID userId) {
-        return raceRepository.findRaceTypes(userId);
+        ensureDefaultRaceTypes(userId);
+        return annotateRaceTypeDefaults(raceRepository.findRaceTypes(userId));
     }
 
     public RaceCreateOptionsResponse getCreateOptions(UUID userId) {
+        ensureDefaultRaceTypes(userId);
         return new RaceCreateOptionsResponse(
-                raceRepository.findRaceTypes(userId),
+                annotateRaceTypeDefaults(raceRepository.findRaceTypes(userId)),
                 raceRepository.findTeams(userId),
                 raceRepository.findCircuits(userId),
                 raceRepository.findShoes(userId)
@@ -167,13 +177,19 @@ public class RaceService {
     }
 
     public RaceFilterOptionsResponse getFilterOptions(UUID userId) {
+        ensureDefaultRaceTypes(userId);
         return new RaceFilterOptionsResponse(
                 raceRepository.findAvailableYears(userId),
-                raceRepository.findRaceTypes(userId)
+                annotateRaceTypeDefaults(raceRepository.findRaceTypes(userId))
         );
     }
 
     public List<RaceTypeOptionResponse> getManagedOptions(UUID userId, RaceOptionType optionType) {
+        if (optionType == RaceOptionType.RACE_TYPES) {
+            ensureDefaultRaceTypes(userId);
+            return annotateRaceTypeDefaults(raceRepository.findManagedOptions(userId, optionType));
+        }
+
         return raceRepository.findManagedOptions(userId, optionType);
     }
 
@@ -191,7 +207,7 @@ public class RaceService {
         ValidatedManagedOption validatedOption = validateManagedOptionRequest(optionType, request);
 
         try {
-            return raceRepository.createManagedOption(userId, optionType, validatedOption.name(), validatedOption.targetKm());
+            return annotateRaceTypeDefault(raceRepository.createManagedOption(userId, optionType, validatedOption.name(), validatedOption.targetKm()));
         } catch (DuplicateKeyException exception) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -211,8 +227,12 @@ public class RaceService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, optionType.label() + " not found.");
         }
 
+        if (optionType == RaceOptionType.RACE_TYPES && isProtectedDefaultRaceType(userId, optionId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Default RITMA race types cannot be edited.");
+        }
+
         try {
-            return raceRepository.updateManagedOption(userId, optionType, optionId, validatedOption.name(), validatedOption.targetKm());
+            return annotateRaceTypeDefault(raceRepository.updateManagedOption(userId, optionType, optionId, validatedOption.name(), validatedOption.targetKm()));
         } catch (DuplicateKeyException exception) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -225,6 +245,10 @@ public class RaceService {
     public void deleteManagedOption(UUID userId, RaceOptionType optionType, UUID optionId) {
         if (!raceRepository.managedOptionExists(userId, optionType, optionId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, optionType.label() + " not found.");
+        }
+
+        if (optionType == RaceOptionType.RACE_TYPES && isProtectedDefaultRaceType(userId, optionId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Default RITMA race types cannot be deleted.");
         }
 
         int usageCount = raceRepository.countManagedOptionUsage(userId, optionType, optionId);
@@ -298,11 +322,8 @@ public class RaceService {
                     results.pacePerKmSeconds(),
                     results.shoeId(),
                     results.generalClassification(),
-                    results.isGeneralClassificationPodium(),
                     results.ageGroupClassification(),
-                    results.isAgeGroupClassificationPodium(),
-                    results.teamClassification(),
-                    results.isTeamClassificationPodium()
+                    results.teamClassification()
             );
         }
 
@@ -403,11 +424,8 @@ public class RaceService {
                 results != null ? results.pacePerKmSeconds() : null,
                 results != null ? results.shoeId() : null,
                 results != null ? results.generalClassification() : null,
-                results != null ? results.isGeneralClassificationPodium() : null,
                 results != null ? results.ageGroupClassification() : null,
-                results != null ? results.isAgeGroupClassificationPodium() : null,
                 results != null ? results.teamClassification() : null,
-                results != null ? results.isTeamClassificationPodium() : null,
                 analysis != null ? normalizeOptionalText(analysis.preRaceConfidence()) : null,
                 analysis != null ? normalizeOptionalText(analysis.raceDifficulty()) : null,
                 analysis != null ? normalizeOptionalText(analysis.finalSatisfaction()) : null,
@@ -467,7 +485,7 @@ public class RaceService {
         }
 
         if (realKm != null && realKm.compareTo(MAX_REAL_KM) > 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Distance must be 999.99 km or lower.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Distance must be 999999.99 km or lower.");
         }
 
         if (realKm != null && realKm.scale() > 2) {
@@ -557,10 +575,7 @@ public class RaceService {
                 || results.shoeId() != null
                 || results.generalClassification() != null
                 || results.ageGroupClassification() != null
-                || results.teamClassification() != null
-                || Boolean.TRUE.equals(results.isGeneralClassificationPodium())
-                || Boolean.TRUE.equals(results.isAgeGroupClassificationPodium())
-                || Boolean.TRUE.equals(results.isTeamClassificationPodium()));
+                || results.teamClassification() != null);
     }
 
     private boolean hasRaceAnalysis(CreateRaceRequest.RaceAnalysisData analysis) {
@@ -575,6 +590,53 @@ public class RaceService {
 
     private boolean hasText(String value) {
         return value != null && !value.trim().isEmpty();
+    }
+
+    private void ensureDefaultRaceTypes(UUID userId) {
+        DEFAULT_RACE_TYPES.forEach(defaultRaceType -> {
+            try {
+                raceRepository.createManagedOption(
+                        userId,
+                        RaceOptionType.RACE_TYPES,
+                        defaultRaceType.name(),
+                        defaultRaceType.targetKm()
+                );
+            } catch (DuplicateKeyException ignored) {
+                // Keep user-created or already-seeded defaults intact.
+            }
+        });
+    }
+
+    private List<RaceTypeOptionResponse> annotateRaceTypeDefaults(List<RaceTypeOptionResponse> options) {
+        return options.stream()
+                .map(this::annotateRaceTypeDefault)
+                .toList();
+    }
+
+    private RaceTypeOptionResponse annotateRaceTypeDefault(RaceTypeOptionResponse option) {
+        if (option == null) {
+            return null;
+        }
+
+        return new RaceTypeOptionResponse(
+                option.id(),
+                option.name(),
+                option.targetKm(),
+                isDefaultRaceTypeName(option.name())
+        );
+    }
+
+    private boolean isProtectedDefaultRaceType(UUID userId, UUID optionId) {
+        return raceRepository.findRaceTypes(userId).stream()
+                .filter(option -> option.id().equals(optionId))
+                .findFirst()
+                .map(option -> isDefaultRaceTypeName(option.name()))
+                .orElse(false);
+    }
+
+    private boolean isDefaultRaceTypeName(String name) {
+        return DEFAULT_RACE_TYPES.stream()
+                .anyMatch(defaultRaceType -> defaultRaceType.name().equalsIgnoreCase(name));
     }
 
     private ValidatedManagedOption validateManagedOptionRequest(RaceOptionType optionType, ManageRaceOptionRequest request) {
@@ -623,6 +685,12 @@ public class RaceService {
     }
 
     private record ValidatedManagedOption(
+            String name,
+            BigDecimal targetKm
+    ) {
+    }
+
+    private record DefaultRaceType(
             String name,
             BigDecimal targetKm
     ) {

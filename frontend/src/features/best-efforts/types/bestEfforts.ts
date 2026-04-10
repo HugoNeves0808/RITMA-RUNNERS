@@ -8,11 +8,8 @@ export type BestEffortItem = {
   officialTimeSeconds: number | null
   pacePerKmSeconds: number | null
   generalClassification: number | null
-  isGeneralClassificationPodium: boolean | null
   ageGroupClassification: number | null
-  isAgeGroupClassificationPodium: boolean | null
   teamClassification: number | null
-  isTeamClassificationPodium: boolean | null
   validForBestEffortRanking: boolean
   rankingNote: string
   classificationPodium: boolean

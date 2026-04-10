@@ -76,6 +76,20 @@ function normalizeDecimalInput(value: string | number | undefined) {
   return String(value).replace(',', '.')
 }
 
+function parseDecimalNumberInput(value: string | number | undefined) {
+  const normalized = normalizeDecimalInput(value)
+  if (!normalized) {
+    return 0
+  }
+
+  const cleaned = normalized.replace(/[^0-9.]/g, '')
+  const [integerPart = '', ...decimalParts] = cleaned.split('.')
+  const decimalPart = decimalParts.join('')
+  const parsedValue = Number(decimalPart.length > 0 ? `${integerPart}.${decimalPart}` : integerPart)
+
+  return Number.isNaN(parsedValue) ? 0 : parsedValue
+}
+
 function getOptionsForType(options: RaceCreateOptions, optionType: ManagedRaceOptionType) {
   switch (optionType) {
     case 'race-types':
@@ -301,6 +315,40 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
     }
   }
 
+  const handleConfirmDetachDelete = async () => {
+    if (!token || !pendingDeleteOption) {
+      return
+    }
+
+    try {
+      setIsSubmitting(true)
+      setError(null)
+
+      await detachManagedRaceOptionUsage(activeType, pendingDeleteOption.id, token)
+      await deleteManagedRaceOption(activeType, pendingDeleteOption.id, token)
+
+      setOptions((current) => replaceOptionsForType(
+        current,
+        activeType,
+        getOptionsForType(current, activeType).filter((option) => option.id !== pendingDeleteOption.id),
+      ))
+
+      if (editingOptionId === pendingDeleteOption.id) {
+        setOptionName('')
+        setTargetKm(null)
+        setEditingOptionId(null)
+      }
+
+      setUsage(null)
+      setPendingDeleteOption(null)
+      setConfirmState(null)
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : `Could not delete this ${config.singularLabel} right now.`)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   return (
     <div className={styles.page}>
       <div className={styles.pageHeader}>
@@ -334,48 +382,12 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
           />
         ) : null}
 
-        {usage && pendingDeleteOption ? (
-          <div className={styles.usageCard}>
-            <div className={styles.usageHeader}>
-              <strong>Used in {usage.usageCount} record{usage.usageCount === 1 ? '' : 's'}</strong>
-              <span>
-                This {config.singularLabel} is already attached to existing races. You can remove those links and delete it.
-              </span>
-            </div>
-
-            <div className={styles.usageList}>
-              {usage.records.map((record) => (
-                <div key={`${record.contextLabel}-${record.raceId}`} className={styles.usageRow}>
-                  <span className={styles.usageRaceName}>{record.raceName}</span>
-                  <span className={styles.usageContext}>{record.contextLabel}</span>
-                </div>
-              ))}
-            </div>
-
-            <Space>
-              <Button
-                onClick={() => {
-                  setUsage(null)
-                  setPendingDeleteOption(null)
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                danger
-                loading={isSubmitting}
-                onClick={() => setConfirmState({ kind: 'detach-delete', option: pendingDeleteOption })}
-              >
-                Remove links and delete
-              </Button>
-            </Space>
-          </div>
-        ) : null}
-
         {isLoading ? (
           <div className={styles.loadingState}>
-            <Spin />
-            <span>Loading {config.title.toLowerCase()}</span>
+            <Space size="middle">
+              <Spin />
+              <span className={styles.loadingText}>Loading {config.title.toLowerCase()}</span>
+            </Space>
           </div>
         ) : activeOptions.length === 0 ? (
           <div className={styles.emptyWrap}>
@@ -388,40 +400,46 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
                 <div className={styles.optionInfo}>
                   <span className={styles.optionName}>{option.name}</span>
                   {activeType === 'race-types' ? (
-                    <span className={styles.optionMeta}>
-                      {option.targetKm != null ? `${option.targetKm.toFixed(2)} km` : 'No target km set'}
-                    </span>
-                  ) : (
-                    <span className={styles.optionMeta}>Reusable in your race forms</span>
-                  )}
+                    <div className={styles.optionMetaRow}>
+                      <span className={styles.optionMeta}>
+                        {option.targetKm != null ? `${option.targetKm.toFixed(2)} km` : 'No target km set'}
+                      </span>
+                    </div>
+                  ) : null}
                 </div>
 
-                <div className={styles.optionActions}>
-                  <Button
-                    type="text"
-                    icon={<FontAwesomeIcon icon={faPenToSquare} />}
-                    onClick={() => {
-                      setOptionName(option.name)
-                      setTargetKm(activeType === 'race-types' ? (option.targetKm ?? null) : null)
-                      setEditingOptionId(option.id)
-                      setIsEditorOpen(true)
-                      setUsage(null)
-                      setPendingDeleteOption(null)
-                      setConfirmState(null)
-                      setError(null)
-                    }}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    type="text"
-                    danger
-                    icon={<FontAwesomeIcon icon={faTrashCan} />}
-                    onClick={() => void handleDelete(option)}
-                  >
-                    Delete
-                  </Button>
-                </div>
+                {option.isDefault ? (
+                  <div className={styles.optionActions}>
+                    <span className={styles.defaultOptionBadge}>Default from RITMA</span>
+                  </div>
+                ) : (
+                  <div className={styles.optionActions}>
+                    <Button
+                      type="text"
+                      icon={<FontAwesomeIcon icon={faPenToSquare} />}
+                      onClick={() => {
+                        setOptionName(option.name)
+                        setTargetKm(activeType === 'race-types' ? (option.targetKm ?? null) : null)
+                        setEditingOptionId(option.id)
+                        setIsEditorOpen(true)
+                        setUsage(null)
+                        setPendingDeleteOption(null)
+                        setConfirmState(null)
+                        setError(null)
+                      }}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      type="text"
+                      danger
+                      icon={<FontAwesomeIcon icon={faTrashCan} />}
+                      onClick={() => void handleDelete(option)}
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -462,7 +480,10 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
 
         <div className={styles.drawerForm}>
           <label className={styles.fieldGroup}>
-            <span className={styles.fieldLabel}>Name</span>
+            <span className={styles.fieldLabel}>
+              <span className={styles.requiredMark} aria-hidden="true">*</span>
+              <span>Name</span>
+            </span>
             <Input
               value={optionName}
               maxLength={100}
@@ -474,6 +495,7 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
           {activeType === 'race-types' ? (
             <label className={styles.fieldGroup}>
               <span className={styles.fieldLabel}>
+                <span className={styles.requiredMark} aria-hidden="true">*</span>
                 <span>Target km</span>
                 <Tooltip title="Expected distance for this race type. It is used to group races correctly and power best-effort rankings.">
                   <span className={styles.infoIcon} aria-label="Target km info">i</span>
@@ -487,7 +509,7 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
                 className={styles.targetInput}
                 placeholder="Target km"
                 value={targetKm ?? undefined}
-                parser={(value) => Number(normalizeDecimalInput(value))}
+                parser={(value) => parseDecimalNumberInput(value)}
                 onChange={(value) => setTargetKm(typeof value === 'number' ? value : null)}
               />
             </label>
@@ -508,9 +530,41 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
       </Modal>
 
       <Modal
+        title="Remove associations and delete?"
+        open={usage != null && pendingDeleteOption != null}
+        okText="Remove and delete"
+        cancelText="Cancel"
+        okButtonProps={{ danger: true }}
+        confirmLoading={isSubmitting}
+        onOk={() => void handleConfirmDetachDelete()}
+        onCancel={() => {
+          setUsage(null)
+          setPendingDeleteOption(null)
+        }}
+      >
+        <div className={styles.usageCard}>
+          <div className={styles.usageHeader}>
+            <strong>Used in {usage?.usageCount ?? 0} record{usage?.usageCount === 1 ? '' : 's'}</strong>
+            <span>
+              This {config.singularLabel} is already attached to existing races. You can remove those links and delete it.
+            </span>
+          </div>
+
+          <div className={styles.usageList}>
+            {usage?.records.map((record) => (
+              <div key={`${record.contextLabel}-${record.raceId}`} className={styles.usageRow}>
+                <span className={styles.usageRaceName}>{record.raceName}</span>
+                <span className={styles.usageContext}>{record.contextLabel}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
         title={confirmState?.kind === 'detach-delete' ? 'Remove associations and delete?' : 'Delete option?'}
-        open={confirmState != null}
-        okText={confirmState?.kind === 'detach-delete' ? 'Remove and delete' : 'Delete'}
+        open={confirmState?.kind === 'delete'}
+        okText="Delete"
         cancelText="Cancel"
         okButtonProps={{ danger: true }}
         confirmLoading={isSubmitting}
@@ -518,9 +572,7 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
         onCancel={() => setConfirmState(null)}
       >
         <p>
-          {confirmState?.kind === 'detach-delete'
-            ? `This will remove "${confirmState.option.name}" from the linked records and then delete it.`
-            : `Delete "${confirmState?.option.name ?? ''}"? This action cannot be undone.`}
+          {`Delete "${confirmState?.option.name ?? ''}"? This action cannot be undone.`}
         </p>
       </Modal>
     </div>

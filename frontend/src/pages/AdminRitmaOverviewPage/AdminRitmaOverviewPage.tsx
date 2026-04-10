@@ -248,10 +248,12 @@ export function AdminRitmaOverviewPage() {
 
         {isLoading ? (
           <Card className={styles.loadingCard} variant="borderless">
-            <Space>
-              <Spin size="small" />
-              <span>Loading overview</span>
-            </Space>
+            <div className={styles.loadingState}>
+              <Space size="middle">
+                <Spin />
+                <span className={styles.loadingText}>Loading overview</span>
+              </Space>
+            </div>
           </Card>
         ) : null}
 

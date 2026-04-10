@@ -273,10 +273,14 @@ export function UserListPage() {
       </div>
 
       {isLoading ? (
-        <Space>
-          <Spin size="small" />
-          <span>Loading users</span>
-        </Space>
+        <Card className={styles.loadingCard} variant="borderless">
+          <div className={styles.loadingState}>
+            <Space size="middle">
+              <Spin />
+              <span className={styles.loadingText}>Loading users</span>
+            </Space>
+          </div>
+        </Card>
       ) : null}
 
       {error ? (

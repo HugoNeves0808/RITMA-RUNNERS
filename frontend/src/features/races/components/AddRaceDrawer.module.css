@@ -343,8 +343,162 @@
   margin-bottom: 18px;
 }
 
+.emphasizedField :global(.ant-picker),
+.emphasizedField :global(.ant-input),
+.emphasizedField :global(.ant-input-number),
+.emphasizedField :global(.ant-select-selector) {
+  border-color: #f97316 !important;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.12) !important;
+}
+
+.emphasizedField :global(.ant-picker:hover),
+.emphasizedField :global(.ant-input:hover),
+.emphasizedField :global(.ant-input-number:hover),
+.emphasizedField :global(.ant-select-selector:hover) {
+  border-color: #ea580c !important;
+}
+
 .fullWidth {
   width: 100%;
+}
+
+.durationComposer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 4px;
+  padding: 10px 14px;
+  border: 1px solid rgba(16, 24, 40, 0.1);
+  border-radius: 18px;
+  background: #ffffff;
+}
+
+.durationComposerFocused {
+  border-color: rgba(234, 88, 12, 0.42);
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.12);
+}
+
+.durationColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.durationUnitLabel {
+  color: #9a3412;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.durationAdjustButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: #667085;
+  cursor: pointer;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.durationAdjustButton:hover,
+.durationAdjustButton:focus {
+  background: rgba(249, 115, 22, 0.08);
+  color: #c2410c;
+}
+
+.durationValueInput {
+  width: 70px;
+  border: none;
+  background: transparent;
+  color: #101828;
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  outline: none;
+  padding: 0;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.durationValueInput::-webkit-outer-spin-button,
+.durationValueInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.durationValueInput:focus,
+.durationValueInputActive {
+  color: #c2410c;
+}
+
+.durationDivider {
+  align-self: center;
+  color: #cbd5e1;
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+  padding-top: 12px;
+}
+
+.resultsMetricGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 2px 0 18px;
+}
+
+.resultsMetricCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid rgba(16, 24, 40, 0.1);
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.resultsMetricLabel {
+  color: #9a3412;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.resultsMetricInput {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: #c2410c;
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+  padding: 0;
+}
+
+.resultsMetricInput::placeholder {
+  color: #98a2b3;
+}
+
+.resultsMetricInput:disabled {
+  cursor: not-allowed;
+  color: #98a2b3;
+}
+
+.resultsMetricUnit {
+  color: #475467;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .managedField {
@@ -369,6 +523,36 @@
   grid-template-columns: minmax(0, 1fr) 34px;
   gap: 8px;
   align-items: stretch;
+}
+
+.selectEmptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 6px 2px;
+}
+
+.selectEmptyText {
+  color: #98a2b3;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.selectEmptyAction {
+  border: none;
+  padding: 0;
+  background: transparent;
+  color: #ea580c;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.selectEmptyAction:hover,
+.selectEmptyAction:focus {
+  color: #c2410c;
 }
 
 .addManagedOptionButton {
@@ -542,10 +726,29 @@
   min-width: 0;
 }
 
+.manageOptionMetaRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .manageOptionMeta {
   color: #667085;
   font-size: 12px;
   font-weight: 600;
+}
+
+.defaultOptionBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(16, 24, 40, 0.06);
+  color: #475467;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
 .manageOptionActions {
@@ -606,6 +809,25 @@
   }
 
   .manageInputRow {
+    grid-template-columns: 1fr;
+  }
+
+  .durationComposer {
+    padding: 10px 12px;
+    gap: 4px;
+  }
+
+  .durationValue,
+  .durationValueInput,
+  .durationDivider {
+    font-size: 24px;
+  }
+
+  .durationValueInput {
+    width: 58px;
+  }
+
+  .resultsMetricGrid {
     grid-template-columns: 1fr;
   }
 }

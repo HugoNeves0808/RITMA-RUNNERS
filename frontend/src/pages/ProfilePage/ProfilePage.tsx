@@ -1,69 +1,114 @@
-import { faGear, faUser } from '@fortawesome/free-solid-svg-icons'
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { Button, Card, Col, Descriptions, Row, Space, Tag, Typography } from 'antd'
-import { Link } from 'react-router-dom'
-import { ROUTES } from '../../constants/routes'
+import { useEffect, useState } from 'react'
+import { Alert, Card, Col, Empty, Row, Spin, Typography } from 'antd'
 import { useAuth } from '../../features/auth'
+import { fetchProfileSummary } from '../../features/profile/services/profileService'
+import type { ProfileSummary } from '../../features/profile/types/profile'
 import styles from './ProfilePage.module.css'
 
-const { Text, Title } = Typography
+const { Title } = Typography
 
-function formatRole(role: string | undefined) {
-  if (role === 'ADMIN') {
-    return 'Admin'
-  }
+type SummaryMetricProps = {
+  label: string
+  value: string | number
+}
 
-  if (role === 'USER') {
-    return 'User'
-  }
-
-  return '-'
+function SummaryMetric({ label, value }: SummaryMetricProps) {
+  return (
+    <div className={styles.metricCard}>
+      <span className={styles.metricLabel}>{label}</span>
+      <span className={styles.metricValue}>{value}</span>
+    </div>
+  )
 }
 
 export function ProfilePage() {
-  const { user } = useAuth()
+  const { token } = useAuth()
+  const [summary, setSummary] = useState<ProfileSummary | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!token) {
+      setSummary(null)
+      setIsLoading(false)
+      return
+    }
+
+    const loadSummary = async () => {
+      try {
+        setIsLoading(true)
+        setError(null)
+        setSummary(await fetchProfileSummary(token))
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : 'Could not load profile summary right now.')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    void loadSummary()
+  }, [token])
 
   return (
     <div className={styles.page}>
       <div className={styles.header}>
         <Title level={1} className={styles.title}>Profile</Title>
-
-        <Link to={ROUTES.settings}>
-          <Button className={styles.settingsButton} icon={<FontAwesomeIcon icon={faGear} />}>
-            Open settings
-          </Button>
-        </Link>
       </div>
 
-      <Row gutter={[20, 20]}>
-        <Col xs={24} xl={15}>
-          <Card className={styles.card} bordered={false}>
-            <Space direction="vertical" size={18} className={styles.fullWidth}>
-              <div className={styles.sectionHeader}>
-                <div className={styles.sectionIntro}>
-                  <span className={styles.sectionIcon}>
-                    <FontAwesomeIcon icon={faUser} />
-                  </span>
-                  <Text className={styles.sectionEyebrow}>Account</Text>
-                </div>
-                <Title level={3} className={styles.sectionTitle}>Personal information</Title>
+      {error ? (
+        <Alert
+          type="error"
+          showIcon
+          message="Could not load profile"
+          description={error}
+        />
+      ) : null}
+
+      {isLoading ? (
+        <div className={styles.loadingState}>
+          <Spin size="large" />
+        </div>
+      ) : null}
+
+      {!isLoading && !error && summary ? (
+        <Row gutter={[20, 20]}>
+          <Col xs={24}>
+            <Card className={styles.card} bordered={false}>
+              <div className={styles.metricsGrid}>
+                <SummaryMetric label="Total races" value={summary.totalRaces} />
+                <SummaryMetric label="Completed races" value={summary.completedRaces} />
+                <SummaryMetric label="Favorite race type" value={summary.favoriteRaceType ?? '-'} />
+                <SummaryMetric label="Podiums" value={summary.podiums} />
               </div>
+            </Card>
+          </Col>
 
-              <Descriptions column={1} labelStyle={{ width: 180 }} className={styles.descriptions}>
-                <Descriptions.Item label="Email">{user?.email ?? '-'}</Descriptions.Item>
-                <Descriptions.Item label="Role">{formatRole(user?.role)}</Descriptions.Item>
-                <Descriptions.Item label="Account status">
-                  <Tag color="green" className={styles.statusTag}>Active</Tag>
-                </Descriptions.Item>
-                <Descriptions.Item label="Password status">
-                  {user?.forcePasswordChange ? 'Password update required' : 'Password up to date'}
-                </Descriptions.Item>
-              </Descriptions>
-            </Space>
-          </Card>
-        </Col>
-
-      </Row>
+          <Col xs={24}>
+            <Card className={styles.card} bordered={false}>
+              {summary.topRaceTypes.length === 0 ? (
+                <div className={styles.emptyState}>
+                  <Empty description="No race type data yet." />
+                </div>
+              ) : (
+                <div className={styles.raceTypeList}>
+                  {summary.topRaceTypes.map((item) => (
+                    <div key={item.raceTypeName} className={styles.raceTypeRow}>
+                      <div className={styles.raceTypeMain}>
+                        <span className={styles.raceTypeName}>{item.raceTypeName}</span>
+                        <span className={styles.raceTypeMeta}>{item.raceCount} races</span>
+                      </div>
+                      <div className={styles.raceTypeBadge}>
+                        <span className={styles.raceTypeBadgeValue}>{item.bestEffortsTracked}</span>
+                        <span className={styles.raceTypeBadgeLabel}>Best efforts tracked</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+          </Col>
+        </Row>
+      ) : null}
     </div>
   )
 }

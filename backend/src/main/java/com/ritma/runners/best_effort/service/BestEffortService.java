@@ -63,11 +63,8 @@ public class BestEffortService {
                         efforts.get(index).officialTimeSeconds(),
                         efforts.get(index).pacePerKmSeconds(),
                         efforts.get(index).generalClassification(),
-                        efforts.get(index).isGeneralClassificationPodium(),
                         efforts.get(index).ageGroupClassification(),
-                        efforts.get(index).isAgeGroupClassificationPodium(),
                         efforts.get(index).teamClassification(),
-                        efforts.get(index).isTeamClassificationPodium(),
                         efforts.get(index).validForBestEffortRanking(),
                         efforts.get(index).rankingNote(),
                         efforts.get(index).classificationPodium(),
@@ -101,9 +98,9 @@ public class BestEffortService {
     }
 
     private BestEffortItemResponse toResponse(BestEffortRaceRow row, BigDecimal expectedDistanceKm) {
-        boolean podium = isPodium(row.generalClassification(), row.isGeneralClassificationPodium())
-                || isPodium(row.ageGroupClassification(), row.isAgeGroupClassificationPodium())
-                || isPodium(row.teamClassification(), row.isTeamClassificationPodium());
+        boolean podium = isPodium(row.generalClassification())
+                || isPodium(row.ageGroupClassification())
+                || isPodium(row.teamClassification());
         boolean goodPosition = podium
                 || isGoodPosition(row.generalClassification())
                 || isGoodPosition(row.ageGroupClassification())
@@ -119,11 +116,8 @@ public class BestEffortService {
                 row.officialTimeSeconds(),
                 row.pacePerKmSeconds(),
                 row.generalClassification(),
-                row.isGeneralClassificationPodium(),
                 row.ageGroupClassification(),
-                row.isAgeGroupClassificationPodium(),
                 row.teamClassification(),
-                row.isTeamClassificationPodium(),
                 isValidForBestEffortRanking(row, expectedDistanceKm),
                 buildRankingNote(row, expectedDistanceKm),
                 podium,
@@ -169,8 +163,8 @@ public class BestEffortService {
         return expectedDistanceKm.subtract(CATEGORY_DISTANCE_EXCLUDED_MARGIN_KM).max(BigDecimal.ZERO);
     }
 
-    private boolean isPodium(Integer classification, Boolean podiumFlag) {
-        return Boolean.TRUE.equals(podiumFlag) || (classification != null && classification <= 3);
+    private boolean isPodium(Integer classification) {
+        return classification != null && classification <= 3;
     }
 
     private boolean isGoodPosition(Integer classification) {

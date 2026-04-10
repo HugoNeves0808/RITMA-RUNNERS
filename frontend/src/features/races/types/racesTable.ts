@@ -34,6 +34,7 @@ export type RaceTypeOption = {
   id: string
   name: string
   targetKm: number | null
+  isDefault: boolean
 }
 
 export type ManagedRaceOptionType = 'race-types' | 'teams' | 'circuits' | 'shoes'
@@ -83,11 +84,8 @@ export type CreateRacePayload = {
     pacePerKmSeconds: number | null
     shoeId: string | null
     generalClassification: number | null
-    isGeneralClassificationPodium: boolean
     ageGroupClassification: number | null
-    isAgeGroupClassificationPodium: boolean
     teamClassification: number | null
-    isTeamClassificationPodium: boolean
   }
   analysis: {
     preRaceConfidence: string | null
@@ -130,11 +128,8 @@ export type RaceDetailResponse = {
     shoeId: string | null
     shoeName: string | null
     generalClassification: number | null
-    isGeneralClassificationPodium: boolean | null
     ageGroupClassification: number | null
-    isAgeGroupClassificationPodium: boolean | null
     teamClassification: number | null
-    isTeamClassificationPodium: boolean | null
   }
   analysis: {
     preRaceConfidence: string | null

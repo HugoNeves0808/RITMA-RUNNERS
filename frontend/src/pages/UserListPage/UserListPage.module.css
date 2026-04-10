@@ -21,6 +21,30 @@
   box-shadow: 0 18px 50px rgba(16, 24, 40, 0.08);
 }
 
+.loadingCard {
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 18px 50px rgba(16, 24, 40, 0.08);
+}
+
+.loadingState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 320px;
+  padding: 24px 0;
+}
+
+.loadingText {
+  color: #667085;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.loadingState :global(.ant-spin-dot-item) {
+  background-color: #f97316;
+}
+
 .emptyWrap {
   display: flex;
   align-items: center;

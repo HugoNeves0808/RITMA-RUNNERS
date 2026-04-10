@@ -15,56 +15,54 @@
   margin-bottom: 0;
 }
 
-.settingsButton:global(.ant-btn) {
-  border-color: #111827 !important;
-  border-radius: 12px;
-  height: 42px;
-  padding: 0 16px;
-  font-weight: 700;
-  background: #111827 !important;
-  color: #ffffff !important;
-  box-shadow: none !important;
-}
-
-.settingsButton:global(.ant-btn):hover,
-.settingsButton:global(.ant-btn):focus {
-  border-color: #000000 !important;
-  background: #000000 !important;
-  color: #ffffff !important;
-}
-
 .card:global(.ant-card) {
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 16px 36px rgba(15, 23, 42, 0.06);
 }
 
-.fullWidth {
-  width: 100%;
+.loadingState {
+  display: flex;
+  justify-content: center;
+  padding: 48px 0;
+}
+
+.metricsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.metricCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px;
+  border: 1px solid rgba(16, 24, 40, 0.08);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 247, 237, 0.72) 0%, rgba(255, 255, 255, 1) 100%);
+}
+
+.metricLabel {
+  color: #9a3412;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.metricValue {
+  color: #101828;
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1.1;
 }
 
 .sectionHeader {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 14px;
-}
-
-.sectionIntro {
-  display: inline-flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.sectionIcon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 42px;
-  height: 42px;
-  border-radius: 14px;
-  background: rgba(249, 115, 22, 0.12);
-  color: #c2410c;
+  gap: 10px;
+  margin-bottom: 18px;
 }
 
 .sectionEyebrow {
@@ -79,26 +77,84 @@
   margin: 0;
 }
 
-.descriptions :global(.ant-descriptions-item-label) {
-  color: #667085;
-  font-weight: 700;
+.raceTypeList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.descriptions :global(.ant-descriptions-item-content) {
+.raceTypeRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  border: 1px solid rgba(16, 24, 40, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.raceTypeMain {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.raceTypeName {
   color: #101828;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.raceTypeMeta {
+  color: #667085;
+  font-size: 14px;
   font-weight: 600;
 }
 
-.statusTag:global(.ant-tag) {
-  margin-inline-end: 0;
-  border-radius: 999px;
-  padding-inline: 10px;
-  font-weight: 700;
+.raceTypeBadge {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
 }
 
-@media (max-width: 900px) {
-  .header {
+.raceTypeBadgeValue {
+  color: #c2410c;
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.raceTypeBadgeLabel {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.emptyState {
+  padding: 8px 0;
+}
+
+@media (max-width: 1100px) {
+  .metricsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .metricsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .raceTypeRow {
     flex-direction: column;
-    align-items: stretch;
+    align-items: flex-start;
+  }
+
+  .raceTypeBadge {
+    align-items: flex-start;
   }
 }

@@ -6,6 +6,7 @@ import {
   faMap,
   faCircleUser,
   faGear,
+  faList,
   faRoad,
   faRankingStar,
   faRightFromBracket,
@@ -194,7 +195,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           <nav className={styles.navSection} aria-label="Main navigation">
             {isAdmin ? (
-              <div className={styles.adminSection}>
+              <div className={`${styles.navGroup} ${styles.navGroupSeparated}`.trim()}>
                 <button
                   type="button"
                   className={isInAdminArea ? `${styles.navItem} ${styles.navItemActive}` : styles.navItem}
@@ -234,13 +235,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </div>
             ) : null}
 
-            <div className={styles.adminSection}>
+            <div className={`${styles.navGroup} ${styles.navGroupSeparated}`.trim()}>
+              {mainNavigationItems.map((item) => (
+                <NavLink
+                  key={item.key}
+                  to={item.to}
+                  className={item.isActive ? `${styles.navItem} ${styles.navItemActive}` : styles.navItem}
+                >
+                  <FontAwesomeIcon icon={item.icon} className={styles.navIcon} />
+                  <span>{item.label}</span>
+                </NavLink>
+              ))}
+
               <button
                 type="button"
                 className={isInPersonalOptionsArea ? `${styles.navItem} ${styles.navItemActive}` : styles.navItem}
                 onClick={() => setIsPersonalOptionsMenuOpen((currentValue) => !currentValue)}
               >
-                <FontAwesomeIcon icon={faRoad} className={styles.navIcon} />
+                <FontAwesomeIcon icon={faList} className={styles.navIcon} />
                 <span>Personal Options</span>
                 <span className={styles.adminToggle} aria-expanded={isPersonalOptionsMenuOpen}>
                   <span>Open personal options menu</span>
@@ -263,17 +275,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </div>
               ) : null}
             </div>
-
-            {mainNavigationItems.map((item) => (
-              <NavLink
-                key={item.key}
-                to={item.to}
-                className={item.isActive ? `${styles.navItem} ${styles.navItemActive}` : styles.navItem}
-              >
-                <FontAwesomeIcon icon={item.icon} className={styles.navIcon} />
-                <span>{item.label}</span>
-              </NavLink>
-            ))}
           </nav>
 
           <div className={styles.sidebarFooter}>

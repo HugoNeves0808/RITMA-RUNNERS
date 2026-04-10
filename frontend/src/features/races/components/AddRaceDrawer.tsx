@@ -1,8 +1,8 @@
-import { faPenToSquare, faPlus, faTrashCan, faXmark } from '@fortawesome/free-solid-svg-icons'
+import { faAngleDown, faAngleUp, faPenToSquare, faPlus, faTrashCan, faXmark } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import dayjs from 'dayjs'
 import type { ReactNode } from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { startTransition, useEffect, useMemo, useState } from 'react'
 import {
   Alert,
   Button,
@@ -64,6 +64,8 @@ type AddRaceDrawerProps = {
   open?: boolean
   raceId?: string | null
   initialRace?: RaceDetailResponse | null
+  raceStatusOverride?: string | null
+  raceStatusOverrideLabel?: string | null
   isLoadingInitialRace?: boolean
   onClose?: () => void
 }
@@ -90,11 +92,8 @@ type AddRaceFormValues = {
   pacePerKm?: string
   shoeId?: string
   generalClassification?: number
-  isGeneralClassificationPodium?: boolean
   ageGroupClassification?: number
-  isAgeGroupClassificationPodium?: boolean
   teamClassification?: number
-  isTeamClassificationPodium?: boolean
   preRaceConfidence?: string
   raceDifficulty?: string
   finalSatisfaction?: string
@@ -115,9 +114,6 @@ const ANALYSIS_SELECT_OPTIONS = [
 
 const INITIAL_FORM_VALUES: Partial<AddRaceFormValues> = {
   isValidForCategoryRanking: true,
-  isGeneralClassificationPodium: false,
-  isAgeGroupClassificationPodium: false,
-  isTeamClassificationPodium: false,
 }
 
 const CREATE_RACE_STATUS_ORDER = [
@@ -134,7 +130,7 @@ const CREATE_RACE_STATUS_OPTIONS = RACE_STATUS_OPTIONS
   .filter((status) => status.value !== 'IN_LIST_WITHOUT_DATE')
   .map((status) => ({
     ...status,
-    label: status.value === 'IN_LIST' ? 'Add to Bucket List' : status.label,
+    label: status.value === 'IN_LIST' ? 'Add to Future Races' : status.label,
   }))
   .sort((left, right) => CREATE_RACE_STATUS_ORDER.indexOf(left.value as typeof CREATE_RACE_STATUS_ORDER[number]) - CREATE_RACE_STATUS_ORDER.indexOf(right.value as typeof CREATE_RACE_STATUS_ORDER[number]))
 
@@ -143,30 +139,35 @@ const MANAGED_OPTION_CONFIG: Record<ManagedRaceOptionType, {
   singularLabel: string
   placeholder: string
   emptyLabel: string
+  emptyActionLabel: string
 }> = {
   'race-types': {
     title: 'Race types',
     singularLabel: 'race type',
     placeholder: 'Select race type',
     emptyLabel: 'No race types available.',
+    emptyActionLabel: 'Create your first race type',
   },
   teams: {
     title: 'Teams',
     singularLabel: 'team',
     placeholder: 'Select team',
     emptyLabel: 'No teams available.',
+    emptyActionLabel: 'Create your first team',
   },
   circuits: {
     title: 'Circuits',
     singularLabel: 'circuit',
     placeholder: 'Select circuit',
     emptyLabel: 'No circuits available.',
+    emptyActionLabel: 'Create your first circuit',
   },
   shoes: {
     title: 'Shoes',
     singularLabel: 'shoe',
     placeholder: 'Select shoe',
     emptyLabel: 'No shoes available.',
+    emptyActionLabel: 'Create your first shoe',
   },
 }
 
@@ -237,34 +238,6 @@ function parseTimeToSeconds(value: string | undefined, mode: 'duration' | 'pace'
     : `${fieldLabel ?? 'Pace'} must use MM:SS.`)
 }
 
-function formatDigitTimeInput(rawValue: string | undefined, mode: 'duration' | 'pace') {
-  const digits = (rawValue ?? '').replace(/\D/g, '')
-  const maxDigits = mode === 'duration' ? 12 : 4
-  const trimmedDigits = digits.slice(0, maxDigits)
-
-  if (mode === 'duration') {
-    if (trimmedDigits.length <= 2) {
-      return trimmedDigits
-    }
-
-    if (trimmedDigits.length <= 4) {
-      return `${trimmedDigits.slice(0, trimmedDigits.length - 2)}:${trimmedDigits.slice(-2)}`
-    }
-
-    return `${trimmedDigits.slice(0, trimmedDigits.length - 4)}:${trimmedDigits.slice(-4, -2)}:${trimmedDigits.slice(-2)}`
-  }
-
-  if (trimmedDigits.length <= 2) {
-    return trimmedDigits
-  }
-
-  return `${trimmedDigits.slice(0, 2)}:${trimmedDigits.slice(2)}`
-}
-
-function normalizeClassificationPodium(value: number | null | undefined) {
-  return value != null && value >= 1 && value <= 3
-}
-
 function isRaceDateRequired(raceStatus: string | undefined) {
   return (raceStatus ?? '').trim().toUpperCase() !== 'IN_LIST'
 }
@@ -297,6 +270,10 @@ function shouldShowResultsTab(raceStatus: string | undefined) {
   return isCompletedStatus(raceStatus)
 }
 
+function shouldShowClassificationsTab(raceStatus: string | undefined) {
+  return isCompletedStatus(raceStatus)
+}
+
 function shouldShowAnalysisTab(raceStatus: string | undefined) {
   return isCompletedStatus(raceStatus) || isDnfStatus(raceStatus) || isDnsStatus(raceStatus)
 }
@@ -325,13 +302,6 @@ function shouldShowWouldRepeatThisRace(raceStatus: string | undefined) {
   return isCompletedStatus(raceStatus) || isDnfStatus(raceStatus)
 }
 
-function formatSecondsAsPace(totalSeconds: number) {
-  const safeSeconds = Math.max(totalSeconds, 0)
-  const minutes = Math.floor(safeSeconds / 60)
-  const seconds = safeSeconds % 60
-  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-}
-
 function formatDurationInput(totalSeconds: number | null | undefined) {
   if (totalSeconds == null) {
     return undefined
@@ -351,6 +321,80 @@ function formatPaceInput(totalSeconds: number | null | undefined) {
   const minutes = Math.floor(totalSeconds / 60)
   const seconds = totalSeconds % 60
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
+
+function parseDurationParts(value: string | undefined) {
+  const normalized = value?.trim()
+  if (!normalized) {
+    return { hours: 0, minutes: 0, seconds: 0 }
+  }
+
+  const parts = normalized.split(':').map((part) => Number(part))
+  if (parts.length !== 3 || parts.some((part) => Number.isNaN(part) || part < 0)) {
+    return { hours: 0, minutes: 0, seconds: 0 }
+  }
+
+  const [hours, minutes, seconds] = parts
+  return { hours, minutes, seconds }
+}
+
+function formatDurationSegment(value: number) {
+  return String(Math.max(0, value)).padStart(2, '0')
+}
+
+function buildDurationValue(hours: number, minutes: number, seconds: number) {
+  return `${formatDurationSegment(hours)}:${formatDurationSegment(minutes)}:${formatDurationSegment(seconds)}`
+}
+
+function clampDurationValue(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max)
+}
+
+function adjustDurationValue(
+  currentValue: string | undefined,
+  part: 'hours' | 'minutes' | 'seconds',
+  delta: 1 | -1,
+) {
+  const parts = parseDurationParts(currentValue)
+
+  if (part === 'hours') {
+    return buildDurationValue(clampDurationValue(parts.hours + delta, 0, 99), parts.minutes, parts.seconds)
+  }
+
+  if (part === 'minutes') {
+    return buildDurationValue(parts.hours, clampDurationValue(parts.minutes + delta, 0, 59), parts.seconds)
+  }
+
+  return buildDurationValue(parts.hours, parts.minutes, clampDurationValue(parts.seconds + delta, 0, 59))
+}
+
+function setDurationSegment(
+  currentValue: string | undefined,
+  part: 'hours' | 'minutes' | 'seconds',
+  nextRawValue: string,
+) {
+  const parts = parseDurationParts(currentValue)
+  const digitsOnly = nextRawValue.replace(/\D/g, '').slice(0, 2)
+  const parsedValue = digitsOnly.length > 0 ? Number(digitsOnly) : 0
+
+  if (part === 'hours') {
+    return buildDurationValue(clampDurationValue(parsedValue, 0, 99), parts.minutes, parts.seconds)
+  }
+
+  if (part === 'minutes') {
+    return buildDurationValue(parts.hours, clampDurationValue(parsedValue, 0, 59), parts.seconds)
+  }
+
+  return buildDurationValue(parts.hours, parts.minutes, clampDurationValue(parsedValue, 0, 59))
+}
+
+function formatPaceTextInput(rawValue: string | undefined) {
+  const digits = (rawValue ?? '').replace(/\D/g, '').slice(0, 4)
+  if (digits.length <= 2) {
+    return digits
+  }
+
+  return `${digits.slice(0, 2)}:${digits.slice(2)}`
 }
 
 function getLiveTimeFieldError(
@@ -417,6 +461,20 @@ function normalizeDecimalInput(value: string | number | undefined) {
   return String(value).replace(',', '.')
 }
 
+function parseDecimalNumberInput(value: string | number | undefined) {
+  const normalized = normalizeDecimalInput(value)
+  if (!normalized) {
+    return 0
+  }
+
+  const cleaned = normalized.replace(/[^0-9.]/g, '')
+  const [integerPart = '', ...decimalParts] = cleaned.split('.')
+  const decimalPart = decimalParts.join('')
+  const parsedValue = Number(decimalPart.length > 0 ? `${integerPart}.${decimalPart}` : integerPart)
+
+  return Number.isNaN(parsedValue) ? 0 : parsedValue
+}
+
 function hasUnsavedChanges(values: AddRaceFormValues, initialValues: DrawerInitialValues) {
   const allKeys = new Set([
     ...Object.keys(initialValues),
@@ -452,11 +510,8 @@ function buildDrawerInitialValues(race: RaceDetailResponse | null | undefined): 
     pacePerKm: formatPaceInput(race.results.pacePerKmSeconds),
     shoeId: race.results.shoeId ?? undefined,
     generalClassification: race.results.generalClassification ?? undefined,
-    isGeneralClassificationPodium: race.results.isGeneralClassificationPodium ?? false,
     ageGroupClassification: race.results.ageGroupClassification ?? undefined,
-    isAgeGroupClassificationPodium: race.results.isAgeGroupClassificationPodium ?? false,
     teamClassification: race.results.teamClassification ?? undefined,
-    isTeamClassificationPodium: race.results.isTeamClassificationPodium ?? false,
     preRaceConfidence: race.analysis.preRaceConfidence ?? undefined,
     raceDifficulty: race.analysis.raceDifficulty ?? undefined,
     finalSatisfaction: race.analysis.finalSatisfaction ?? undefined,
@@ -499,11 +554,8 @@ function buildRacePayload(values: AddRaceFormValues, fallbackRace?: RaceDetailRe
       pacePerKmSeconds,
       shoeId: showResultsTab || shouldShowShoeInRaceData(normalizedStatus) ? (values.shoeId ?? null) : null,
       generalClassification: showResultsTab ? (values.generalClassification ?? null) : null,
-      isGeneralClassificationPodium: showResultsTab ? (values.isGeneralClassificationPodium ?? false) : false,
       ageGroupClassification: showResultsTab ? (values.ageGroupClassification ?? null) : null,
-      isAgeGroupClassificationPodium: showResultsTab ? (values.isAgeGroupClassificationPodium ?? false) : false,
       teamClassification: showResultsTab ? (values.teamClassification ?? null) : null,
-      isTeamClassificationPodium: showResultsTab ? (values.isTeamClassificationPodium ?? false) : false,
     },
     analysis: {
       preRaceConfidence: showAnalysisTab && shouldShowPreRaceConfidence(normalizedStatus) ? (values.preRaceConfidence ?? null) : null,
@@ -531,6 +583,119 @@ function renderInfoLabel(label: string, description: string) {
   )
 }
 
+type DurationComposerProps = {
+  value?: string
+  onChange?: (value: string) => void
+}
+
+function DurationComposer({ value, onChange }: DurationComposerProps) {
+  const [draftValue, setDraftValue] = useState(value ?? '00:00:00')
+  const [focusedSegment, setFocusedSegment] = useState<'hours' | 'minutes' | 'seconds' | null>(null)
+  const parts = parseDurationParts(draftValue)
+
+  useEffect(() => {
+    if ((value ?? '00:00:00') !== draftValue) {
+      setDraftValue(value ?? '00:00:00')
+    }
+  }, [draftValue, value])
+
+  const emitChange = (nextValue: string) => {
+    setDraftValue(nextValue)
+    startTransition(() => {
+      onChange?.(nextValue)
+    })
+  }
+
+  const handleAdjust = (part: 'hours' | 'minutes' | 'seconds', delta: 1 | -1) => {
+    emitChange(adjustDurationValue(draftValue, part, delta))
+  }
+  const handleManualInput = (part: 'hours' | 'minutes' | 'seconds', nextRawValue: string, max: number) => {
+    const parsedValue = Number.parseInt(nextRawValue, 10)
+    const safeValue = Number.isNaN(parsedValue) ? 0 : clampDurationValue(parsedValue, 0, max)
+    emitChange(setDurationSegment(draftValue, part, String(safeValue)))
+  }
+
+  return (
+    <div className={`${styles.durationComposer} ${focusedSegment ? styles.durationComposerFocused : ''}`}>
+      <div className={styles.durationColumn}>
+        <span className={styles.durationUnitLabel}>HRS</span>
+        <button type="button" className={styles.durationAdjustButton} onMouseDown={(event) => event.preventDefault()} onClick={() => handleAdjust('hours', 1)} aria-label="Increase hours">
+          <FontAwesomeIcon icon={faAngleUp} />
+        </button>
+        <input
+          type="number"
+          min={0}
+          max={99}
+          className={`${styles.durationValueInput} ${focusedSegment === 'hours' ? styles.durationValueInputActive : ''}`}
+          value={formatDurationSegment(parts.hours)}
+          onChange={(event) => handleManualInput('hours', event.target.value, 99)}
+          onFocus={(event) => {
+            setFocusedSegment('hours')
+            event.target.select()
+          }}
+          onBlur={() => setFocusedSegment(null)}
+          aria-label="Hours"
+        />
+        <button type="button" className={styles.durationAdjustButton} onMouseDown={(event) => event.preventDefault()} onClick={() => handleAdjust('hours', -1)} aria-label="Decrease hours">
+          <FontAwesomeIcon icon={faAngleDown} />
+        </button>
+      </div>
+
+      <span className={styles.durationDivider}>:</span>
+
+      <div className={styles.durationColumn}>
+        <span className={styles.durationUnitLabel}>MIN</span>
+        <button type="button" className={styles.durationAdjustButton} onMouseDown={(event) => event.preventDefault()} onClick={() => handleAdjust('minutes', 1)} aria-label="Increase minutes">
+          <FontAwesomeIcon icon={faAngleUp} />
+        </button>
+        <input
+          type="number"
+          min={0}
+          max={59}
+          className={`${styles.durationValueInput} ${focusedSegment === 'minutes' ? styles.durationValueInputActive : ''}`}
+          value={formatDurationSegment(parts.minutes)}
+          onChange={(event) => handleManualInput('minutes', event.target.value, 59)}
+          onFocus={(event) => {
+            setFocusedSegment('minutes')
+            event.target.select()
+          }}
+          onBlur={() => setFocusedSegment(null)}
+          aria-label="Minutes"
+        />
+        <button type="button" className={styles.durationAdjustButton} onMouseDown={(event) => event.preventDefault()} onClick={() => handleAdjust('minutes', -1)} aria-label="Decrease minutes">
+          <FontAwesomeIcon icon={faAngleDown} />
+        </button>
+      </div>
+
+      <span className={styles.durationDivider}>:</span>
+
+      <div className={styles.durationColumn}>
+        <span className={styles.durationUnitLabel}>SEC</span>
+        <button type="button" className={styles.durationAdjustButton} onMouseDown={(event) => event.preventDefault()} onClick={() => handleAdjust('seconds', 1)} aria-label="Increase seconds">
+          <FontAwesomeIcon icon={faAngleUp} />
+        </button>
+        <input
+          type="number"
+          min={0}
+          max={59}
+          className={`${styles.durationValueInput} ${focusedSegment === 'seconds' ? styles.durationValueInputActive : ''}`}
+          value={formatDurationSegment(parts.seconds)}
+          onChange={(event) => handleManualInput('seconds', event.target.value, 59)}
+          onFocus={(event) => {
+            setFocusedSegment('seconds')
+            event.target.select()
+          }}
+          onBlur={() => setFocusedSegment(null)}
+          aria-label="Seconds"
+        />
+        <button type="button" className={styles.durationAdjustButton} onMouseDown={(event) => event.preventDefault()} onClick={() => handleAdjust('seconds', -1)} aria-label="Decrease seconds">
+          <FontAwesomeIcon icon={faAngleDown} />
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function getRaceStatusGuidance(raceStatus: string | undefined) {
   if (isCompletedStatus(raceStatus)) {
     return 'Completed unlocks the full race form, including results and post-race analysis.'
@@ -545,7 +710,7 @@ function getRaceStatusGuidance(raceStatus: string | undefined) {
   }
 
   if (normalizeRaceStatus(raceStatus) === 'IN_LIST') {
-    return 'Bucket List keeps this entry lightweight while you are only tracking a race you want to do.'
+    return 'Future Races keeps this entry lightweight while you are only tracking a race you want to do.'
   }
 
   return ''
@@ -566,6 +731,8 @@ export function AddRaceDrawer({
   open,
   raceId = null,
   initialRace = null,
+  raceStatusOverride = null,
+  raceStatusOverrideLabel = null,
   isLoadingInitialRace = false,
   onClose,
 }: AddRaceDrawerProps) {
@@ -589,13 +756,22 @@ export function AddRaceDrawer({
   const [managedOptionConfirmState, setManagedOptionConfirmState] = useState<ManagedOptionConfirmState>(null)
   const isControlled = open !== undefined
   const isOpen = isControlled ? open : internalOpen
-  const initialFormValues = useMemo(() => buildDrawerInitialValues(initialRace), [initialRace])
+  const baseInitialFormValues = useMemo(() => buildDrawerInitialValues(initialRace), [initialRace])
+  const initialFormValues = useMemo(
+    () => ({
+      ...baseInitialFormValues,
+      raceStatus: raceStatusOverride ?? baseInitialFormValues.raceStatus,
+    }),
+    [baseInitialFormValues, raceStatusOverride],
+  )
   const isEditMode = mode === 'edit'
   const currentRaceStatus = Form.useWatch('raceStatus', form) ?? initialFormValues.raceStatus
+  const watchedPacePerKm = Form.useWatch('pacePerKm', form) ?? initialFormValues.pacePerKm
   const hasSelectedStatus = isEditMode || Boolean(currentRaceStatus)
   const showDistanceFields = shouldShowDistanceFields(currentRaceStatus)
   const showRankingValidityField = shouldShowRankingValidityField(currentRaceStatus)
   const showResultsTab = shouldShowResultsTab(currentRaceStatus)
+  const showClassificationsTab = shouldShowClassificationsTab(currentRaceStatus)
   const showAnalysisTab = shouldShowAnalysisTab(currentRaceStatus)
   const showShoeInRaceData = shouldShowShoeInRaceData(currentRaceStatus)
   const showPreRaceConfidence = shouldShowPreRaceConfidence(currentRaceStatus)
@@ -603,6 +779,20 @@ export function AddRaceDrawer({
   const showFinalSatisfaction = shouldShowFinalSatisfaction(currentRaceStatus)
   const showPainInjuries = shouldShowPainInjuries(currentRaceStatus)
   const showWouldRepeatThisRace = shouldShowWouldRepeatThisRace(currentRaceStatus)
+  const shouldPromptRaceDateForStatusOverride = Boolean(
+    isEditMode
+    && raceStatusOverride
+    && isRaceDateRequired(raceStatusOverride)
+    && !initialFormValues.raceDate,
+  )
+  const raceDateStatusOverrideMessage = shouldPromptRaceDateForStatusOverride
+    ? `Add a race date before saving this change to ${raceStatusOverrideLabel ?? raceStatusOverride}.`
+    : null
+
+  const handlePaceMetricChange = (nextValue: string) => {
+    const formattedValue = formatPaceTextInput(nextValue)
+    form.setFieldValue('pacePerKm', formattedValue || undefined)
+  }
 
   useEffect(() => {
     setLocalCreateOptions(createOptions)
@@ -624,7 +814,14 @@ export function AddRaceDrawer({
     form.resetFields()
     form.setFieldsValue(initialFormValues)
     setError(null)
-  }, [form, initialFormValues, isOpen])
+
+    if (raceDateStatusOverrideMessage) {
+      form.setFields([{
+        name: 'raceDate',
+        errors: [raceDateStatusOverrideMessage],
+      }])
+    }
+  }, [form, initialFormValues, isOpen, raceDateStatusOverrideMessage])
 
   const syncCreateOptions = (nextOptions: RaceCreateOptions, options?: { propagateToParent?: boolean }) => {
     setLocalCreateOptions(nextOptions)
@@ -871,6 +1068,21 @@ export function AddRaceDrawer({
                 showSearch
                 placeholder={config.placeholder}
                 optionFilterProp="label"
+                notFoundContent={(
+                  <div className={styles.selectEmptyState}>
+                    <span className={styles.selectEmptyText}>{config.emptyLabel}</span>
+                    <button
+                      type="button"
+                      className={styles.selectEmptyAction}
+                      onMouseDown={(event) => {
+                        event.preventDefault()
+                        void openManageOptionsModal(optionType)
+                      }}
+                    >
+                      {config.emptyActionLabel}
+                    </button>
+                  </div>
+                )}
                 options={options.map((option) => ({
                   value: option.id,
                   label: option.name,
@@ -1036,27 +1248,6 @@ export function AddRaceDrawer({
               clearFieldError('chipTime')
               clearFieldError('pacePerKm')
             }
-
-            if ('chipTime' in changedValues || 'realKm' in changedValues) {
-              const currentValues = form.getFieldsValue(true) as AddRaceFormValues
-              const chipTimeError = getLiveTimeFieldError(currentValues.chipTime, 'duration', 'Chip time')
-              const realKmValue = currentValues.realKm
-
-              if (!chipTimeError && currentValues.chipTime && realKmValue != null && realKmValue > 0) {
-                try {
-                  const chipTimeSeconds = parseTimeToSeconds(currentValues.chipTime, 'duration', 'Chip time')
-                  if (chipTimeSeconds != null) {
-                    const computedPace = formatSecondsAsPace(Math.round(chipTimeSeconds / realKmValue))
-                    if (form.getFieldValue('pacePerKm') !== computedPace) {
-                      form.setFieldValue('pacePerKm', computedPace)
-                    }
-                    setFieldError('pacePerKm', null)
-                  }
-                } catch {
-                  // Keep the field unchanged when the chip time is still incomplete or invalid.
-                }
-              }
-            }
           }}
         >
           <Tabs
@@ -1127,6 +1318,13 @@ export function AddRaceDrawer({
 
                     {hasSelectedStatus ? (
                       <>
+                        {raceDateStatusOverrideMessage ? (
+                          <div className={styles.statusHighlightHint}>
+                            <span className={styles.statusHighlightHintIcon} aria-hidden="true">i</span>
+                            <span>{raceDateStatusOverrideMessage}</span>
+                          </div>
+                        ) : null}
+
                         <div className={styles.row}>
                           <Form.Item noStyle dependencies={['raceStatus']}>
                             {({ getFieldValue }) => (
@@ -1138,7 +1336,10 @@ export function AddRaceDrawer({
                                   </>
                                 )}
                                 name="raceDate"
-                                className={styles.rowItem}
+                                className={[
+                                  styles.rowItem,
+                                  raceDateStatusOverrideMessage ? styles.emphasizedField : '',
+                                ].join(' ').trim()}
                                 rules={[
                                   {
                                     validator: (_, value) => (
@@ -1181,7 +1382,7 @@ export function AddRaceDrawer({
                             (
                               <>
                                 <span aria-hidden="true" style={{ color: '#ff4d4f', marginRight: 4 }}>*</span>
-                                Race type
+                                {renderInfoLabel('Race type', 'Use the race type to group comparable races, drive Best Efforts categories, and keep distance targets consistent.')}
                               </>
                             ),
                             'race-types',
@@ -1196,7 +1397,7 @@ export function AddRaceDrawer({
                           {renderManagedSelect('circuitId', renderInfoLabel('Circuit', 'Optional circuit or championship this race belongs to.'), 'circuits', styles.rowItem)}
                         </div>
 
-                        {showDistanceFields ? (
+                        {showDistanceFields && !showResultsTab ? (
                           <div className={styles.row}>
                             <Form.Item noStyle dependencies={['raceStatus']}>
                               {({ getFieldValue }) => (
@@ -1219,12 +1420,20 @@ export function AddRaceDrawer({
                                     },
                                   ]}
                                 >
-                                  <InputNumber min={0} max={999.99} precision={2} step={0.01} className={styles.fullWidth} placeholder="21.10" />
+                                  <InputNumber
+                                    min={0}
+                                    max={999999.99}
+                                    precision={2}
+                                    step={0.01}
+                                    className={styles.fullWidth}
+                                    placeholder="21.10"
+                                    parser={(value) => parseDecimalNumberInput(value)}
+                                  />
                                 </Form.Item>
                               )}
                             </Form.Item>
 
-                            <Form.Item<AddRaceFormValues> label={renderInfoLabel('Elevation', 'Total elevation gain of the race, usually in meters.')} name="elevation" className={styles.rowItem}>
+                            <Form.Item<AddRaceFormValues> label={renderInfoLabel('Elevation gain', 'Total elevation gain of the race, usually in meters.')} name="elevation" className={styles.rowItem}>
                               <InputNumber min={0} className={styles.fullWidth} placeholder="250" />
                             </Form.Item>
                           </div>
@@ -1254,16 +1463,73 @@ export function AddRaceDrawer({
                 forceRender: true,
                 children: (
                   <div className={styles.tabPane}>
+                    <Form.Item<AddRaceFormValues> label={renderInfoLabel('Official time', 'Official finish time published by the event organization.')} name="officialTime" className={styles.rowItem}>
+                      <DurationComposer />
+                    </Form.Item>
+
+                    <Form.Item noStyle dependencies={['raceStatus']}>
+                      {({ getFieldValue }) => (
+                        <Form.Item<AddRaceFormValues>
+                          label={(
+                            <>
+                              {isCompletedStatus(getFieldValue('raceStatus')) ? <span aria-hidden="true" style={{ color: '#ff4d4f', marginRight: 4 }}>*</span> : null}
+                              {renderInfoLabel('Chip time', 'Net finish time measured from crossing the start line to crossing the finish line.')}
+                            </>
+                          )}
+                          name="chipTime"
+                          className={styles.rowItem}
+                          rules={[
+                            {
+                              validator: (_, value) => (
+                                !isCompletedStatus(getFieldValue('raceStatus')) || String(value ?? '').trim().length > 0
+                                  ? Promise.resolve()
+                                  : Promise.reject(new Error('Chip time is required when race status is Completed.'))
+                              ),
+                            },
+                          ]}
+                        >
+                          <DurationComposer />
+                        </Form.Item>
+                      )}
+                    </Form.Item>
+
+                    <Form.Item<AddRaceFormValues> name="pacePerKm" hidden>
+                      <Input />
+                    </Form.Item>
+
                     <div className={styles.row}>
-                      <Form.Item<AddRaceFormValues> label={renderInfoLabel('Official time', 'Official finish time published by the event organization.')} name="officialTime" className={styles.rowItem}>
-                        <Input
-                          inputMode="numeric"
-                          maxLength={14}
-                          placeholder="00:00:00"
-                          onChange={(event) => {
-                            form.setFieldValue('officialTime', formatDigitTimeInput(event.target.value, 'duration'))
-                          }}
-                        />
+                      <Form.Item noStyle dependencies={['raceStatus']}>
+                        {({ getFieldValue }) => (
+                          <Form.Item<AddRaceFormValues>
+                            label={(
+                              <>
+                                {isCompletedStatus(getFieldValue('raceStatus')) ? <span aria-hidden="true" style={{ color: '#ff4d4f', marginRight: 4 }}>*</span> : null}
+                                {renderInfoLabel('Real KM', 'Actual race distance in kilometres, using decimals when needed.')}
+                              </>
+                            )}
+                            name="realKm"
+                            className={styles.rowItem}
+                            rules={[
+                              {
+                                validator: (_, value) => (
+                                  !isCompletedStatus(getFieldValue('raceStatus')) || value != null
+                                    ? Promise.resolve()
+                                    : Promise.reject(new Error('Real KM is required when race status is Completed.'))
+                                ),
+                              },
+                            ]}
+                          >
+                            <InputNumber
+                              min={0}
+                              max={999999.99}
+                              precision={2}
+                              step={0.01}
+                              className={styles.fullWidth}
+                              placeholder="21.10"
+                              parser={(value) => parseDecimalNumberInput(value)}
+                            />
+                          </Form.Item>
+                        )}
                       </Form.Item>
 
                       <Form.Item noStyle dependencies={['raceStatus']}>
@@ -1272,118 +1538,60 @@ export function AddRaceDrawer({
                             label={(
                               <>
                                 {isCompletedStatus(getFieldValue('raceStatus')) ? <span aria-hidden="true" style={{ color: '#ff4d4f', marginRight: 4 }}>*</span> : null}
-                                {renderInfoLabel('Chip time', 'Net finish time measured from crossing the start line to crossing the finish line.')}
+                                {renderInfoLabel('Pace', 'Pace per kilometre in MM:SS format.')}
                               </>
                             )}
-                            name="chipTime"
+                            name="pacePerKm"
                             className={styles.rowItem}
                             rules={[
                               {
                                 validator: (_, value) => (
                                   !isCompletedStatus(getFieldValue('raceStatus')) || String(value ?? '').trim().length > 0
                                     ? Promise.resolve()
-                                    : Promise.reject(new Error('Chip time is required when race status is Completed.'))
+                                    : Promise.reject(new Error('Pace is required when race status is Completed.'))
                                 ),
                               },
                             ]}
                           >
                             <Input
                               inputMode="numeric"
-                              maxLength={14}
-                              placeholder="00:00:00"
-                              onChange={(event) => {
-                                form.setFieldValue('chipTime', formatDigitTimeInput(event.target.value, 'duration'))
-                              }}
+                              maxLength={5}
+                              placeholder="04:59"
+                              value={watchedPacePerKm}
+                              onChange={(event) => handlePaceMetricChange(event.target.value)}
                             />
                           </Form.Item>
                         )}
                       </Form.Item>
                     </div>
 
-                    <Form.Item noStyle dependencies={['raceStatus']}>
-                      {({ getFieldValue }) => (
-                        <Form.Item<AddRaceFormValues>
-                          label={(
-                            <>
-                              {isCompletedStatus(getFieldValue('raceStatus')) ? <span aria-hidden="true" style={{ color: '#ff4d4f', marginRight: 4 }}>*</span> : null}
-                              {renderInfoLabel('Pace per KM', 'Average pace per kilometre. It is calculated automatically from chip time and distance, but you can also adjust it manually.')}
-                            </>
-                          )}
-                          name="pacePerKm"
-                          rules={[
-                            {
-                              validator: (_, value) => (
-                                !isCompletedStatus(getFieldValue('raceStatus')) || String(value ?? '').trim().length > 0
-                                  ? Promise.resolve()
-                                  : Promise.reject(new Error('Pace per KM is required when race status is Completed.'))
-                              ),
-                            },
-                          ]}
-                        >
-                          <Input
-                            inputMode="numeric"
-                            maxLength={10}
-                            placeholder="00:00"
-                            onChange={(event) => {
-                              form.setFieldValue('pacePerKm', formatDigitTimeInput(event.target.value, 'pace'))
-                            }}
-                          />
-                        </Form.Item>
-                      )}
-                    </Form.Item>
-
                     {renderManagedSelect('shoeId', renderInfoLabel('Shoe', 'Optional shoe used in this race result.'), 'shoes', styles.rowItem)}
-
+                  </div>
+                ),
+              }] : []),
+              ...(showClassificationsTab ? [{
+                key: 'classifications',
+                label: 'Classifications',
+                forceRender: true,
+                children: (
+                  <div className={styles.tabPane}>
                     <div className={styles.row}>
                       <div className={styles.classificationBlock}>
-                        <Form.Item<AddRaceFormValues> label={renderInfoLabel('General classification', 'Overall finishing position in the race. Positions 1 to 3 automatically mark the podium checkbox.')} name="generalClassification" className={styles.rowItem}>
-                          <InputNumber
-                            min={1}
-                            className={styles.fullWidth}
-                            onChange={(value) => {
-                              form.setFieldValue('generalClassification', value ?? undefined)
-                              form.setFieldValue('isGeneralClassificationPodium', normalizeClassificationPodium(value))
-                            }}
-                          />
-                        </Form.Item>
-
-                        <Form.Item<AddRaceFormValues> name="isGeneralClassificationPodium" valuePropName="checked" className={styles.classificationCheckbox}>
-                          <Checkbox>General classification podium</Checkbox>
+                        <Form.Item<AddRaceFormValues> label={renderInfoLabel('General classification', 'Overall finishing position in the race. Positions 1 to 3 count as podium finishes automatically.')} name="generalClassification" className={styles.rowItem}>
+                          <InputNumber min={1} className={styles.fullWidth} />
                         </Form.Item>
                       </div>
 
                       <div className={styles.classificationBlock}>
-                        <Form.Item<AddRaceFormValues> label={renderInfoLabel('Age group classification', 'Finishing position inside your age category. Positions 1 to 3 automatically mark the podium checkbox.')} name="ageGroupClassification" className={styles.rowItem}>
-                          <InputNumber
-                            min={1}
-                            className={styles.fullWidth}
-                            onChange={(value) => {
-                              form.setFieldValue('ageGroupClassification', value ?? undefined)
-                              form.setFieldValue('isAgeGroupClassificationPodium', normalizeClassificationPodium(value))
-                            }}
-                          />
-                        </Form.Item>
-
-                        <Form.Item<AddRaceFormValues> name="isAgeGroupClassificationPodium" valuePropName="checked" className={styles.classificationCheckbox}>
-                          <Checkbox>Age group podium</Checkbox>
+                        <Form.Item<AddRaceFormValues> label={renderInfoLabel('Age group classification', 'Finishing position inside your age category. Positions 1 to 3 count as podium finishes automatically.')} name="ageGroupClassification" className={styles.rowItem}>
+                          <InputNumber min={1} className={styles.fullWidth} />
                         </Form.Item>
                       </div>
                     </div>
 
                     <div className={styles.classificationBlock}>
-                      <Form.Item<AddRaceFormValues> label={renderInfoLabel('Team classification', 'Team finishing position when the race has a team ranking. Positions 1 to 3 automatically mark the podium checkbox.')} name="teamClassification">
-                        <InputNumber
-                          min={1}
-                          className={styles.fullWidth}
-                          onChange={(value) => {
-                            form.setFieldValue('teamClassification', value ?? undefined)
-                            form.setFieldValue('isTeamClassificationPodium', normalizeClassificationPodium(value))
-                          }}
-                        />
-                      </Form.Item>
-
-                      <Form.Item<AddRaceFormValues> name="isTeamClassificationPodium" valuePropName="checked" className={styles.classificationCheckbox}>
-                        <Checkbox>Team podium</Checkbox>
+                      <Form.Item<AddRaceFormValues> label={renderInfoLabel('Team classification', 'Team finishing position when the race has a team ranking. Positions 1 to 3 count as podium finishes automatically.')} name="teamClassification">
+                        <InputNumber min={1} className={styles.fullWidth} />
                       </Form.Item>
                     </div>
                   </div>
@@ -1514,7 +1722,7 @@ export function AddRaceDrawer({
                     className={styles.manageTargetInput}
                     placeholder="Target km"
                     value={managedOptionTargetKm ?? undefined}
-                    parser={(value) => Number(normalizeDecimalInput(value))}
+                    parser={(value) => parseDecimalNumberInput(value)}
                     onChange={(value) => setManagedOptionTargetKm(typeof value === 'number' ? value : null)}
                   />
                 ) : null}
@@ -1554,47 +1762,55 @@ export function AddRaceDrawer({
                     <div className={styles.manageOptionInfo}>
                       <span className={styles.manageOptionName}>{option.name}</span>
                       {managedOptionType === 'race-types' ? (
-                        <span className={styles.manageOptionMeta}>
-                          {option.targetKm != null ? `${option.targetKm.toFixed(2)} km` : 'No target km set'}
-                        </span>
+                        <div className={styles.manageOptionMetaRow}>
+                          <span className={styles.manageOptionMeta}>
+                            {option.targetKm != null ? `${option.targetKm.toFixed(2)} km` : 'No target km set'}
+                          </span>
+                        </div>
                       ) : null}
                     </div>
-                    <div className={styles.manageOptionActions}>
-                      <Button
-                        type="text"
-                        icon={<FontAwesomeIcon icon={faPenToSquare} />}
-                        onClick={() => {
-                          setManagedOptionName(option.name)
-                          setManagedOptionTargetKm(managedOptionType === 'race-types' ? (option.targetKm ?? null) : null)
-                          setEditingManagedOptionId(option.id)
-                          setManagedOptionError(null)
-                          setManagedOptionUsage(null)
-                          setPendingDeleteOption(null)
-                        }}
-                      >
-                        Edit
-                      </Button>
-                      <Popconfirm
-                        title="Delete option?"
-                        description={`Delete "${option.name}"? This action cannot be undone.`}
-                        open={managedOptionConfirmState?.kind === 'delete' && managedOptionConfirmState.option.id === option.id}
-                        okText="Delete"
-                        cancelText="Cancel"
-                        okButtonProps={{ danger: true, loading: isManagedOptionSubmitting }}
-                        cancelButtonProps={{ className: styles.cancelButton }}
-                        onConfirm={() => void handleConfirmManagedOptionAction()}
-                        onCancel={() => setManagedOptionConfirmState(null)}
-                      >
+                    {option.isDefault ? (
+                      <div className={styles.manageOptionActions}>
+                        <span className={styles.defaultOptionBadge}>Default from RITMA</span>
+                      </div>
+                    ) : (
+                      <div className={styles.manageOptionActions}>
                         <Button
                           type="text"
-                          danger
-                          icon={<FontAwesomeIcon icon={faTrashCan} />}
-                          onClick={() => void handleDeleteManagedOption(managedOptionType, option)}
+                          icon={<FontAwesomeIcon icon={faPenToSquare} />}
+                          onClick={() => {
+                            setManagedOptionName(option.name)
+                            setManagedOptionTargetKm(managedOptionType === 'race-types' ? (option.targetKm ?? null) : null)
+                            setEditingManagedOptionId(option.id)
+                            setManagedOptionError(null)
+                            setManagedOptionUsage(null)
+                            setPendingDeleteOption(null)
+                          }}
                         >
-                          Delete
+                          Edit
                         </Button>
-                      </Popconfirm>
-                    </div>
+                        <Popconfirm
+                          title="Delete option?"
+                          description={`Delete "${option.name}"? This action cannot be undone.`}
+                          open={managedOptionConfirmState?.kind === 'delete' && managedOptionConfirmState.option.id === option.id}
+                          okText="Delete"
+                          cancelText="Cancel"
+                          okButtonProps={{ danger: true, loading: isManagedOptionSubmitting }}
+                          cancelButtonProps={{ className: styles.cancelButton }}
+                          onConfirm={() => void handleConfirmManagedOptionAction()}
+                          onCancel={() => setManagedOptionConfirmState(null)}
+                        >
+                          <Button
+                            type="text"
+                            danger
+                            icon={<FontAwesomeIcon icon={faTrashCan} />}
+                            onClick={() => void handleDeleteManagedOption(managedOptionType, option)}
+                          >
+                            Delete
+                          </Button>
+                        </Popconfirm>
+                      </div>
+                    )}
                   </div>
                 ))
               )}

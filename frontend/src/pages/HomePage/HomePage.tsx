@@ -1,4 +1,4 @@
-import { faAngleDown, faAngleUp, faBroom, faBucket, faMagnifyingGlass, faPenToSquare } from '@fortawesome/free-solid-svg-icons'
+import { faAngleDown, faAngleUp, faBroom, faBucket, faMagnifyingGlass, faPenToSquare, faTriangleExclamation } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Checkbox, Input, Typography } from 'antd'
@@ -41,6 +41,10 @@ function getDefaultTableYearSelection(): TableYearSelection {
     allRaces: true,
     selectedYears: [],
   }
+}
+
+function isDefaultTableYearSelection(selection: TableYearSelection) {
+  return selection.allRaces && selection.selectedYears.length === 0
 }
 
 type PersistedRacesFiltersState = {
@@ -167,6 +171,8 @@ export function HomePage() {
   const [hasAnyRaces, setHasAnyRaces] = useState(false)
   const [isBucketListModalOpen, setIsBucketListModalOpen] = useState(false)
   const [bucketListCount, setBucketListCount] = useState(0)
+  const [isPendingUpdatesModalOpen, setIsPendingUpdatesModalOpen] = useState(false)
+  const [pendingUpdatesCount, setPendingUpdatesCount] = useState(0)
   const deferredSearch = useDeferredValue(filters.search)
 
   const viewFilters = useMemo<RaceFilters>(() => ({
@@ -195,18 +201,38 @@ export function HomePage() {
     () => getDefaultTableYearSelection(),
     [],
   )
+  const shouldShowClearFiltersButton = useMemo(
+    () => selectedView !== 'table'
+      || selectedCalendarMode !== 'monthly'
+      || filters.search.trim().length > 0
+      || filters.statuses.length > 0
+      || filters.raceTypeIds.length > 0
+      || !isDefaultTableYearSelection(tableYearSelection),
+    [
+      filters.raceTypeIds,
+      filters.search,
+      filters.statuses,
+      selectedCalendarMode,
+      selectedView,
+      tableYearSelection,
+    ],
+  )
 
   const hasOtherActiveFilters = useMemo(
     () => filters.search.trim().length > 0 || filters.statuses.length > 0 || filters.raceTypeIds.length > 0,
     [filters.raceTypeIds, filters.search, filters.statuses],
   )
 
-  const reloadRacesPageData = async () => {
+  const reloadRacesPageData = async (options?: { refreshTable?: boolean }) => {
+    const shouldRefreshTable = options?.refreshTable ?? false
+
     if (!token) {
       setFilterOptions({ years: [], raceTypes: [] })
       setCreateOptions({ raceTypes: [], teams: [], circuits: [], shoes: [] })
       setHasAnyRaces(false)
-      setRefreshKey((current) => current + 1)
+      if (shouldRefreshTable) {
+        setRefreshKey((current) => current + 1)
+      }
       setIsFilterOptionsLoading(false)
       return
     }
@@ -226,7 +252,9 @@ export function HomePage() {
       })
       setHasAnyRaces(hasRaces)
       setCreateOptions(createOptionsPayload)
-      setRefreshKey((current) => current + 1)
+      if (shouldRefreshTable) {
+        setRefreshKey((current) => current + 1)
+      }
     } finally {
       setIsFilterOptionsLoading(false)
     }
@@ -434,6 +462,16 @@ export function HomePage() {
         <div className={styles.titleBlock}>
           <div className={styles.titleRow}>
             <Title level={1} className={styles.pageTitle}>Races</Title>
+            {pendingUpdatesCount > 0 ? (
+              <button
+                type="button"
+                className={styles.pendingUpdatesNotice}
+                onClick={() => setIsPendingUpdatesModalOpen(true)}
+              >
+                <FontAwesomeIcon icon={faTriangleExclamation} />
+                <span>{pendingUpdatesCount} race{pendingUpdatesCount === 1 ? '' : 's'} need updating</span>
+              </button>
+            ) : null}
           </div>
         </div>
 
@@ -445,7 +483,7 @@ export function HomePage() {
             onClick={() => setIsBucketListModalOpen(true)}
             disabled={bucketListCount === 0}
           >
-            Bucket List
+            Future Races
           </Button>
 
           <RacesViewSwitcher selectedView={selectedView} onViewChange={setSelectedView} />
@@ -468,7 +506,7 @@ export function HomePage() {
             }}
             onCreated={async (payload) => {
               applyCreatedRaceVisibility(payload)
-              await reloadRacesPageData()
+              await reloadRacesPageData({ refreshTable: true })
             }}
           />
         </div>
@@ -490,6 +528,9 @@ export function HomePage() {
               bucketListOpen={isBucketListModalOpen}
               onBucketListOpenChange={setIsBucketListModalOpen}
               onBucketListCountChange={setBucketListCount}
+              pendingUpdatesOpen={isPendingUpdatesModalOpen}
+              onPendingUpdatesOpenChange={setIsPendingUpdatesModalOpen}
+              onPendingUpdatesCountChange={setPendingUpdatesCount}
               onCreateOptionsChange={(nextOptions) => {
                 setCreateOptions(nextOptions)
                 setFilterOptions((current) => ({
@@ -511,14 +552,16 @@ export function HomePage() {
           <div className={styles.sidebarCard}>
             <div className={styles.sidebarHeader}>
               <h3 className={styles.sidebarTitle}>Filters</h3>
-              <Button
-                type="text"
-                className={styles.clearButton}
-                icon={<FontAwesomeIcon icon={faBroom} />}
-                title="Clear filters"
-                aria-label="Clear filters"
-                onClick={clearSidebarFilters}
-              />
+              {shouldShowClearFiltersButton ? (
+                <Button
+                  type="text"
+                  className={styles.clearButton}
+                  icon={<FontAwesomeIcon icon={faBroom} />}
+                  title="Clear filters"
+                  aria-label="Clear filters"
+                  onClick={clearSidebarFilters}
+                />
+              ) : null}
             </div>
 
             <div className={styles.sidebarDivider} />

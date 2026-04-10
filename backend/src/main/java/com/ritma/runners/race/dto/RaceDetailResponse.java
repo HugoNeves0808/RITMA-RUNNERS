@@ -36,11 +36,8 @@ public record RaceDetailResponse(
             UUID shoeId,
             String shoeName,
             Integer generalClassification,
-            Boolean isGeneralClassificationPodium,
             Integer ageGroupClassification,
-            Boolean isAgeGroupClassificationPodium,
-            Integer teamClassification,
-            Boolean isTeamClassificationPodium
+            Integer teamClassification
     ) {
     }
 

@@ -20,7 +20,7 @@
   z-index: 10;
   display: flex;
   width: 272px;
-  min-height: 100vh;
+  height: 100vh;
   flex-direction: column;
   justify-content: space-between;
   padding: 28px 22px 24px;
@@ -28,6 +28,7 @@
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(247, 248, 250, 0.98) 100%);
   box-shadow: 18px 0 44px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
 }
 
 .logoLink {
@@ -46,14 +47,38 @@
 .navSection {
   display: flex;
   flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.navSection::-webkit-scrollbar {
+  width: 8px;
+}
+
+.navSection::-webkit-scrollbar-track {
+  background: rgba(16, 24, 40, 0.04);
+  border-radius: 999px;
+}
+
+.navSection::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.55);
+  border-radius: 999px;
+}
+
+.navSection::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.8);
+}
+
+.navGroup {
+  display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.adminSection {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+.navGroupSeparated {
   margin-top: 6px;
   padding-top: 16px;
   border-top: 1px solid rgba(16, 24, 40, 0.08);
@@ -162,6 +187,7 @@
 }
 
 .sidebarFooter {
+  flex-shrink: 0;
   padding-top: 10px;
   border-top: 1px solid rgba(16, 24, 40, 0.08);
 }

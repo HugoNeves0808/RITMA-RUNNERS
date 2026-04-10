@@ -33,11 +33,8 @@ public class BestEffortRepository {
                             ur.official_time,
                             ur.pace_per_km,
                             ur.general_classification,
-                            ur.is_general_classification_podium,
                             ur.age_group_classification,
-                            ur.is_age_group_classification_podium,
-                            ur.team_classification,
-                            ur.is_team_classification_podium
+                            ur.team_classification
                         FROM user_races ur
                         LEFT JOIN user_race_types urt ON urt.id = ur.race_type_id
                         WHERE ur.user_id = ?
@@ -59,11 +56,8 @@ public class BestEffortRepository {
                         getNullableInteger(rs, "official_time"),
                         getNullableInteger(rs, "pace_per_km"),
                         getNullableInteger(rs, "general_classification"),
-                        rs.getObject("is_general_classification_podium", Boolean.class),
                         getNullableInteger(rs, "age_group_classification"),
-                        rs.getObject("is_age_group_classification_podium", Boolean.class),
-                        getNullableInteger(rs, "team_classification"),
-                        rs.getObject("is_team_classification_podium", Boolean.class)
+                        getNullableInteger(rs, "team_classification")
                 ),
                 userId
         );
@@ -94,11 +88,8 @@ public class BestEffortRepository {
             Integer officialTimeSeconds,
             Integer pacePerKmSeconds,
             Integer generalClassification,
-            Boolean isGeneralClassificationPodium,
             Integer ageGroupClassification,
-            Boolean isAgeGroupClassificationPodium,
-            Integer teamClassification,
-            Boolean isTeamClassificationPodium
+            Integer teamClassification
     ) {
     }
 }

@@ -31,11 +31,8 @@ public record CreateRaceRequest(
             Integer pacePerKmSeconds,
             UUID shoeId,
             Integer generalClassification,
-            Boolean isGeneralClassificationPodium,
             Integer ageGroupClassification,
-            Boolean isAgeGroupClassificationPodium,
-            Integer teamClassification,
-            Boolean isTeamClassificationPodium
+            Integer teamClassification
     ) {
     }
 

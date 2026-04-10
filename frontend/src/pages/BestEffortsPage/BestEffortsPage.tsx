@@ -171,6 +171,20 @@ function normalizeDecimalInput(value: string | number | undefined) {
   return String(value).replace(',', '.')
 }
 
+function parseDecimalNumberInput(value: string | number | undefined) {
+  const normalized = normalizeDecimalInput(value)
+  if (!normalized) {
+    return 0
+  }
+
+  const cleaned = normalized.replace(/[^0-9.]/g, '')
+  const [integerPart = '', ...decimalParts] = cleaned.split('.')
+  const decimalPart = decimalParts.join('')
+  const parsedValue = Number(decimalPart.length > 0 ? `${integerPart}.${decimalPart}` : integerPart)
+
+  return Number.isNaN(parsedValue) ? 0 : parsedValue
+}
+
 function getMinimumAcceptedDistance(expectedDistanceKm: number | null) {
   if (expectedDistanceKm == null) {
     return null
@@ -864,7 +878,12 @@ export function BestEffortsPage() {
 
       {isLoading ? (
         <Card className={styles.emptyCard}>
-          <Spin />
+          <div className={styles.loadingState}>
+            <Space size="middle">
+              <Spin />
+              <span className={styles.loadingText}>Loading best efforts</span>
+            </Space>
+          </div>
         </Card>
       ) : null}
 
@@ -1235,7 +1254,7 @@ export function BestEffortsPage() {
                 className={styles.manageRaceTypeTargetInput}
                 placeholder="Target km"
                 value={managedRaceTypeTargetKm ?? undefined}
-                parser={(value) => Number(normalizeDecimalInput(value))}
+                parser={(value) => parseDecimalNumberInput(value)}
                 onChange={(value) => setManagedRaceTypeTargetKm(typeof value === 'number' ? value : null)}
               />
               <div className={styles.manageInputActions}>
@@ -1274,7 +1293,10 @@ export function BestEffortsPage() {
 
           {isManagedRaceTypeLoading ? (
             <div className={styles.manageOptionsLoading}>
-              <Spin />
+              <Space size="middle">
+                <Spin />
+                <span className={styles.loadingText}>Loading race types</span>
+              </Space>
             </div>
           ) : raceTypes.length === 0 ? (
             <div className={styles.manageOptionsEmptyState}>
@@ -1286,27 +1308,35 @@ export function BestEffortsPage() {
                 <div key={option.id} className={styles.manageOptionRow}>
                   <div className={styles.manageOptionInfo}>
                     <span className={styles.manageOptionName}>{option.name}</span>
-                    <span className={styles.manageOptionMeta}>
-                      {option.targetKm != null ? `${option.targetKm.toFixed(2)} km` : 'No target km set'}
-                    </span>
+                    <div className={styles.manageOptionMetaRow}>
+                      <span className={styles.manageOptionMeta}>
+                        {option.targetKm != null ? `${option.targetKm.toFixed(2)} km` : 'No target km set'}
+                      </span>
+                    </div>
                   </div>
-                  <div className={styles.manageOptionActions}>
-                    <Button
-                      type="text"
-                      icon={<FontAwesomeIcon icon={faPenToSquare} />}
-                      onClick={() => void openManageRaceTypesModal(option)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      type="text"
-                      danger
-                      icon={<FontAwesomeIcon icon={faTrashCan} />}
-                      onClick={() => void handleDeleteRaceType(option)}
-                    >
-                      Delete
-                    </Button>
-                  </div>
+                  {option.isDefault ? (
+                    <div className={styles.manageOptionActions}>
+                      <span className={styles.defaultOptionBadge}>Default from RITMA</span>
+                    </div>
+                  ) : (
+                    <div className={styles.manageOptionActions}>
+                      <Button
+                        type="text"
+                        icon={<FontAwesomeIcon icon={faPenToSquare} />}
+                        onClick={() => void openManageRaceTypesModal(option)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        type="text"
+                        danger
+                        icon={<FontAwesomeIcon icon={faTrashCan} />}
+                        onClick={() => void handleDeleteRaceType(option)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

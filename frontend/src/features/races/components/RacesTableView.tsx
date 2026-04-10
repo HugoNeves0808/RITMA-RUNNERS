@@ -1,4 +1,4 @@
-import { faChevronDown, faEllipsisVertical, faPenToSquare, faTrashCan } from '@fortawesome/free-solid-svg-icons'
+import { faChevronDown, faEllipsisVertical, faPenToSquare, faTrashCan, faTriangleExclamation } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
@@ -11,7 +11,6 @@ import {
   Empty,
   type MenuProps,
   Modal,
-  Popconfirm,
   Select,
   Space,
   Spin,
@@ -22,9 +21,16 @@ import {
   fetchRaceDetail,
   fetchRaceTable,
   deleteRace,
+  updateRaceTableItem,
 } from '../services/racesTableService'
-import { EMPTY_RACE_FILTERS, type RaceFilters } from '../types/raceFilters'
+import {
+  EMPTY_RACE_FILTERS,
+  getRaceStatusBackgroundColor,
+  getRaceStatusColor,
+  type RaceFilters,
+} from '../types/raceFilters'
 import type {
+  CreateRacePayload,
   RaceCreateOptions,
   RaceDetailResponse,
   RaceTableItem,
@@ -119,9 +125,9 @@ function getRaceStatusLabel(status: string | null | undefined) {
     case 'COMPLETED':
       return 'Completed'
     case 'IN_LIST':
-      return 'In list'
+      return 'Future races'
     case 'NOT_REGISTERED':
-      return 'Not registered'
+      return 'Waiting for registration'
     case 'CANCELLED':
       return 'Cancelled'
     case 'DID_NOT_START':
@@ -191,6 +197,21 @@ function shouldHideLocationInCompactMeta(status: string | null | undefined) {
 
 function shouldShowRegisteredMeta(status: string | null | undefined) {
   return status === 'REGISTERED'
+}
+
+function isTerminalRaceStatus(status: string | null | undefined) {
+  return status === 'COMPLETED'
+    || status === 'DID_NOT_START'
+    || status === 'DID_NOT_FINISH'
+    || status === 'CANCELLED'
+}
+
+function shouldWarnAboutPastRaceStatus(race: RaceTableItem, now: dayjs.Dayjs) {
+  if (!race.raceDate || isTerminalRaceStatus(race.raceStatus)) {
+    return false
+  }
+
+  return now.startOf('day').isAfter(dayjs(race.raceDate).startOf('day'))
 }
 
 function formatDuration(totalSeconds: number | null) {
@@ -286,6 +307,41 @@ function renderMetricValueWithTooltip(value: ReactNode, tooltip: string) {
       {value}
     </OverflowTooltip>
   )
+}
+
+function buildUpdatePayloadFromDetails(details: RaceDetailResponse, nextStatus: string): CreateRacePayload {
+  return {
+    race: {
+      raceStatus: nextStatus,
+      raceDate: details.race.raceDate,
+      raceTime: details.race.raceTime,
+      name: details.race.name,
+      location: details.race.location,
+      teamId: details.race.teamId,
+      circuitId: details.race.circuitId,
+      raceTypeId: details.race.raceTypeId,
+      realKm: details.race.realKm,
+      elevation: details.race.elevation,
+      isValidForCategoryRanking: details.race.isValidForCategoryRanking ?? false,
+    },
+    results: {
+      officialTimeSeconds: details.results.officialTimeSeconds,
+      chipTimeSeconds: details.results.chipTimeSeconds,
+      pacePerKmSeconds: details.results.pacePerKmSeconds,
+      shoeId: details.results.shoeId,
+      generalClassification: details.results.generalClassification,
+      ageGroupClassification: details.results.ageGroupClassification,
+      teamClassification: details.results.teamClassification,
+    },
+    analysis: {
+      preRaceConfidence: details.analysis.preRaceConfidence,
+      raceDifficulty: details.analysis.raceDifficulty,
+      finalSatisfaction: details.analysis.finalSatisfaction,
+      painInjuries: details.analysis.painInjuries,
+      analysisNotes: details.analysis.analysisNotes,
+      wouldRepeatThisRace: details.analysis.wouldRepeatThisRace,
+    },
+  }
 }
 
 function renderRaceMetrics(race: RaceTableItem) {
@@ -392,6 +448,32 @@ function renderCompactInlineMeta(race: RaceTableItem) {
   )
 }
 
+function renderPastRaceStatusWarning(
+  race: RaceTableItem,
+  now: dayjs.Dayjs,
+  onClick: (race: RaceTableItem) => void,
+) {
+  if (!shouldWarnAboutPastRaceStatus(race, now)) {
+    return null
+  }
+
+  return (
+    <Tooltip title="This race date has passed. Click to review and update the final race status.">
+      <button
+        type="button"
+        className={styles.statusWarningBadge}
+        onClick={(event) => {
+          event.stopPropagation()
+          onClick(race)
+        }}
+      >
+        <FontAwesomeIcon icon={faTriangleExclamation} className={styles.statusWarningIcon} />
+        <span>Click to Update</span>
+      </button>
+    </Tooltip>
+  )
+}
+
 function groupRacesByMonth(races: RaceTableItem[]) {
   const monthMap = new Map<string, RaceTableItem[]>()
 
@@ -479,6 +561,31 @@ function filterYearsByRaceName(years: RaceTableYearGroup[], search: string) {
     .filter((yearGroup) => yearGroup.races.length > 0)
 }
 
+function matchesSidebarFilters(race: RaceTableItem, filters: RaceFilters) {
+  if (filters.statuses.length > 0 && (!race.raceStatus || !filters.statuses.includes(race.raceStatus))) {
+    return false
+  }
+
+  if (filters.raceTypeIds.length > 0 && (!race.raceTypeId || !filters.raceTypeIds.includes(race.raceTypeId))) {
+    return false
+  }
+
+  return true
+}
+
+function filterYearsBySidebarFilters(years: RaceTableYearGroup[], filters: RaceFilters) {
+  if (filters.statuses.length === 0 && filters.raceTypeIds.length === 0) {
+    return years
+  }
+
+  return years
+    .map((yearGroup) => ({
+      ...yearGroup,
+      races: yearGroup.races.filter((race) => matchesSidebarFilters(race, filters)),
+    }))
+    .filter((yearGroup) => yearGroup.races.length > 0)
+}
+
 function extractRacesByStatus(years: RaceTableYearGroup[], status: string) {
   return years.flatMap((yearGroup) => yearGroup.races.filter((race) => race.raceStatus === status))
 }
@@ -519,6 +626,9 @@ type RacesTableViewProps = {
   bucketListOpen?: boolean
   onBucketListOpenChange?: (open: boolean) => void
   onBucketListCountChange?: (count: number) => void
+  pendingUpdatesOpen?: boolean
+  onPendingUpdatesOpenChange?: (open: boolean) => void
+  onPendingUpdatesCountChange?: (count: number) => void
   onCreateOptionsChange?: (nextOptions: RaceCreateOptions) => void
 }
 
@@ -531,6 +641,9 @@ export function RacesTableView({
   bucketListOpen,
   onBucketListOpenChange,
   onBucketListCountChange,
+  pendingUpdatesOpen,
+  onPendingUpdatesOpenChange,
+  onPendingUpdatesCountChange,
   onCreateOptionsChange,
 }: RacesTableViewProps) {
   const { token } = useAuth()
@@ -542,11 +655,16 @@ export function RacesTableView({
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isBucketListLoading, setIsBucketListLoading] = useState(false)
+  const [bucketListModalError, setBucketListModalError] = useState<string | null>(null)
+  const [movingFutureRaceId, setMovingFutureRaceId] = useState<string | null>(null)
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false)
   const [isPreparingEdit, setIsPreparingEdit] = useState(false)
   const [editingRace, setEditingRace] = useState<RaceDetailResponse | null>(null)
+  const [editStatusOverride, setEditStatusOverride] = useState<string | null>(null)
+  const [editStatusOverrideLabel, setEditStatusOverrideLabel] = useState<string | null>(null)
   const [returnToDetailsAfterEditClose, setReturnToDetailsAfterEditClose] = useState(false)
   const [returnToBucketListAfterDetailsClose, setReturnToBucketListAfterDetailsClose] = useState(false)
+  const [isPendingUpdatesModalOpenInternal, setIsPendingUpdatesModalOpenInternal] = useState(false)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [isDetailsLoading, setIsDetailsLoading] = useState(false)
   const [raceDetails, setRaceDetails] = useState<RaceDetailResponse | null>(null)
@@ -557,12 +675,13 @@ export function RacesTableView({
   const [isInListModalOpenInternal, setIsInListModalOpenInternal] = useState(false)
   const [selectedBucketListRaceType, setSelectedBucketListRaceType] = useState<string | undefined>(undefined)
   const [openYearSections, setOpenYearSections] = useState<Record<number, boolean>>({})
-  const [openBucketListSections, setOpenBucketListSections] = useState<Record<string, boolean>>({})
   const raceDetailsCacheRef = useRef<Map<string, RaceDetailResponse>>(new Map())
   const hasLoadedTableDataRef = useRef(false)
   const isInListModalOpen = bucketListOpen ?? isInListModalOpenInternal
   const setIsInListModalOpen = onBucketListOpenChange ?? setIsInListModalOpenInternal
-  const shouldLoadTableData = !hideContent || isInListModalOpen || !hasLoadedTableDataRef.current
+  const isPendingUpdatesModalOpen = pendingUpdatesOpen ?? isPendingUpdatesModalOpenInternal
+  const setIsPendingUpdatesModalOpen = onPendingUpdatesOpenChange ?? setIsPendingUpdatesModalOpenInternal
+  const shouldLoadTableData = !hideContent || isInListModalOpen || isPendingUpdatesModalOpen || !hasLoadedTableDataRef.current
 
   const visibleYears = useMemo(() => (
     tableYearSelection.allRaces
@@ -575,13 +694,13 @@ export function RacesTableView({
       : inListYears.filter((yearGroup) => tableYearSelection.selectedYears.includes(yearGroup.year))
   ), [inListYears, tableYearSelection.allRaces, tableYearSelection.selectedYears])
   const normalizedSearch = filters.search.trim().toLowerCase()
-  const serverFilters = useMemo(() => ({
-    ...filters,
-    search: '',
-  }), [filters.raceTypeIds, filters.statuses, filters.year])
+  const sidebarFilteredVisibleYears = useMemo(
+    () => filterYearsBySidebarFilters(visibleYears, filters),
+    [filters, visibleYears],
+  )
   const filteredVisibleYears = useMemo(
-    () => filterYearsByRaceName(visibleYears, filters.search),
-    [filters.search, visibleYears],
+    () => filterYearsByRaceName(sidebarFilteredVisibleYears, filters.search),
+    [filters.search, sidebarFilteredVisibleYears],
   )
   const allowsUndatedRacesForYearFilter = tableYearSelection.allRaces
   const filteredVisibleInListYears = useMemo(
@@ -603,32 +722,28 @@ export function RacesTableView({
     () => sortInListRaces([...filteredDatedInListRaces, ...filteredUndatedRaces]),
     [filteredDatedInListRaces, filteredUndatedRaces],
   )
-  const bucketListGroups = useMemo(() => {
-    const groupMap = new Map<string, RaceTableItem[]>()
-
-    filteredInListRaces.forEach((race) => {
-      const key = race.raceTypeName?.trim() || 'No race type'
-      const currentGroup = groupMap.get(key)
-      if (currentGroup) {
-        currentGroup.push(race)
-        return
-      }
-
-      groupMap.set(key, [race])
-    })
-
-    return Array.from(groupMap.entries())
-      .map(([raceTypeName, races]) => ({ raceTypeName, races }))
-      .sort((left, right) => left.raceTypeName.localeCompare(right.raceTypeName))
-  }, [filteredInListRaces])
-  const visibleBucketListGroups = useMemo(() => (
+  const bucketListRaceTypeOptions = useMemo(() => (
+    Array.from(new Set(filteredInListRaces.map((race) => race.raceTypeName?.trim() || 'No race type')))
+      .sort((left, right) => left.localeCompare(right))
+  ), [filteredInListRaces])
+  const visibleBucketListRaces = useMemo(() => (
     selectedBucketListRaceType
-      ? bucketListGroups.filter((group) => group.raceTypeName === selectedBucketListRaceType)
-      : bucketListGroups
-  ), [bucketListGroups, selectedBucketListRaceType])
+      ? filteredInListRaces.filter((race) => (race.raceTypeName?.trim() || 'No race type') === selectedBucketListRaceType)
+      : filteredInListRaces
+  ), [filteredInListRaces, selectedBucketListRaceType])
   const allVisibleRaces = useMemo(
     () => visibleYears.flatMap((yearGroup) => yearGroup.races),
     [visibleYears],
+  )
+  const allRaces = useMemo(
+    () => years.flatMap((yearGroup) => yearGroup.races),
+    [years],
+  )
+  const pendingUpdateRaces = useMemo(
+    () => allRaces
+      .filter((race) => shouldWarnAboutPastRaceStatus(race, now))
+      .sort((left, right) => getRaceDateTime(left).diff(getRaceDateTime(right))),
+    [allRaces, now],
   )
   const weekUpcomingRaces = useMemo(
     () => allVisibleRaces
@@ -654,7 +769,7 @@ export function RacesTableView({
     [upcomingRaces, yearsWithoutInList],
   )
 
-  const loadBucketListData = useCallback(async () => {
+  const loadBucketListData = useCallback(async (options?: { silent?: boolean }) => {
     if (!token) {
       setInListYears([])
       setUndatedRaces([])
@@ -663,7 +778,9 @@ export function RacesTableView({
     }
 
     try {
-      setIsBucketListLoading(true)
+      if (!options?.silent) {
+        setIsBucketListLoading(true)
+      }
       const bucketListPayload = await fetchRaceTable(token, {
         ...EMPTY_RACE_FILTERS,
         statuses: ['IN_LIST'],
@@ -675,11 +792,13 @@ export function RacesTableView({
       setInListYears([])
       setUndatedRaces([])
     } finally {
-      setIsBucketListLoading(false)
+      if (!options?.silent) {
+        setIsBucketListLoading(false)
+      }
     }
   }, [token])
 
-  const loadTableData = async () => {
+  const loadTableData = async (options?: { silent?: boolean }) => {
     if (!token) {
       setYears([])
       setIsLoading(false)
@@ -687,10 +806,10 @@ export function RacesTableView({
     }
 
     try {
-      setIsLoading(true)
-      const tablePayload = await fetchRaceTable(token, {
-        ...serverFilters,
-      })
+      if (!options?.silent) {
+        setIsLoading(true)
+      }
+      const tablePayload = await fetchRaceTable(token, EMPTY_RACE_FILTERS)
 
       setYears(tablePayload.years ?? [])
       setError(null)
@@ -698,7 +817,9 @@ export function RacesTableView({
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Unknown error')
     } finally {
-      setIsLoading(false)
+      if (!options?.silent) {
+        setIsLoading(false)
+      }
     }
   }
 
@@ -708,7 +829,7 @@ export function RacesTableView({
     }
 
     void loadTableData()
-  }, [refreshKey, serverFilters, shouldLoadTableData, token])
+  }, [refreshKey, shouldLoadTableData, token])
 
   useEffect(() => {
     void loadBucketListData()
@@ -731,20 +852,8 @@ export function RacesTableView({
   }, [inListYears, onBucketListCountChange, undatedRaces.length])
 
   useEffect(() => {
-    setOpenBucketListSections((current) => {
-      const next = { ...current }
-      let changed = false
-
-      bucketListGroups.forEach((group) => {
-        if (!(group.raceTypeName in next)) {
-          next[group.raceTypeName] = false
-          changed = true
-        }
-      })
-
-      return changed ? next : current
-    })
-  }, [bucketListGroups])
+    onPendingUpdatesCountChange?.(pendingUpdateRaces.length)
+  }, [onPendingUpdatesCountChange, pendingUpdateRaces.length])
 
   useEffect(() => {
     setOpenYearSections((current) => {
@@ -762,7 +871,13 @@ export function RacesTableView({
     })
   }, [regularYears])
 
-  const handleOpenEdit = useCallback(async (race: RaceTableItem) => {
+  const handleOpenEdit = useCallback(async (
+    race: RaceTableItem,
+    options?: {
+      raceStatusOverride?: string | null
+      raceStatusOverrideLabel?: string | null
+    },
+  ) => {
     if (!token) {
       return
     }
@@ -772,6 +887,8 @@ export function RacesTableView({
       setIsPreparingEdit(!cachedDetails)
       setError(null)
       setReturnToDetailsAfterEditClose(false)
+      setEditStatusOverride(options?.raceStatusOverride ?? null)
+      setEditStatusOverrideLabel(options?.raceStatusOverrideLabel ?? null)
       setEditingRace(cachedDetails ?? null)
       setIsEditDrawerOpen(true)
 
@@ -847,6 +964,43 @@ export function RacesTableView({
       setIsDeletingRace(false)
     }
   }, [loadBucketListData, loadTableData, token])
+
+  const handleMoveFutureRace = useCallback(async (
+    race: RaceTableItem,
+    nextStatus: 'REGISTERED' | 'NOT_REGISTERED',
+    nextStatusLabel: string,
+  ) => {
+    if (!token) {
+      return
+    }
+
+    if (!race.raceDate) {
+      setBucketListModalError(null)
+      setIsInListModalOpen(false)
+      void handleOpenEdit(race, {
+        raceStatusOverride: nextStatus,
+        raceStatusOverrideLabel: nextStatusLabel,
+      })
+      return
+    }
+
+    try {
+      setMovingFutureRaceId(race.id)
+      setBucketListModalError(null)
+      const details = raceDetailsCacheRef.current.get(race.id) ?? await fetchRaceDetail(race.id, token)
+      raceDetailsCacheRef.current.set(race.id, details)
+      await updateRaceTableItem(race.id, buildUpdatePayloadFromDetails(details, nextStatus), token)
+      raceDetailsCacheRef.current.delete(race.id)
+      await Promise.all([
+        loadTableData({ silent: true }),
+        loadBucketListData({ silent: true }),
+      ])
+    } catch (moveError) {
+      setBucketListModalError(moveError instanceof Error ? moveError.message : `Could not move this race to ${nextStatusLabel}.`)
+    } finally {
+      setMovingFutureRaceId(null)
+    }
+  }, [handleOpenEdit, loadBucketListData, loadTableData, token])
 
   const handleConfirmDelete = useCallback(async () => {
     if (!racePendingDelete) {
@@ -964,6 +1118,9 @@ export function RacesTableView({
                           </div>
 
                           <div className={styles.raceTopMeta}>
+                            {renderPastRaceStatusWarning(race, now, (selectedRace) => {
+                              void handleOpenEdit(selectedRace)
+                            })}
                             <span className={`${styles.raceStatusBadge} ${getRaceStatusClassName(race.raceStatus)}`.trim()}>
                               {getRaceStatusLabel(race.raceStatus)}
                             </span>
@@ -1059,6 +1216,9 @@ export function RacesTableView({
                               </div>
 
                               <div className={styles.raceTopMeta}>
+                                {renderPastRaceStatusWarning(race, now, (selectedRace) => {
+                                  void handleOpenEdit(selectedRace)
+                                })}
                                 <span className={`${styles.raceStatusBadge} ${getRaceStatusClassName(race.raceStatus)}`.trim()}>
                                   {getRaceStatusLabel(race.raceStatus)}
                                 </span>
@@ -1125,12 +1285,16 @@ export function RacesTableView({
         open={isEditDrawerOpen}
         raceId={editingRace?.id ?? null}
         initialRace={editingRace}
+        raceStatusOverride={editStatusOverride}
+        raceStatusOverrideLabel={editStatusOverrideLabel}
         isLoadingInitialRace={isPreparingEdit}
         createOptions={createOptions}
         onCreateOptionsChange={onCreateOptionsChange}
         onClose={() => {
           setIsEditDrawerOpen(false)
           setEditingRace(null)
+          setEditStatusOverride(null)
+          setEditStatusOverrideLabel(null)
           if (returnToDetailsAfterEditClose) {
             setIsDetailsOpen(true)
             setReturnToDetailsAfterEditClose(false)
@@ -1142,6 +1306,8 @@ export function RacesTableView({
 
           setIsEditDrawerOpen(false)
           setEditingRace(null)
+          setEditStatusOverride(null)
+          setEditStatusOverrideLabel(null)
 
           if (editedRaceId) {
             raceDetailsCacheRef.current.delete(editedRaceId)
@@ -1229,7 +1395,7 @@ export function RacesTableView({
         open={isInListModalOpen}
         title={(
           <div className={styles.bucketListModalHeader}>
-            <span className={styles.bucketListModalTitle}>Bucket List</span>
+            <span className={styles.bucketListModalTitle}>Future Races</span>
             <Select
               allowClear
               showSearch
@@ -1238,9 +1404,9 @@ export function RacesTableView({
               optionFilterProp="label"
               value={selectedBucketListRaceType}
               onChange={(value) => setSelectedBucketListRaceType(value)}
-              options={bucketListGroups.map((group) => ({
-                value: group.raceTypeName,
-                label: group.raceTypeName,
+              options={bucketListRaceTypeOptions.map((raceTypeName) => ({
+                value: raceTypeName,
+                label: raceTypeName,
               }))}
             />
           </div>
@@ -1249,10 +1415,21 @@ export function RacesTableView({
         onCancel={() => {
           setIsInListModalOpen(false)
           setSelectedBucketListRaceType(undefined)
+          setBucketListModalError(null)
         }}
-        width={860}
+        width={980}
       >
         <div className={styles.inListModalList}>
+          {bucketListModalError ? (
+            <Alert
+              type="error"
+              showIcon
+              message="Could not update this future race"
+              description={bucketListModalError}
+              className={styles.bucketListModalAlert}
+            />
+          ) : null}
+
           {isBucketListLoading ? (
             <div className={styles.loadingState}>
               <Space size="middle">
@@ -1262,41 +1439,24 @@ export function RacesTableView({
             </div>
           ) : null}
 
-          {!isBucketListLoading ? visibleBucketListGroups.map((group) => {
-            const isOpen = openBucketListSections[group.raceTypeName] ?? false
-
-            return (
-              <div key={group.raceTypeName} className={styles.bucketListGroup}>
-                <button
-                  type="button"
-                  className={styles.bucketListGroupHeader}
-                  onClick={() => setOpenBucketListSections((current) => ({
-                    ...current,
-                    [group.raceTypeName]: !(current[group.raceTypeName] ?? false),
-                  }))}
-                  aria-expanded={isOpen}
-                  aria-label={isOpen ? `Collapse ${group.raceTypeName}` : `Expand ${group.raceTypeName}`}
+          {!isBucketListLoading ? (
+            <div className={styles.bucketListList}>
+              {visibleBucketListRaces.map((race) => (
+                <div
+                  key={race.id}
+                  className={[
+                    styles.bucketListRow,
+                    styles.clickableBucketListRow,
+                    movingFutureRaceId === race.id ? styles.bucketListRowUpdating : '',
+                  ].join(' ').trim()}
+                  onClick={() => {
+                    if (movingFutureRaceId != null) {
+                      return
+                    }
+                    setIsInListModalOpen(false)
+                    void handleOpenDetails(race, { source: 'bucket-list' })
+                  }}
                 >
-                  <span className={styles.bucketListGroupTitle}>{group.raceTypeName}</span>
-                  <span className={styles.bucketListGroupMeta}>
-                    <span className={styles.bucketListGroupCount}>
-                      {group.races.length} race{group.races.length === 1 ? '' : 's'}
-                    </span>
-                    <FontAwesomeIcon icon={faChevronDown} className={isOpen ? styles.collapseIconOpen : styles.collapseIcon} />
-                  </span>
-                </button>
-
-                {isOpen ? (
-                  <div className={styles.bucketListGroupBody}>
-                    {group.races.map((race) => (
-                      <div
-                        key={race.id}
-                        className={`${styles.bucketListRow} ${styles.clickableBucketListRow}`.trim()}
-                        onClick={() => {
-                          setIsInListModalOpen(false)
-                          void handleOpenDetails(race, { source: 'bucket-list' })
-                        }}
-                      >
                         <div className={styles.inListModalHeader}>
                           <div className={styles.inListModalMain}>
                             <div className={styles.inListModalTitleBlock}>
@@ -1316,50 +1476,162 @@ export function RacesTableView({
                           </div>
 
                           <div className={styles.inListModalActions}>
-                            <Button
-                              type="text"
-                              className={`${styles.bucketListActionButton} ${styles.bucketListEditAction}`.trim()}
-                              aria-label="Edit race"
-                              icon={<FontAwesomeIcon icon={faPenToSquare} />}
-                              onClick={(event) => {
-                                event.stopPropagation()
-                                setIsInListModalOpen(false)
-                                void handleOpenEdit(race)
-                              }}
-                            />
-                            <Popconfirm
-                              title="Delete race?"
-                              description={`This will permanently delete "${race.name}".`}
-                              okText="Delete"
-                              cancelText="Cancel"
-                              okButtonProps={{ danger: true, loading: isDeletingRace }}
-                              onConfirm={() => {
-                                setIsInListModalOpen(false)
-                                void handleDeleteRace(race)
-                              }}
-                              onPopupClick={(event) => event.stopPropagation()}
-                            >
+                            {movingFutureRaceId === race.id ? (
+                              <div className={styles.bucketListInlineLoading}>
+                                <Spin size="small" />
+                                <span>Updating...</span>
+                              </div>
+                            ) : null}
+
+                            <div className={styles.bucketListQuickActions}>
+                              <Button
+                                size="small"
+                                className={styles.bucketListQuickActionButton}
+                                loading={movingFutureRaceId === race.id}
+                                disabled={movingFutureRaceId != null}
+                                style={{
+                                  color: getRaceStatusColor('REGISTERED'),
+                                  borderColor: getRaceStatusBackgroundColor('REGISTERED'),
+                                  background: getRaceStatusBackgroundColor('REGISTERED'),
+                                }}
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  void handleMoveFutureRace(race, 'REGISTERED', 'Registered')
+                                }}
+                              >
+                                Move to Registered
+                              </Button>
+                              <Button
+                                size="small"
+                                className={styles.bucketListQuickActionButton}
+                                loading={movingFutureRaceId === race.id}
+                                disabled={movingFutureRaceId != null}
+                                style={{
+                                  color: getRaceStatusColor('NOT_REGISTERED'),
+                                  borderColor: getRaceStatusBackgroundColor('NOT_REGISTERED'),
+                                  background: getRaceStatusBackgroundColor('NOT_REGISTERED'),
+                                }}
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  void handleMoveFutureRace(race, 'NOT_REGISTERED', 'Waiting for registration')
+                                }}
+                              >
+                                Move to Waiting
+                              </Button>
+                            </div>
+
+                            <div className={styles.bucketListIconActions}>
+                              <Button
+                                type="text"
+                                className={`${styles.bucketListActionButton} ${styles.bucketListEditAction}`.trim()}
+                                aria-label="Edit race"
+                                icon={<FontAwesomeIcon icon={faPenToSquare} />}
+                                disabled={movingFutureRaceId != null}
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  setIsInListModalOpen(false)
+                                  void handleOpenEdit(race)
+                                }}
+                              />
                               <Button
                                 type="text"
                                 danger
                                 className={`${styles.bucketListActionButton} ${styles.bucketListDeleteAction}`.trim()}
                                 aria-label="Delete race"
                                 icon={<FontAwesomeIcon icon={faTrashCan} />}
-                                onClick={(event) => event.stopPropagation()}
+                                disabled={movingFutureRaceId != null}
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  setIsInListModalOpen(false)
+                                  void handleDeleteRace(race)
+                                }}
                               />
-                            </Popconfirm>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-            )
-          }) : null}
+                </div>
+              ))}
+            </div>
+          ) : null}
 
-          {!isBucketListLoading && visibleBucketListGroups.length === 0 ? (
-            <Empty description="No bucket-list races found for the current filters." />
+          {!isBucketListLoading && visibleBucketListRaces.length === 0 ? (
+            <Empty description="Nao existem corridas com esse status." />
+          ) : null}
+        </div>
+      </Modal>
+
+      <Modal
+        open={isPendingUpdatesModalOpen}
+        title="Races Needing Updates"
+        footer={null}
+        onCancel={() => setIsPendingUpdatesModalOpen(false)}
+        width={980}
+      >
+        <div className={styles.pendingUpdatesModalList}>
+          {pendingUpdateRaces.map((race) => {
+            const isCompactInlineCard = shouldUseInlineCompactMeta(race.raceStatus)
+
+            return (
+              <article
+                key={race.id}
+                className={`${styles.raceRow} ${getRaceSurfaceClassName(race.raceStatus)} ${isCompactInlineCard ? styles.raceRowInlineCompact : ''}`.trim()}
+                onClick={() => void handleOpenDetails(race)}
+              >
+                {isCompactInlineCard ? (
+                  <div className={styles.compactDateLabel}>{getCompactInlineDateLabel(race.raceDate)}</div>
+                ) : (
+                  <div className={styles.dateBadge}>
+                    <span className={styles.dateBadgeDay}>{getDayLabel(race.raceDate)}</span>
+                    <span className={styles.dateBadgeMonth}>{getCompactMonthLabel(race.raceDate)}</span>
+                  </div>
+                )}
+
+                <div className={styles.raceContent}>
+                  <div className={styles.raceTopRow}>
+                    <div className={styles.raceTitleBlock}>
+                      <div className={isCompactInlineCard ? styles.compactHeaderLine : undefined}>
+                        <OverflowTooltip title={race.name} className={styles.raceCardTitle}>
+                          {race.name}
+                        </OverflowTooltip>
+                        {isCompactInlineCard ? renderCompactInlineMeta(race) : null}
+                      </div>
+                    </div>
+
+                    <div className={styles.raceTopMeta}>
+                      {renderPastRaceStatusWarning(race, now, (selectedRace) => {
+                        void handleOpenEdit(selectedRace)
+                      })}
+                      <span className={`${styles.raceStatusBadge} ${getRaceStatusClassName(race.raceStatus)}`.trim()}>
+                        {getRaceStatusLabel(race.raceStatus)}
+                      </span>
+                      <Dropdown
+                        menu={getRaceActionsMenu(race)}
+                        trigger={['click']}
+                        placement="bottomRight"
+                      >
+                        <Button
+                          type="text"
+                          className={styles.moreAction}
+                          aria-label="Race actions"
+                          icon={<FontAwesomeIcon icon={faEllipsisVertical} />}
+                          onClick={(event) => event.stopPropagation()}
+                        />
+                      </Dropdown>
+                    </div>
+                  </div>
+
+                  {!isCompactInlineCard ? (
+                    <div className={styles.raceBottomRow}>
+                      {renderRaceMetrics(race)}
+                    </div>
+                  ) : null}
+                </div>
+              </article>
+            )
+          })}
+
+          {pendingUpdateRaces.length === 0 ? (
+            <Empty description="No races are waiting for a status update." />
           ) : null}
         </div>
       </Modal>

@@ -24,9 +24,9 @@ export const IN_LIST_WITHOUT_DATE_STATUS = 'IN_LIST_WITHOUT_DATE'
 export const RACE_STATUS_OPTIONS = [
   { value: 'REGISTERED', label: 'Registered' },
   { value: 'COMPLETED', label: 'Completed' },
-  { value: 'IN_LIST', label: 'In List (with date)' },
-  { value: IN_LIST_WITHOUT_DATE_STATUS, label: 'In List (without date)' },
-  { value: 'NOT_REGISTERED', label: 'Not registered' },
+  { value: 'IN_LIST', label: 'Future races (with date)' },
+  { value: IN_LIST_WITHOUT_DATE_STATUS, label: 'Future races (without date)' },
+  { value: 'NOT_REGISTERED', label: 'Waiting for registration' },
   { value: 'CANCELLED', label: 'Cancelled' },
   { value: 'DID_NOT_START', label: 'Did not start' },
   { value: 'DID_NOT_FINISH', label: 'Did not finish' },
