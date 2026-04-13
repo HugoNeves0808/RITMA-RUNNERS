@@ -12,6 +12,7 @@ import java.util.UUID;
 import java.util.stream.IntStream;
 import java.util.stream.Collectors;
 import java.math.BigDecimal;
+import java.util.Set;
 
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -47,6 +48,12 @@ public class RaceService {
     private static final BigDecimal MAX_REAL_KM = new BigDecimal("999999.99");
     private static final BigDecimal MAX_TARGET_KM = new BigDecimal("9999.99");
     private static final int MAX_ANALYSIS_RATING_LENGTH = 30;
+    private static final Set<String> DEPRECATED_RACE_TYPE_NAMES = Set.of(
+            "long trail",
+            "short trail",
+            "ultra marathon",
+            "ultra marathons"
+    );
     private static final List<DefaultRaceType> DEFAULT_RACE_TYPES = List.of(
             new DefaultRaceType("10 km Race", new BigDecimal("10.00")),
             new DefaultRaceType("15 km Race", new BigDecimal("15.00")),
@@ -653,6 +660,10 @@ public class RaceService {
         }
 
         String normalizedName = request.name().trim();
+        if (optionType == RaceOptionType.RACE_TYPES
+                && DEPRECATED_RACE_TYPE_NAMES.contains(normalizedName.toLowerCase(Locale.ROOT))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This race type is no longer supported.");
+        }
         if (normalizedName.length() > MAX_OPTION_NAME_LENGTH) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
