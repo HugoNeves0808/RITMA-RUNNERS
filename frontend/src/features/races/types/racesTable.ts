@@ -10,6 +10,7 @@ export type RaceTableItem = {
   circuitName: string | null
   raceTypeId: string | null
   raceTypeName: string | null
+  elevation: number | null
   officialTimeSeconds: number | null
   chipTimeSeconds: number | null
   pacePerKmSeconds: number | null
@@ -35,6 +36,7 @@ export type RaceTypeOption = {
   name: string
   targetKm: number | null
   isDefault: boolean
+  archived: boolean
 }
 
 export type ManagedRaceOptionType = 'race-types' | 'teams' | 'circuits' | 'shoes'
@@ -93,7 +95,6 @@ export type CreateRacePayload = {
     finalSatisfaction: string | null
     painInjuries: string | null
     analysisNotes: string | null
-    wouldRepeatThisRace: boolean | null
   }
 }
 
@@ -137,6 +138,5 @@ export type RaceDetailResponse = {
     finalSatisfaction: string | null
     painInjuries: string | null
     analysisNotes: string | null
-    wouldRepeatThisRace: boolean | null
   }
 }

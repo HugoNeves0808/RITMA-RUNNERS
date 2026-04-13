@@ -43,8 +43,13 @@ export function fetchRaceDetail(raceId: string, token: string) {
   })
 }
 
-export function fetchManagedRaceOptions(optionType: ManagedRaceOptionType, token: string) {
-  return apiGet<RaceTypeOption[]>(`/api/races/options/${optionType}`, token, {
+export function fetchManagedRaceOptions(optionType: ManagedRaceOptionType, token: string, includeArchived = false) {
+  const params = new URLSearchParams()
+  if (includeArchived) {
+    params.set('includeArchived', 'true')
+  }
+
+  return apiGet<RaceTypeOption[]>(`/api/races/options/${optionType}${params.size > 0 ? `?${params.toString()}` : ''}`, token, {
     suppressUnauthorized: true,
   })
 }
@@ -57,6 +62,12 @@ export function createManagedRaceOption(optionType: ManagedRaceOptionType, paylo
 
 export function updateManagedRaceOption(optionType: ManagedRaceOptionType, optionId: string, payload: ManageRaceOptionPayload, token: string) {
   return apiPutWithToken<RaceTypeOption>(`/api/races/options/${optionType}/${optionId}`, payload, token, {
+    suppressUnauthorized: true,
+  })
+}
+
+export function updateManagedRaceOptionArchived(optionType: ManagedRaceOptionType, optionId: string, archived: boolean, token: string) {
+  return apiPutWithToken<RaceTypeOption>(`/api/races/options/${optionType}/${optionId}/archive?archived=${archived}`, undefined, token, {
     suppressUnauthorized: true,
   })
 }

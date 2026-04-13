@@ -18,6 +18,7 @@ export {
   fetchRaceTable,
   fetchRaceTypes,
   updateManagedRaceOption,
+  updateManagedRaceOptionArchived,
 } from './services/racesTableService'
 export {
   EMPTY_RACE_FILTERS,

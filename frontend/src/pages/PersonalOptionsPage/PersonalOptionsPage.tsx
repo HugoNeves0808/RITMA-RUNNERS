@@ -1,17 +1,17 @@
-import { faPenToSquare, faPlus, faTrashCan } from '@fortawesome/free-solid-svg-icons'
+import { faBoxArchive, faBroom, faMagnifyingGlass, faPenToSquare, faPlus, faRotateLeft, faTrashCan } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { useEffect, useMemo, useState } from 'react'
-import { Alert, Button, Card, Drawer, Empty, Input, InputNumber, Modal, Space, Spin, Tooltip, Typography } from 'antd'
+import { useDeferredValue, useEffect, useMemo, useState } from 'react'
+import { Alert, Button, Card, Checkbox, Drawer, Empty, Input, InputNumber, Modal, Space, Spin, Tooltip, Typography } from 'antd'
 import { useAuth } from '../../features/auth'
 import {
   createManagedRaceOption,
   deleteManagedRaceOption,
   detachManagedRaceOptionUsage,
+  fetchManagedRaceOptions,
   fetchManagedRaceOptionUsage,
-  fetchRaceCreateOptions,
+  updateManagedRaceOptionArchived,
   updateManagedRaceOption,
   type ManagedRaceOptionType,
-  type RaceCreateOptions,
   type RaceOptionUsage,
   type RaceTypeOption,
 } from '../../features/races'
@@ -61,13 +61,6 @@ const OPTION_CONFIG: Record<ManagedRaceOptionType, {
   },
 }
 
-const EMPTY_OPTIONS: RaceCreateOptions = {
-  raceTypes: [],
-  teams: [],
-  circuits: [],
-  shoes: [],
-}
-
 function normalizeDecimalInput(value: string | number | undefined) {
   if (value == null) {
     return ''
@@ -90,42 +83,13 @@ function parseDecimalNumberInput(value: string | number | undefined) {
   return Number.isNaN(parsedValue) ? 0 : parsedValue
 }
 
-function getOptionsForType(options: RaceCreateOptions, optionType: ManagedRaceOptionType) {
-  switch (optionType) {
-    case 'race-types':
-      return options.raceTypes
-    case 'teams':
-      return options.teams
-    case 'circuits':
-      return options.circuits
-    case 'shoes':
-      return options.shoes
-    default:
-      return []
-  }
-}
-
-function replaceOptionsForType(
-  options: RaceCreateOptions,
-  optionType: ManagedRaceOptionType,
-  nextValues: RaceTypeOption[],
-) {
-  return {
-    ...options,
-    raceTypes: optionType === 'race-types' ? nextValues : options.raceTypes,
-    teams: optionType === 'teams' ? nextValues : options.teams,
-    circuits: optionType === 'circuits' ? nextValues : options.circuits,
-    shoes: optionType === 'shoes' ? nextValues : options.shoes,
-  }
-}
-
 type PersonalOptionsPageProps = {
   optionType: ManagedRaceOptionType
 }
 
 export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
   const { token } = useAuth()
-  const [options, setOptions] = useState<RaceCreateOptions>(EMPTY_OPTIONS)
+  const [options, setOptions] = useState<RaceTypeOption[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [optionName, setOptionName] = useState('')
@@ -137,18 +101,38 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
   const [usage, setUsage] = useState<RaceOptionUsage | null>(null)
   const [pendingDeleteOption, setPendingDeleteOption] = useState<RaceTypeOption | null>(null)
   const [confirmState, setConfirmState] = useState<ManagedOptionConfirmState>(null)
+  const [search, setSearch] = useState('')
+  const [showArchived, setShowArchived] = useState(false)
+  const [showDefaultFromRitma, setShowDefaultFromRitma] = useState(true)
 
   const activeType = optionType
   const config = OPTION_CONFIG[activeType]
-  const activeOptions = useMemo(
-    () => getOptionsForType(options, activeType),
-    [activeType, options],
+  const deferredSearch = useDeferredValue(search)
+  const visibleOptions = useMemo(
+    () => options.filter((option) => {
+      if (!showArchived && option.archived) {
+        return false
+      }
+
+      if (!showDefaultFromRitma && option.isDefault) {
+        return false
+      }
+
+      if (deferredSearch.trim()) {
+        return option.name.toLowerCase().includes(deferredSearch.trim().toLowerCase())
+      }
+
+      return true
+    }),
+    [deferredSearch, options, showArchived, showDefaultFromRitma],
   )
+
+  const hasActiveFilters = search.trim().length > 0 || showArchived || !showDefaultFromRitma
 
   useEffect(() => {
     const loadOptions = async () => {
       if (!token) {
-        setOptions(EMPTY_OPTIONS)
+        setOptions([])
         setIsLoading(false)
         return
       }
@@ -156,7 +140,7 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
       try {
         setIsLoading(true)
         setError(null)
-        const payload = await fetchRaceCreateOptions(token)
+        const payload = await fetchManagedRaceOptions(activeType, token, true)
         setOptions(payload)
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : 'Could not load your personal options right now.')
@@ -166,7 +150,7 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
     }
 
     void loadOptions()
-  }, [token])
+  }, [activeType, token])
 
   const resetEditorState = () => {
     setOptionName('')
@@ -190,7 +174,16 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
     setPendingDeleteOption(null)
     setConfirmState(null)
     setError(null)
+    setSearch('')
+    setShowArchived(false)
+    setShowDefaultFromRitma(true)
   }, [activeType])
+
+  const handleClearFilters = () => {
+    setSearch('')
+    setShowArchived(false)
+    setShowDefaultFromRitma(true)
+  }
 
   const hasUnsavedEditorChanges = optionName.trim().length > 0 || (activeType === 'race-types' && targetKm != null)
 
@@ -235,14 +228,10 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
         )
 
       const nextOptions = editingOptionId
-        ? activeOptions.map((option) => (option.id === savedOption.id ? savedOption : option))
-        : [...activeOptions, savedOption]
+        ? options.map((option) => (option.id === savedOption.id ? savedOption : option))
+        : [...options, savedOption]
 
-      setOptions((current) => replaceOptionsForType(
-        current,
-        activeType,
-        nextOptions.sort((left, right) => left.name.localeCompare(right.name)),
-      ))
+      setOptions(nextOptions.sort((left, right) => left.name.localeCompare(right.name)))
 
       setOptionName('')
       setTargetKm(null)
@@ -278,6 +267,25 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
     }
   }
 
+  const handleToggleArchived = async (option: RaceTypeOption, archived: boolean) => {
+    if (!token) {
+      return
+    }
+
+    try {
+      setIsSubmitting(true)
+      setError(null)
+      const savedOption = await updateManagedRaceOptionArchived(activeType, option.id, archived, token)
+      setOptions((current) => current
+        .map((currentOption) => (currentOption.id === savedOption.id ? savedOption : currentOption))
+        .sort((left, right) => left.name.localeCompare(right.name)))
+    } catch (archiveError) {
+      setError(archiveError instanceof Error ? archiveError.message : `Could not update this ${config.singularLabel} right now.`)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   const handleConfirmDelete = async () => {
     if (!token || !confirmState) {
       return
@@ -293,11 +301,7 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
 
       await deleteManagedRaceOption(activeType, confirmState.option.id, token)
 
-      setOptions((current) => replaceOptionsForType(
-        current,
-        activeType,
-        getOptionsForType(current, activeType).filter((option) => option.id !== confirmState.option.id),
-      ))
+      setOptions((current) => current.filter((option) => option.id !== confirmState.option.id))
 
       if (editingOptionId === confirmState.option.id) {
         setOptionName('')
@@ -327,11 +331,7 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
       await detachManagedRaceOptionUsage(activeType, pendingDeleteOption.id, token)
       await deleteManagedRaceOption(activeType, pendingDeleteOption.id, token)
 
-      setOptions((current) => replaceOptionsForType(
-        current,
-        activeType,
-        getOptionsForType(current, activeType).filter((option) => option.id !== pendingDeleteOption.id),
-      ))
+      setOptions((current) => current.filter((option) => option.id !== pendingDeleteOption.id))
 
       if (editingOptionId === pendingDeleteOption.id) {
         setOptionName('')
@@ -355,96 +355,163 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
         <div>
           <Title level={1} className={styles.pageTitle}>{config.title}</Title>
         </div>
-        <Button
-          type="primary"
-          className={styles.addButton}
-          icon={<FontAwesomeIcon icon={faPlus} />}
-          onClick={() => {
-            setOptionName('')
-            setTargetKm(null)
-            setEditingOptionId(null)
-            setError(null)
-            setIsEditorOpen(true)
-          }}
-        >
-          {`Add ${config.singularLabel}`}
-        </Button>
+        <div className={styles.headerActions}>
+          <Button
+            type="primary"
+            className={styles.addButton}
+            icon={<FontAwesomeIcon icon={faPlus} />}
+            onClick={() => {
+              setOptionName('')
+              setTargetKm(null)
+              setEditingOptionId(null)
+              setError(null)
+              setIsEditorOpen(true)
+            }}
+          >
+            {`Add ${config.singularLabel}`}
+          </Button>
+        </div>
       </div>
 
-      <Card className={styles.pageCard} variant="borderless">
-        {error ? (
-          <Alert
-            type="error"
-            showIcon
-            message={`Could not manage ${config.title.toLowerCase()}`}
-            description={error}
-            style={{ marginBottom: 18 }}
-          />
-        ) : null}
+      <div className={styles.contentLayout}>
+        <section className={styles.contentMain}>
+          <Card className={styles.pageCard} variant="borderless">
+            {error ? (
+              <Alert
+                type="error"
+                showIcon
+                message={`Could not manage ${config.title.toLowerCase()}`}
+                description={error}
+                style={{ marginBottom: 18 }}
+              />
+            ) : null}
 
-        {isLoading ? (
-          <div className={styles.loadingState}>
-            <Space size="middle">
-              <Spin />
-              <span className={styles.loadingText}>Loading {config.title.toLowerCase()}</span>
-            </Space>
-          </div>
-        ) : activeOptions.length === 0 ? (
-          <div className={styles.emptyWrap}>
-            <Empty description={config.emptyLabel} />
-          </div>
-        ) : (
-          <div className={styles.optionList}>
-            {activeOptions.map((option) => (
-              <div key={option.id} className={styles.optionRow}>
-                <div className={styles.optionInfo}>
-                  <span className={styles.optionName}>{option.name}</span>
-                  {activeType === 'race-types' ? (
-                    <div className={styles.optionMetaRow}>
-                      <span className={styles.optionMeta}>
-                        {option.targetKm != null ? `${option.targetKm.toFixed(2)} km` : 'No target km set'}
-                      </span>
-                    </div>
-                  ) : null}
-                </div>
-
-                {option.isDefault ? (
-                  <div className={styles.optionActions}>
-                    <span className={styles.defaultOptionBadge}>Default from RITMA</span>
-                  </div>
-                ) : (
-                  <div className={styles.optionActions}>
-                    <Button
-                      type="text"
-                      icon={<FontAwesomeIcon icon={faPenToSquare} />}
-                      onClick={() => {
-                        setOptionName(option.name)
-                        setTargetKm(activeType === 'race-types' ? (option.targetKm ?? null) : null)
-                        setEditingOptionId(option.id)
-                        setIsEditorOpen(true)
-                        setUsage(null)
-                        setPendingDeleteOption(null)
-                        setConfirmState(null)
-                        setError(null)
-                      }}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      type="text"
-                      danger
-                      icon={<FontAwesomeIcon icon={faTrashCan} />}
-                      onClick={() => void handleDelete(option)}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                )}
+            {isLoading ? (
+              <div className={styles.loadingState}>
+                <Space size="middle">
+                  <Spin />
+                  <span className={styles.loadingText}>Loading {config.title.toLowerCase()}</span>
+                </Space>
               </div>
-            ))}
+            ) : visibleOptions.length === 0 ? (
+              <div className={styles.emptyWrap}>
+                <Empty description={hasActiveFilters ? `No ${config.title.toLowerCase()} match the selected filters.` : config.emptyLabel} />
+              </div>
+            ) : (
+              <div className={styles.optionList}>
+                {visibleOptions.map((option) => (
+                  <div
+                    key={option.id}
+                    className={[styles.optionRow, option.archived ? styles.optionRowArchived : ''].filter(Boolean).join(' ')}
+                  >
+                    <div className={styles.optionInfo}>
+                      <div className={styles.optionNameRow}>
+                        <span className={styles.optionName}>{option.name}</span>
+                        {option.archived ? <span className={styles.archivedBadge}>Archived</span> : null}
+                      </div>
+                      {activeType === 'race-types' ? (
+                        <div className={styles.optionMetaRow}>
+                          <span className={styles.optionMeta}>
+                            {option.targetKm != null ? `${option.targetKm.toFixed(2)} km` : 'No target km set'}
+                          </span>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    {option.isDefault ? (
+                      <div className={styles.optionActions}>
+                        <span className={styles.defaultOptionBadge}>Default from RITMA</span>
+                      </div>
+                    ) : (
+                      <div className={styles.optionActions}>
+                        <Button
+                          type="text"
+                          icon={<FontAwesomeIcon icon={option.archived ? faRotateLeft : faBoxArchive} />}
+                          onClick={() => void handleToggleArchived(option, !option.archived)}
+                        >
+                          {option.archived ? 'Restore' : 'Archive'}
+                        </Button>
+                        <Button
+                          type="text"
+                          icon={<FontAwesomeIcon icon={faPenToSquare} />}
+                          onClick={() => {
+                            setOptionName(option.name)
+                            setTargetKm(activeType === 'race-types' ? (option.targetKm ?? null) : null)
+                            setEditingOptionId(option.id)
+                            setIsEditorOpen(true)
+                            setUsage(null)
+                            setPendingDeleteOption(null)
+                            setConfirmState(null)
+                            setError(null)
+                          }}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          type="text"
+                          danger
+                          icon={<FontAwesomeIcon icon={faTrashCan} />}
+                          onClick={() => void handleDelete(option)}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        </section>
+
+        <aside className={styles.sidebar}>
+          <div className={styles.sidebarCard}>
+            <div className={styles.sidebarHeader}>
+              <h3 className={styles.sidebarTitle}>Filters</h3>
+              {hasActiveFilters ? (
+                <Button
+                  type="text"
+                  className={styles.clearButton}
+                  icon={<FontAwesomeIcon icon={faBroom} />}
+                  title="Clear filters"
+                  aria-label="Clear filters"
+                  onClick={handleClearFilters}
+                />
+              ) : null}
+            </div>
+
+            <div className={styles.sidebarDivider} />
+
+            <label className={styles.filterField}>
+              <span className={styles.filterLabel}>Search</span>
+              <Input
+                allowClear
+                className={styles.searchInput}
+                value={search}
+                placeholder={`Search ${config.title.toLowerCase()} by name`}
+                suffix={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            </label>
+
+            <div className={styles.filterField}>
+              <span className={styles.filterLabel}>Visibility</span>
+              <label className={styles.checkboxRow}>
+                <Checkbox checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} />
+                <span>Show archived</span>
+              </label>
+            </div>
+
+            <div className={styles.filterField}>
+              <span className={styles.filterLabel}>Source</span>
+              <label className={styles.checkboxRow}>
+                <Checkbox checked={showDefaultFromRitma} onChange={(event) => setShowDefaultFromRitma(event.target.checked)} />
+                <span>Default from RITMA</span>
+              </label>
+            </div>
           </div>
-        )}
-      </Card>
+        </aside>
+      </div>
 
       <Drawer
         title={editingOptionId ? `Edit ${config.singularLabel}` : `Add ${config.singularLabel}`}

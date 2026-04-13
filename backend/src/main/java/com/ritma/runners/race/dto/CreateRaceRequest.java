@@ -41,8 +41,7 @@ public record CreateRaceRequest(
             String raceDifficulty,
             String finalSatisfaction,
             String painInjuries,
-            String analysisNotes,
-            Boolean wouldRepeatThisRace
+            String analysisNotes
     ) {
     }
 }

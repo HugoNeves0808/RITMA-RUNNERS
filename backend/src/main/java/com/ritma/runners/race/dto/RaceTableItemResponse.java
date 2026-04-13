@@ -16,6 +16,7 @@ public record RaceTableItemResponse(
         String circuitName,
         UUID raceTypeId,
         String raceTypeName,
+        Integer elevation,
         Integer officialTimeSeconds,
         Integer chipTimeSeconds,
         Integer pacePerKmSeconds

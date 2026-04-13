@@ -450,7 +450,6 @@ export function HomePage() {
   }
 
   const clearSidebarFilters = () => {
-    setSelectedView('table')
     setSelectedCalendarMode('monthly')
     setFilters(EMPTY_RACE_FILTERS)
     setTableYearSelection(defaultTableYearSelection)

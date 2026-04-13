@@ -75,8 +75,13 @@ public class RaceTableController {
 
     @GetMapping("/options/{optionType}")
     public List<RaceTypeOptionResponse> getManagedOptions(@AuthenticationPrincipal JwtAuthenticatedUser user,
-                                                          @PathVariable String optionType) {
-        return raceService.getManagedOptions(requireAuthenticatedUserId(user), RaceOptionType.fromPathValue(optionType));
+                                                          @PathVariable String optionType,
+                                                          @RequestParam(defaultValue = "false") boolean includeArchived) {
+        return raceService.getManagedOptions(
+                requireAuthenticatedUserId(user),
+                RaceOptionType.fromPathValue(optionType),
+                includeArchived
+        );
     }
 
     @PostMapping("/options/{optionType}")
@@ -93,6 +98,19 @@ public class RaceTableController {
                                                       @PathVariable UUID optionId,
                                                       @RequestBody ManageRaceOptionRequest request) {
         return raceService.updateManagedOption(requireAuthenticatedUserId(user), RaceOptionType.fromPathValue(optionType), optionId, request);
+    }
+
+    @PutMapping("/options/{optionType}/{optionId:[0-9a-fA-F\\-]{36}}/archive")
+    public RaceTypeOptionResponse updateManagedOptionArchived(@AuthenticationPrincipal JwtAuthenticatedUser user,
+                                                              @PathVariable String optionType,
+                                                              @PathVariable UUID optionId,
+                                                              @RequestParam boolean archived) {
+        return raceService.updateManagedOptionArchived(
+                requireAuthenticatedUserId(user),
+                RaceOptionType.fromPathValue(optionType),
+                optionId,
+                archived
+        );
     }
 
     @GetMapping("/options/{optionType}/{optionId:[0-9a-fA-F\\-]{36}}/usage")

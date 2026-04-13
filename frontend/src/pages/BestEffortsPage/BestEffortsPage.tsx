@@ -44,7 +44,7 @@ import styles from './BestEffortsPage.module.css'
 const { Title } = Typography
 const PODIUM_ORDER_TOP_THREE = [1, 0, 2]
 const PODIUM_ORDER_TOP_FIVE = [1, 0, 2, 3, 4]
-const CATEGORY_DISTANCE_EXCLUDED_MARGIN_KM = 0.3
+const CATEGORY_DISTANCE_EXCLUDED_MARGIN_KM = 0.2
 
 type PersistedBestEffortsFiltersState = {
   viewMode: BestEffortsViewMode
@@ -197,7 +197,7 @@ function getFilteredItems(
   items: BestEffortItem[],
   viewMode: BestEffortsViewMode,
 ) {
-  const visibleItems = items.filter((item) => item.validForBestEffortRanking || item.rankingNote === 'Below category distance')
+  const visibleItems = items.filter((item) => item.validForBestEffortRanking)
 
   if (viewMode === 'top-3') {
     return visibleItems.slice(0, 3)
@@ -210,6 +210,13 @@ function getFilteredItems(
   return visibleItems
 }
 
+function assignVisibleRanks(items: BestEffortItem[]) {
+  return items.map((item, index) => ({
+    ...item,
+    overallRank: index + 1,
+  }))
+}
+
 function getPodiumOrder(items: BestEffortItem[]) {
   if (items.length <= 3) {
     return PODIUM_ORDER_TOP_THREE.filter((index) => index < items.length)
@@ -219,7 +226,7 @@ function getPodiumOrder(items: BestEffortItem[]) {
 }
 
 function getRankingNoteBadgeClassName(item: BestEffortItem) {
-  if (!item.validForBestEffortRanking && item.rankingNote !== 'Below category distance') {
+  if (!item.validForBestEffortRanking) {
     return styles.rankingNoteExcluded
   }
 
@@ -227,11 +234,11 @@ function getRankingNoteBadgeClassName(item: BestEffortItem) {
 }
 
 function hasDisplayedRanking(item: BestEffortItem) {
-  return item.validForBestEffortRanking || item.rankingNote === 'Below category distance'
+  return item.validForBestEffortRanking
 }
 
 function getCategoryScoreBadgeClassNameForItem(item: BestEffortItem) {
-  if (!item.validForBestEffortRanking && item.rankingNote !== 'Below category distance') {
+  if (!item.validForBestEffortRanking) {
     return styles.categoryScoreExcluded
   }
 
@@ -547,7 +554,7 @@ export function BestEffortsPage() {
 
   const visibleCategories = useMemo(() => payload
     .map((category) => {
-      const items = getFilteredItems(category.efforts, viewMode)
+      const items = assignVisibleRanks(getFilteredItems(category.efforts, viewMode))
       return {
         ...category,
         visibleItems: items,
@@ -903,9 +910,7 @@ export function BestEffortsPage() {
                 <Card key={category.categoryKey} className={styles.categoryCard} styles={{ body: { padding: 24 } }}>
                   {(() => {
                     const excludedCount = getExcludedItems(category).length
-                    const effectiveValidCount = category.efforts.filter((item) => (
-                      item.validForBestEffortRanking || item.rankingNote === 'Below category distance'
-                    )).length
+                    const effectiveValidCount = category.efforts.filter((item) => item.validForBestEffortRanking).length
                     const minimumAcceptedDistance = getMinimumAcceptedDistance(category.expectedDistanceKm)
                     const minimumAcceptedDistanceLabel = minimumAcceptedDistance != null
                       ? formatDistance(minimumAcceptedDistance)
@@ -928,7 +933,7 @@ export function BestEffortsPage() {
 
                     <div className={styles.categoryMetaAside}>
                       <div className={styles.metaRow}>
-                        <Tooltip title="Valid races are eligible for best effort ranking. They need to be marked as valid for category ranking, have chip time, and stay within the accepted distance threshold for the category.">
+                        <Tooltip title={`Valid races are the ones that count for the Best Efforts ranking. To become valid, a race must be marked as valid for category ranking, have chip time, have real distance recorded, and stay within 200 meters of the target distance for the category (${minimumAcceptedDistanceLabel} minimum in this category).`}>
                           <span
                             className={`${styles.categoryScoreBadge} ${getCategoryScoreBadgeClassName('valid')} ${styles.clickableTag}`.trim()}
                             onClick={() => openCategoryRacesModal(category, 'valid')}
@@ -945,7 +950,7 @@ export function BestEffortsPage() {
                           </span>
                         </Tooltip>
                         {excludedCount > 0 ? (
-                          <Tooltip title={`Excluded races are outside the ranking because they are either marked as not valid for category ranking, more than 300 meters below the target (${minimumAcceptedDistanceLabel}), or the race type still has no target km defined.`}>
+                          <Tooltip title={`Excluded races are outside the ranking because they are either marked as not valid for category ranking, more than 200 meters below the target (${minimumAcceptedDistanceLabel}), or the race type still has no target km defined.`}>
                             <span
                               className={`${styles.categoryScoreBadge} ${getCategoryScoreBadgeClassName('excluded')} ${styles.clickableTag}`.trim()}
                               onClick={() => openCategoryRacesModal(category, 'excluded')}

@@ -126,19 +126,26 @@ async function apiRequest<T>(
 async function buildApiError(
   response: Response,
   token?: string,
-  options?: { suppressUnauthorized?: boolean },
+  _options?: { suppressUnauthorized?: boolean },
 ) {
-  if (token && response.status === 401 && !options?.suppressUnauthorized) {
+  if (token && response.status === 401 && !_options?.suppressUnauthorized) {
     notifyUnauthorized(token)
   }
 
   try {
     const payload = await response.json() as { message?: string }
     if (payload.message) {
+      if (response.status === 401 && _options?.suppressUnauthorized) {
+        return new ApiError(response.status, 'Unable to load this data right now.')
+      }
       return new ApiError(response.status, payload.message)
     }
   } catch {
     // Ignore parsing errors and fall back to HTTP status text.
+  }
+
+  if (response.status === 401 && _options?.suppressUnauthorized) {
+    return new ApiError(response.status, 'Unable to load this data right now.')
   }
 
   return new ApiError(response.status, getFriendlyErrorMessage(response.status))

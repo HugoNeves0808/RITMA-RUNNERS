@@ -6,7 +6,6 @@ import { startTransition, useEffect, useMemo, useState } from 'react'
 import {
   Alert,
   Button,
-  Checkbox,
   DatePicker,
   Drawer,
   Empty,
@@ -99,10 +98,10 @@ type AddRaceFormValues = {
   finalSatisfaction?: string
   painInjuries?: string
   analysisNotes?: string
-  wouldRepeatThisRace?: boolean
 }
 
 type DrawerInitialValues = Partial<AddRaceFormValues>
+type DrawerTabKey = 'race' | 'results' | 'classifications' | 'analysis'
 
 const ANALYSIS_SELECT_OPTIONS = [
   { value: 'VERY_LOW', label: 'Very low' },
@@ -200,6 +199,32 @@ const FIELD_ERROR_PATTERNS: Array<{ pattern: RegExp; field: keyof AddRaceFormVal
   { pattern: /final satisfaction/i, field: 'finalSatisfaction' },
 ]
 
+const FIELD_TAB_MAP: Partial<Record<keyof AddRaceFormValues, DrawerTabKey>> = {
+  raceStatus: 'race',
+  raceDate: 'race',
+  raceTime: 'race',
+  name: 'race',
+  location: 'race',
+  teamId: 'race',
+  circuitId: 'race',
+  raceTypeId: 'race',
+  realKm: 'results',
+  elevation: 'results',
+  isValidForCategoryRanking: 'race',
+  officialTime: 'results',
+  chipTime: 'results',
+  pacePerKm: 'results',
+  shoeId: 'results',
+  generalClassification: 'classifications',
+  ageGroupClassification: 'classifications',
+  teamClassification: 'classifications',
+  preRaceConfidence: 'analysis',
+  raceDifficulty: 'analysis',
+  finalSatisfaction: 'analysis',
+  painInjuries: 'analysis',
+  analysisNotes: 'analysis',
+}
+
 function parseTimeToSeconds(value: string | undefined, mode: 'duration' | 'pace', fieldLabel?: string) {
   const normalized = value?.trim()
   if (!normalized) {
@@ -296,10 +321,6 @@ function shouldShowFinalSatisfaction(raceStatus: string | undefined) {
 
 function shouldShowPainInjuries(raceStatus: string | undefined) {
   return shouldShowAnalysisTab(raceStatus)
-}
-
-function shouldShowWouldRepeatThisRace(raceStatus: string | undefined) {
-  return isCompletedStatus(raceStatus) || isDnfStatus(raceStatus)
 }
 
 function formatDurationInput(totalSeconds: number | null | undefined) {
@@ -517,7 +538,6 @@ function buildDrawerInitialValues(race: RaceDetailResponse | null | undefined): 
     finalSatisfaction: race.analysis.finalSatisfaction ?? undefined,
     painInjuries: race.analysis.painInjuries ?? undefined,
     analysisNotes: race.analysis.analysisNotes ?? undefined,
-    wouldRepeatThisRace: race.analysis.wouldRepeatThisRace ?? false,
   }
 }
 
@@ -565,7 +585,6 @@ function buildRacePayload(values: AddRaceFormValues, fallbackRace?: RaceDetailRe
         ? values.painInjuries.trim()
         : null,
       analysisNotes: showAnalysisTab && values.analysisNotes?.trim() ? values.analysisNotes.trim() : null,
-      wouldRepeatThisRace: showAnalysisTab && shouldShowWouldRepeatThisRace(normalizedStatus) ? (values.wouldRepeatThisRace ?? null) : null,
     },
   }
 }
@@ -754,6 +773,8 @@ export function AddRaceDrawer({
   const [managedOptionUsage, setManagedOptionUsage] = useState<RaceOptionUsage | null>(null)
   const [pendingDeleteOption, setPendingDeleteOption] = useState<RaceTypeOption | null>(null)
   const [managedOptionConfirmState, setManagedOptionConfirmState] = useState<ManagedOptionConfirmState>(null)
+  const [activeTabKey, setActiveTabKey] = useState<DrawerTabKey>('race')
+  const [tabErrorKeys, setTabErrorKeys] = useState<DrawerTabKey[]>([])
   const isControlled = open !== undefined
   const isOpen = isControlled ? open : internalOpen
   const baseInitialFormValues = useMemo(() => buildDrawerInitialValues(initialRace), [initialRace])
@@ -766,10 +787,11 @@ export function AddRaceDrawer({
   )
   const isEditMode = mode === 'edit'
   const currentRaceStatus = Form.useWatch('raceStatus', form) ?? initialFormValues.raceStatus
+  const selectedTeamId = Form.useWatch('teamId', form) ?? initialFormValues.teamId
   const watchedPacePerKm = Form.useWatch('pacePerKm', form) ?? initialFormValues.pacePerKm
   const hasSelectedStatus = isEditMode || Boolean(currentRaceStatus)
+  const hasSelectedTeam = Boolean(selectedTeamId)
   const showDistanceFields = shouldShowDistanceFields(currentRaceStatus)
-  const showRankingValidityField = shouldShowRankingValidityField(currentRaceStatus)
   const showResultsTab = shouldShowResultsTab(currentRaceStatus)
   const showClassificationsTab = shouldShowClassificationsTab(currentRaceStatus)
   const showAnalysisTab = shouldShowAnalysisTab(currentRaceStatus)
@@ -778,7 +800,6 @@ export function AddRaceDrawer({
   const showRaceDifficulty = shouldShowRaceDifficulty(currentRaceStatus)
   const showFinalSatisfaction = shouldShowFinalSatisfaction(currentRaceStatus)
   const showPainInjuries = shouldShowPainInjuries(currentRaceStatus)
-  const showWouldRepeatThisRace = shouldShowWouldRepeatThisRace(currentRaceStatus)
   const shouldPromptRaceDateForStatusOverride = Boolean(
     isEditMode
     && raceStatusOverride
@@ -788,6 +809,24 @@ export function AddRaceDrawer({
   const raceDateStatusOverrideMessage = shouldPromptRaceDateForStatusOverride
     ? `Add a race date before saving this change to ${raceStatusOverrideLabel ?? raceStatusOverride}.`
     : null
+
+  const visibleTabKeys = useMemo<DrawerTabKey[]>(() => {
+    const keys: DrawerTabKey[] = ['race']
+
+    if (showResultsTab) {
+      keys.push('results')
+    }
+
+    if (showClassificationsTab) {
+      keys.push('classifications')
+    }
+
+    if (showAnalysisTab) {
+      keys.push('analysis')
+    }
+
+    return keys
+  }, [showAnalysisTab, showClassificationsTab, showResultsTab])
 
   const handlePaceMetricChange = (nextValue: string) => {
     const formattedValue = formatPaceTextInput(nextValue)
@@ -811,6 +850,8 @@ export function AddRaceDrawer({
       return
     }
 
+    setActiveTabKey('race')
+    setTabErrorKeys([])
     form.resetFields()
     form.setFieldsValue(initialFormValues)
     setError(null)
@@ -822,6 +863,14 @@ export function AddRaceDrawer({
       }])
     }
   }, [form, initialFormValues, isOpen, raceDateStatusOverrideMessage])
+
+  useEffect(() => {
+    setTabErrorKeys((current) => current.filter((tabKey) => visibleTabKeys.includes(tabKey)))
+
+    if (!visibleTabKeys.includes(activeTabKey)) {
+      setActiveTabKey('race')
+    }
+  }, [activeTabKey, visibleTabKeys])
 
   const syncCreateOptions = (nextOptions: RaceCreateOptions, options?: { propagateToParent?: boolean }) => {
     setLocalCreateOptions(nextOptions)
@@ -908,6 +957,39 @@ export function AddRaceDrawer({
   const setFieldError = (fieldName: keyof AddRaceFormValues, message: string | null) => {
     form.setFields([{ name: fieldName, errors: message ? [message] : [] }])
   }
+
+  const refreshTabErrors = () => {
+    const nextTabErrorKeys = new Set<DrawerTabKey>()
+
+    form.getFieldsError().forEach((fieldError) => {
+      if (fieldError.errors.length === 0) {
+        return
+      }
+
+      const rawFieldName = fieldError.name[0]
+      if (typeof rawFieldName !== 'string') {
+        return
+      }
+
+      const mappedTab = FIELD_TAB_MAP[rawFieldName as keyof AddRaceFormValues]
+      if (mappedTab && visibleTabKeys.includes(mappedTab)) {
+        nextTabErrorKeys.add(mappedTab)
+      }
+    })
+
+    setTabErrorKeys(Array.from(nextTabErrorKeys))
+  }
+
+  const renderTabLabel = (tabKey: DrawerTabKey, label: string) => (
+    <span className={styles.tabLabel}>
+      <span>{label}</span>
+      {tabErrorKeys.includes(tabKey) ? (
+        <span className={styles.tabWarningBadge} aria-label={`${label} has required fields missing`}>
+          !
+        </span>
+      ) : null}
+    </span>
+  )
 
   const closeDrawer = () => {
     if (!isControlled) {
@@ -1120,6 +1202,7 @@ export function AddRaceDrawer({
 
     try {
       const values = await form.validateFields()
+      refreshTabErrors()
 
       if (isEditMode && !hasUnsavedChanges(values, initialFormValues)) {
         closeDrawer()
@@ -1140,10 +1223,13 @@ export function AddRaceDrawer({
       await onCreated(payload)
       closeDrawer()
     } catch (submitError) {
+      refreshTabErrors()
+
       if (submitError instanceof Error && !('errorFields' in submitError)) {
         const fieldName = getFieldNameFromError(submitError.message)
         if (fieldName) {
           form.setFields([{ name: fieldName, errors: [submitError.message] }])
+          refreshTabErrors()
           setError(null)
           return
         }
@@ -1248,13 +1334,23 @@ export function AddRaceDrawer({
               clearFieldError('chipTime')
               clearFieldError('pacePerKm')
             }
+
+            if ('teamId' in changedValues && !changedValues.teamId) {
+              form.setFieldValue('teamClassification', undefined)
+            }
+
+            queueMicrotask(() => {
+              refreshTabErrors()
+            })
           }}
         >
           <Tabs
+            activeKey={activeTabKey}
+            onChange={(key) => setActiveTabKey(key as DrawerTabKey)}
             items={[
               {
                 key: 'race',
-                label: 'Race data',
+                label: renderTabLabel('race', 'Race data'),
                 forceRender: true,
                 children: (
                   <div className={styles.tabPane}>
@@ -1318,6 +1414,10 @@ export function AddRaceDrawer({
 
                     {hasSelectedStatus ? (
                       <>
+                        <Form.Item<AddRaceFormValues> name="isValidForCategoryRanking" hidden>
+                          <Input />
+                        </Form.Item>
+
                         {raceDateStatusOverrideMessage ? (
                           <div className={styles.statusHighlightHint}>
                             <span className={styles.statusHighlightHintIcon} aria-hidden="true">i</span>
@@ -1443,11 +1543,6 @@ export function AddRaceDrawer({
                           ? renderManagedSelect('shoeId', renderInfoLabel('Shoe', 'Optional shoe used in this race attempt.'), 'shoes', styles.rowItem)
                           : null}
 
-                        {showRankingValidityField ? (
-                          <Form.Item<AddRaceFormValues> name="isValidForCategoryRanking" valuePropName="checked">
-                            <Checkbox>Valid for category ranking</Checkbox>
-                          </Form.Item>
-                        ) : null}
                       </>
                     ) : (
                       <div className={styles.statusWaitingState}>
@@ -1459,7 +1554,7 @@ export function AddRaceDrawer({
               },
               ...(showResultsTab ? [{
                 key: 'results',
-                label: 'Race results',
+                label: renderTabLabel('results', 'Race results'),
                 forceRender: true,
                 children: (
                   <div className={styles.tabPane}>
@@ -1565,13 +1660,23 @@ export function AddRaceDrawer({
                       </Form.Item>
                     </div>
 
-                    {renderManagedSelect('shoeId', renderInfoLabel('Shoe', 'Optional shoe used in this race result.'), 'shoes', styles.rowItem)}
+                    <div className={styles.row}>
+                      <Form.Item<AddRaceFormValues>
+                        label={renderInfoLabel('Elevation gain', 'Total elevation gain of the race, usually in meters.')}
+                        name="elevation"
+                        className={styles.rowItem}
+                      >
+                        <InputNumber min={0} className={styles.fullWidth} placeholder="250" />
+                      </Form.Item>
+
+                      {renderManagedSelect('shoeId', renderInfoLabel('Shoe', 'Optional shoe used in this race result.'), 'shoes', styles.rowItem)}
+                    </div>
                   </div>
                 ),
               }] : []),
               ...(showClassificationsTab ? [{
                 key: 'classifications',
-                label: 'Classifications',
+                label: renderTabLabel('classifications', 'Classifications'),
                 forceRender: true,
                 children: (
                   <div className={styles.tabPane}>
@@ -1591,7 +1696,7 @@ export function AddRaceDrawer({
 
                     <div className={styles.classificationBlock}>
                       <Form.Item<AddRaceFormValues> label={renderInfoLabel('Team classification', 'Team finishing position when the race has a team ranking. Positions 1 to 3 count as podium finishes automatically.')} name="teamClassification">
-                        <InputNumber min={1} className={styles.fullWidth} />
+                        <InputNumber min={1} className={styles.fullWidth} disabled={!hasSelectedTeam} placeholder={hasSelectedTeam ? undefined : 'Select a team first'} />
                       </Form.Item>
                     </div>
                   </div>
@@ -1599,7 +1704,7 @@ export function AddRaceDrawer({
               }] : []),
               ...(showAnalysisTab ? [{
                 key: 'analysis',
-                label: 'Race analysis',
+                label: renderTabLabel('analysis', 'Race analysis'),
                 forceRender: true,
                 children: (
                   <div className={styles.tabPane}>
@@ -1635,11 +1740,6 @@ export function AddRaceDrawer({
                       <TextArea rows={12} placeholder="Post-race thoughts, what went well, what to improve..." />
                     </Form.Item>
 
-                    {showWouldRepeatThisRace ? (
-                      <Form.Item<AddRaceFormValues> name="wouldRepeatThisRace" valuePropName="checked">
-                        <Checkbox>I would repeat this race</Checkbox>
-                      </Form.Item>
-                    ) : null}
                   </div>
                 ),
               }] : []),

@@ -58,6 +58,10 @@
   margin-bottom: 16px;
 }
 
+.emptyWrap {
+  padding: 36px 0 20px;
+}
+
 @media (max-width: 1200px) {
   .monthsGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

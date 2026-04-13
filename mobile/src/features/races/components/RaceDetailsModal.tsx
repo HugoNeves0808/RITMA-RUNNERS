@@ -299,7 +299,6 @@ export function RaceDetailsModal({
                   {renderField('Pre-race confidence', race.analysis.preRaceConfidence)}
                   {renderField('Race difficulty', race.analysis.raceDifficulty)}
                   {renderField('Final satisfaction', race.analysis.finalSatisfaction)}
-                  {renderField('Would repeat this race', formatBoolean(race.analysis.wouldRepeatThisRace))}
                 </View>
 
                 <View style={styles.noteCard}>

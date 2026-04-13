@@ -1,6 +1,6 @@
 import { faChevronLeft, faChevronRight } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { Alert, Card, Spin } from 'antd'
+import { Alert, Card, Empty, Spin } from 'antd'
 import type { RaceCalendarYearMonth } from '../types/racesCalendar'
 import { RacesCalendarYearMonth } from './RacesCalendarYearMonth'
 import styles from './RacesCalendarYearlyView.module.css'
@@ -24,6 +24,8 @@ export function RacesCalendarYearlyView({
   onNextYear,
   onDayClick,
 }: RacesCalendarYearlyViewProps) {
+  const hasRaces = months.some((month) => month.days.some((day) => day.races.length > 0))
+
   return (
     <Card className={styles.calendarCard} variant="borderless">
       <div className={styles.toolbar}>
@@ -50,7 +52,13 @@ export function RacesCalendarYearlyView({
         </div>
       ) : null}
 
-      {!isLoading ? (
+      {!isLoading && !errorMessage && !hasRaces ? (
+        <div className={styles.emptyWrap}>
+          <Empty description="No races match the current filters." />
+        </div>
+      ) : null}
+
+      {!isLoading && (errorMessage || hasRaces) ? (
         <div className={styles.monthsGrid}>
           {months.map((month) => (
             <RacesCalendarYearMonth

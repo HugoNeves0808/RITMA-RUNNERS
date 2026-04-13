@@ -46,8 +46,7 @@ public record RaceDetailResponse(
             String raceDifficulty,
             String finalSatisfaction,
             String painInjuries,
-            String analysisNotes,
-            Boolean wouldRepeatThisRace
+            String analysisNotes
     ) {
     }
 }

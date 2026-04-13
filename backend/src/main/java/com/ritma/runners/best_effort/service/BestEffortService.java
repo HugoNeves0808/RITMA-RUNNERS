@@ -19,7 +19,7 @@ import com.ritma.runners.best_effort.repository.BestEffortRepository.BestEffortR
 @Service
 public class BestEffortService {
 
-    private static final BigDecimal CATEGORY_DISTANCE_EXCLUDED_MARGIN_KM = new BigDecimal("0.30");
+    private static final BigDecimal CATEGORY_DISTANCE_EXCLUDED_MARGIN_KM = new BigDecimal("0.20");
     private static final int GOOD_POSITION_LIMIT = 10;
 
     private final BestEffortRepository bestEffortRepository;

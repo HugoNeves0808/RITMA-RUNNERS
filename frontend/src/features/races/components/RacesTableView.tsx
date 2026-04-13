@@ -339,7 +339,6 @@ function buildUpdatePayloadFromDetails(details: RaceDetailResponse, nextStatus: 
       finalSatisfaction: details.analysis.finalSatisfaction,
       painInjuries: details.analysis.painInjuries,
       analysisNotes: details.analysis.analysisNotes,
-      wouldRepeatThisRace: details.analysis.wouldRepeatThisRace,
     },
   }
 }

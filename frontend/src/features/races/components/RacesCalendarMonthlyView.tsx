@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { faChevronLeft, faChevronRight } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { Alert, Card, Spin } from 'antd'
+import { Alert, Card, Empty, Spin } from 'antd'
 import { RacesCalendarDayCell } from './RacesCalendarDayCell'
 import styles from './RacesCalendarMonthlyView.module.css'
 import type { RaceCalendarDay } from '../types/racesCalendar'
@@ -84,6 +84,7 @@ export function RacesCalendarMonthlyView({
   onDayClick,
 }: RacesCalendarMonthlyViewProps) {
   const cells = buildCalendarCells(year, month, days)
+  const hasRaces = days.some((day) => day.races.length > 0)
   const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false)
   const pickerRef = useRef<HTMLDivElement | null>(null)
 
@@ -165,7 +166,13 @@ export function RacesCalendarMonthlyView({
         </div>
       ) : null}
 
-      {!isLoading ? (
+      {!isLoading && !errorMessage && !hasRaces ? (
+        <div className={styles.emptyWrap}>
+          <Empty description="No races match the current filters." />
+        </div>
+      ) : null}
+
+      {!isLoading && (errorMessage || hasRaces) ? (
         <>
           <div className={styles.weekdays}>
             {WEEKDAYS.map((weekday) => (

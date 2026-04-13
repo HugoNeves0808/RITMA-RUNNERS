@@ -248,7 +248,6 @@ export function RaceDetailsDrawer({
             { label: 'Pre-race confidence', value: race.analysis.preRaceConfidence ?? '-' },
             { label: 'Race difficulty', value: race.analysis.raceDifficulty ?? '-' },
             { label: 'Final satisfaction', value: race.analysis.finalSatisfaction ?? '-' },
-            { label: 'Would repeat this race', value: formatBoolean(race.analysis.wouldRepeatThisRace) },
           ])}
 
           <section className={styles.notesPanel}>

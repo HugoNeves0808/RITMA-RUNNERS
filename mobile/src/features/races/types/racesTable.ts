@@ -96,7 +96,6 @@ export type CreateRacePayload = {
     finalSatisfaction: string | null
     painInjuries: string | null
     analysisNotes: string | null
-    wouldRepeatThisRace: boolean | null
   }
 }
 
@@ -141,6 +140,5 @@ export type RaceDetailResponse = {
     finalSatisfaction: string | null
     painInjuries: string | null
     analysisNotes: string | null
-    wouldRepeatThisRace: boolean | null
   }
 }

@@ -340,8 +340,7 @@ Expected response example:
     "raceDifficulty": "MEDIUM",
     "finalSatisfaction": "HIGH",
     "painInjuries": "Minor calf tightness in the last 3 km.",
-    "analysisNotes": "Solid pacing and good race management overall.",
-    "wouldRepeatThisRace": true
+    "analysisNotes": "Solid pacing and good race management overall."
   }
 }
 ```
@@ -402,8 +401,7 @@ Example body:
     "raceDifficulty": "MEDIUM",
     "finalSatisfaction": "HIGH",
     "painInjuries": "Minor calf tightness in the last 3 km.",
-    "analysisNotes": "Solid pacing and good race management overall.",
-    "wouldRepeatThisRace": true
+    "analysisNotes": "Solid pacing and good race management overall."
   }
 }
 ```
@@ -631,8 +629,7 @@ Example body:
     "raceDifficulty": "HIGH",
     "finalSatisfaction": "LOW",
     "painInjuries": "Tight calves after km 12.",
-    "analysisNotes": "Weather and terrain made the race tougher than expected.",
-    "wouldRepeatThisRace": false
+    "analysisNotes": "Weather and terrain made the race tougher than expected."
   }
 }
 ```

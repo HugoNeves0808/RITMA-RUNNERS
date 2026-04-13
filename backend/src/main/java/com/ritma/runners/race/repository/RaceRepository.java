@@ -100,6 +100,7 @@ public class RaceRepository {
                     uc.name AS circuit_name,
                     ur.race_type_id,
                     urt.name AS race_type_name,
+                    ur.elevation,
                     ur.official_time,
                     ur.chip_time,
                     ur.pace_per_km
@@ -133,6 +134,7 @@ public class RaceRepository {
                         rs.getString("circuit_name"),
                         rs.getObject("race_type_id", UUID.class),
                         rs.getString("race_type_name"),
+                        getNullableInteger(rs, "elevation"),
                         getNullableInteger(rs, "official_time"),
                         getNullableInteger(rs, "chip_time"),
                         getNullableInteger(rs, "pace_per_km")
@@ -142,43 +144,57 @@ public class RaceRepository {
     }
 
     public List<RaceTypeOptionResponse> findRaceTypes(UUID userId) {
-        String sql = """
-                SELECT id, name, target_km
+        return findRaceTypes(userId, false);
+    }
+
+    public List<RaceTypeOptionResponse> findRaceTypes(UUID userId, boolean includeArchived) {
+        StringBuilder sql = new StringBuilder("""
+                SELECT id, name, target_km, archived
                 FROM user_race_types
                 WHERE user_id = ?
-                  AND archived = FALSE
+                """);
+
+        if (!includeArchived) {
+            sql.append("""
+                      AND archived = FALSE
+                    """);
+        }
+
+        sql.append("""
                 ORDER BY lower(name) ASC
-                """;
+                """);
 
         return jdbcTemplate().query(
-                sql,
+                sql.toString(),
                 (rs, rowNum) -> new RaceTypeOptionResponse(
                         rs.getObject("id", UUID.class),
                         rs.getString("name"),
-                        rs.getBigDecimal("target_km")
+                        rs.getBigDecimal("target_km"),
+                        false,
+                        rs.getBoolean("archived")
                 ),
                 userId
         );
     }
 
     public List<RaceTypeOptionResponse> findTeams(UUID userId) {
-        return findNamedOptions(userId, RaceOptionType.TEAMS.tableName());
+        return findNamedOptions(userId, RaceOptionType.TEAMS.tableName(), false);
     }
 
     public List<RaceTypeOptionResponse> findCircuits(UUID userId) {
-        return findNamedOptions(userId, RaceOptionType.CIRCUITS.tableName());
+        return findNamedOptions(userId, RaceOptionType.CIRCUITS.tableName(), false);
     }
 
     public List<RaceTypeOptionResponse> findShoes(UUID userId) {
-        return findNamedOptions(userId, RaceOptionType.SHOES.tableName());
+        return findNamedOptions(userId, RaceOptionType.SHOES.tableName(), false);
     }
 
-    public List<RaceTypeOptionResponse> findManagedOptions(UUID userId, RaceOptionType optionType) {
+    public List<RaceTypeOptionResponse> findManagedOptions(UUID userId, RaceOptionType optionType, boolean includeArchived) {
         if (optionType == RaceOptionType.RACE_TYPES) {
-            return findRaceTypes(userId);
+            return findRaceTypes(userId, includeArchived);
         }
 
-        return findNamedOptions(userId, optionType.tableName());
+        return findNamedOptions(userId, optionType.tableName(), includeArchived);
     }
 
     public List<Integer> findAvailableYears(UUID userId) {
@@ -242,11 +258,13 @@ public class RaceRepository {
     public RaceTypeOptionResponse createManagedOption(UUID userId, RaceOptionType optionType, String name, BigDecimal targetKm) {
         if (optionType == RaceOptionType.RACE_TYPES) {
             return jdbcTemplate().queryForObject(
-                    "INSERT INTO " + optionType.tableName() + " (user_id, name, target_km) VALUES (?, ?, ?) RETURNING id, name, target_km",
+                    "INSERT INTO " + optionType.tableName() + " (user_id, name, target_km) VALUES (?, ?, ?) RETURNING id, name, target_km, archived",
                     (rs, rowNum) -> new RaceTypeOptionResponse(
                             rs.getObject("id", UUID.class),
                             rs.getString("name"),
-                            rs.getBigDecimal("target_km")
+                            rs.getBigDecimal("target_km"),
+                            false,
+                            rs.getBoolean("archived")
                     ),
                     userId,
                     name,
@@ -261,7 +279,7 @@ public class RaceRepository {
                 name
         );
 
-        return new RaceTypeOptionResponse(optionId, name, null);
+        return new RaceTypeOptionResponse(optionId, name, null, false, false);
     }
 
     public boolean managedOptionExists(UUID userId, RaceOptionType optionType, UUID optionId) {
@@ -271,11 +289,13 @@ public class RaceRepository {
     public RaceTypeOptionResponse updateManagedOption(UUID userId, RaceOptionType optionType, UUID optionId, String name, BigDecimal targetKm) {
         if (optionType == RaceOptionType.RACE_TYPES) {
             return jdbcTemplate().queryForObject(
-                    "UPDATE " + optionType.tableName() + " SET name = ?, target_km = ? WHERE user_id = ? AND id = ? RETURNING id, name, target_km",
+                    "UPDATE " + optionType.tableName() + " SET name = ?, target_km = ? WHERE user_id = ? AND id = ? RETURNING id, name, target_km, archived",
                     (rs, rowNum) -> new RaceTypeOptionResponse(
                             rs.getObject("id", UUID.class),
                             rs.getString("name"),
-                            rs.getBigDecimal("target_km")
+                            rs.getBigDecimal("target_km"),
+                            false,
+                            rs.getBoolean("archived")
                     ),
                     name,
                     targetKm,
@@ -284,13 +304,51 @@ public class RaceRepository {
             );
         }
 
-        jdbcTemplate().update(
-                "UPDATE " + optionType.tableName() + " SET name = ? WHERE user_id = ? AND id = ?",
+        return jdbcTemplate().queryForObject(
+                "UPDATE " + optionType.tableName() + " SET name = ? WHERE user_id = ? AND id = ? RETURNING id, name, archived",
+                (rs, rowNum) -> new RaceTypeOptionResponse(
+                        rs.getObject("id", UUID.class),
+                        rs.getString("name"),
+                        null,
+                        false,
+                        rs.getBoolean("archived")
+                ),
                 name,
                 userId,
                 optionId
         );
-        return new RaceTypeOptionResponse(optionId, name, null);
+    }
+
+    public RaceTypeOptionResponse updateManagedOptionArchived(UUID userId, RaceOptionType optionType, UUID optionId, boolean archived) {
+        if (optionType == RaceOptionType.RACE_TYPES) {
+            return jdbcTemplate().queryForObject(
+                    "UPDATE " + optionType.tableName() + " SET archived = ? WHERE user_id = ? AND id = ? RETURNING id, name, target_km, archived",
+                    (rs, rowNum) -> new RaceTypeOptionResponse(
+                            rs.getObject("id", UUID.class),
+                            rs.getString("name"),
+                            rs.getBigDecimal("target_km"),
+                            false,
+                            rs.getBoolean("archived")
+                    ),
+                    archived,
+                    userId,
+                    optionId
+            );
+        }
+
+        return jdbcTemplate().queryForObject(
+                "UPDATE " + optionType.tableName() + " SET archived = ? WHERE user_id = ? AND id = ? RETURNING id, name, archived",
+                (rs, rowNum) -> new RaceTypeOptionResponse(
+                        rs.getObject("id", UUID.class),
+                        rs.getString("name"),
+                        null,
+                        false,
+                        rs.getBoolean("archived")
+                ),
+                archived,
+                userId,
+                optionId
+        );
     }
 
     public int countManagedOptionUsage(UUID userId, RaceOptionType optionType, UUID optionId) {
@@ -393,8 +451,7 @@ public class RaceRepository {
                            String raceDifficulty,
                            String finalSatisfaction,
                            String painInjuries,
-                           String analysisNotes,
-                           Boolean wouldRepeatThisRace) {
+                           String analysisNotes) {
         jdbcTemplate().update(
                 """
                         UPDATE user_races
@@ -420,8 +477,7 @@ public class RaceRepository {
                             race_difficulty = ?,
                             final_satisfaction = ?,
                             pain_injuries = ?,
-                            analysis_notes = ?,
-                            would_repeat_this_race = ?
+                            analysis_notes = ?
                         WHERE user_id = ?
                           AND id = ?
                         """,
@@ -448,7 +504,6 @@ public class RaceRepository {
                 finalSatisfaction,
                 painInjuries,
                 analysisNotes,
-                wouldRepeatThisRace,
                 userId,
                 raceId
         );
@@ -574,8 +629,7 @@ public class RaceRepository {
                             ur.race_difficulty,
                             ur.final_satisfaction,
                             ur.pain_injuries,
-                            ur.analysis_notes,
-                            ur.would_repeat_this_race
+                            ur.analysis_notes
                         FROM user_races ur
                         LEFT JOIN user_teams ut ON ut.id = ur.team_id
                         LEFT JOIN user_circuits uc ON uc.id = ur.circuit_id
@@ -617,8 +671,7 @@ public class RaceRepository {
                                 rs.getString("race_difficulty"),
                                 rs.getString("final_satisfaction"),
                                 rs.getString("pain_injuries"),
-                                rs.getString("analysis_notes"),
-                                rs.getObject("would_repeat_this_race", Boolean.class)
+                                rs.getString("analysis_notes")
                         )
                 ),
                 userId,
@@ -628,13 +681,25 @@ public class RaceRepository {
         return results.isEmpty() ? null : results.get(0);
     }
 
-    private List<RaceTypeOptionResponse> findNamedOptions(UUID userId, String tableName) {
+    private List<RaceTypeOptionResponse> findNamedOptions(UUID userId, String tableName, boolean includeArchived) {
+        StringBuilder sql = new StringBuilder(
+                "SELECT id, name, NULL::numeric AS target_km, archived FROM " + tableName + " WHERE user_id = ?"
+        );
+
+        if (!includeArchived) {
+            sql.append(" AND archived = FALSE");
+        }
+
+        sql.append(" ORDER BY lower(name) ASC");
+
         return jdbcTemplate().query(
-                "SELECT id, name, NULL::numeric AS target_km FROM " + tableName + " WHERE user_id = ? ORDER BY lower(name) ASC",
+                sql.toString(),
                 (rs, rowNum) -> new RaceTypeOptionResponse(
                         rs.getObject("id", UUID.class),
                         rs.getString("name"),
-                        rs.getBigDecimal("target_km")
+                        rs.getBigDecimal("target_km"),
+                        false,
+                        rs.getBoolean("archived")
                 ),
                 userId
         );
@@ -645,8 +710,7 @@ public class RaceRepository {
                                    String raceDifficulty,
                                    String finalSatisfaction,
                                    String painInjuries,
-                                   String analysisNotes,
-                                   Boolean wouldRepeatThisRace) {
+                                   String analysisNotes) {
         jdbcTemplate().update(
                 """
                         UPDATE user_races
@@ -654,8 +718,7 @@ public class RaceRepository {
                             race_difficulty = ?,
                             final_satisfaction = ?,
                             pain_injuries = ?,
-                            analysis_notes = ?,
-                            would_repeat_this_race = ?
+                            analysis_notes = ?
                         WHERE id = ?
                         """,
                 preRaceConfidence,
@@ -663,7 +726,6 @@ public class RaceRepository {
                 finalSatisfaction,
                 painInjuries,
                 analysisNotes,
-                wouldRepeatThisRace,
                 raceId
         );
     }

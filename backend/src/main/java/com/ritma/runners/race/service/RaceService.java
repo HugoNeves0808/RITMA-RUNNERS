@@ -48,12 +48,10 @@ public class RaceService {
     private static final BigDecimal MAX_TARGET_KM = new BigDecimal("9999.99");
     private static final int MAX_ANALYSIS_RATING_LENGTH = 30;
     private static final List<DefaultRaceType> DEFAULT_RACE_TYPES = List.of(
-            new DefaultRaceType("10km Race", new BigDecimal("10.00")),
+            new DefaultRaceType("10 km Race", new BigDecimal("10.00")),
+            new DefaultRaceType("15 km Race", new BigDecimal("15.00")),
             new DefaultRaceType("Half Marathon", new BigDecimal("21.10")),
-            new DefaultRaceType("Marathon", new BigDecimal("42.20")),
-            new DefaultRaceType("Short Trail", new BigDecimal("15.00")),
-            new DefaultRaceType("Long Trail", new BigDecimal("30.00")),
-            new DefaultRaceType("Ultra Marathon", new BigDecimal("50.00"))
+            new DefaultRaceType("Marathon", new BigDecimal("42.20"))
     );
 
     private static final Set<String> ALLOWED_RACE_STATUSES = Set.of(
@@ -184,13 +182,13 @@ public class RaceService {
         );
     }
 
-    public List<RaceTypeOptionResponse> getManagedOptions(UUID userId, RaceOptionType optionType) {
+    public List<RaceTypeOptionResponse> getManagedOptions(UUID userId, RaceOptionType optionType, boolean includeArchived) {
         if (optionType == RaceOptionType.RACE_TYPES) {
             ensureDefaultRaceTypes(userId);
-            return annotateRaceTypeDefaults(raceRepository.findManagedOptions(userId, optionType));
+            return annotateRaceTypeDefaults(raceRepository.findManagedOptions(userId, optionType, includeArchived));
         }
 
-        return raceRepository.findManagedOptions(userId, optionType);
+        return raceRepository.findManagedOptions(userId, optionType, includeArchived);
     }
 
     public RaceOptionUsageResponse getManagedOptionUsage(UUID userId, RaceOptionType optionType, UUID optionId) {
@@ -239,6 +237,18 @@ public class RaceService {
                     optionType.label() + " already exists."
             );
         }
+    }
+
+    @Transactional
+    public RaceTypeOptionResponse updateManagedOptionArchived(UUID userId,
+                                                              RaceOptionType optionType,
+                                                              UUID optionId,
+                                                              boolean archived) {
+        if (!raceRepository.managedOptionExists(userId, optionType, optionId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, optionType.label() + " not found.");
+        }
+
+        return annotateRaceTypeDefault(raceRepository.updateManagedOptionArchived(userId, optionType, optionId, archived));
     }
 
     @Transactional
@@ -335,8 +345,7 @@ public class RaceService {
                     normalizeOptionalText(analysis.raceDifficulty()),
                     normalizeOptionalText(analysis.finalSatisfaction()),
                     normalizeOptionalText(analysis.painInjuries()),
-                    normalizeOptionalText(analysis.analysisNotes()),
-                    analysis.wouldRepeatThisRace()
+                    normalizeOptionalText(analysis.analysisNotes())
             );
         }
 
@@ -430,8 +439,7 @@ public class RaceService {
                 analysis != null ? normalizeOptionalText(analysis.raceDifficulty()) : null,
                 analysis != null ? normalizeOptionalText(analysis.finalSatisfaction()) : null,
                 analysis != null ? normalizeOptionalText(analysis.painInjuries()) : null,
-                analysis != null ? normalizeOptionalText(analysis.analysisNotes()) : null,
-                analysis != null ? analysis.wouldRepeatThisRace() : null
+                analysis != null ? normalizeOptionalText(analysis.analysisNotes()) : null
         );
 
         return raceRepository.findTableRaces(userId, RaceQueryFilters.empty()).stream()
@@ -584,8 +592,7 @@ public class RaceService {
                 || hasText(analysis.raceDifficulty())
                 || hasText(analysis.finalSatisfaction())
                 || hasText(analysis.painInjuries())
-                || hasText(analysis.analysisNotes())
-                || analysis.wouldRepeatThisRace() != null);
+                || hasText(analysis.analysisNotes()));
     }
 
     private boolean hasText(String value) {
@@ -622,7 +629,8 @@ public class RaceService {
                 option.id(),
                 option.name(),
                 option.targetKm(),
-                isDefaultRaceTypeName(option.name())
+                isDefaultRaceTypeName(option.name()),
+                option.archived()
         );
     }
 

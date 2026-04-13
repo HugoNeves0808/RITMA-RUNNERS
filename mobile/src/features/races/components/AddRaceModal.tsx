@@ -66,7 +66,6 @@ type AddRaceFormState = {
   finalSatisfaction: string
   painInjuries: string
   analysisNotes: string
-  wouldRepeatThisRace: boolean
 }
 
 type AnalysisField = 'preRaceConfidence' | 'raceDifficulty' | 'finalSatisfaction'
@@ -154,7 +153,6 @@ const INITIAL_FORM_STATE: AddRaceFormState = {
   finalSatisfaction: '',
   painInjuries: '',
   analysisNotes: '',
-  wouldRepeatThisRace: false,
 }
 
 function parseTimeToSeconds(value: string, mode: 'duration' | 'pace') {
@@ -532,6 +530,11 @@ export function AddRaceModal({ token, createOptions, onCreated, onCreateOptionsC
         nextState.isTeamClassificationPodium = normalizeClassificationPodium(String(value))
       }
 
+      if (field === 'teamId' && !String(value).trim()) {
+        nextState.teamClassification = ''
+        nextState.isTeamClassificationPodium = false
+      }
+
       return nextState
     })
   }
@@ -792,7 +795,6 @@ export function AddRaceModal({ token, createOptions, onCreated, onCreateOptionsC
           finalSatisfaction: formState.finalSatisfaction || null,
           painInjuries: formState.painInjuries.trim() ? formState.painInjuries.trim() : null,
           analysisNotes: formState.analysisNotes.trim() ? formState.analysisNotes.trim() : null,
-          wouldRepeatThisRace: formState.wouldRepeatThisRace,
         },
       }
 
@@ -850,13 +852,16 @@ export function AddRaceModal({ token, createOptions, onCreated, onCreateOptionsC
     value: string,
     onChangeText: (nextValue: string) => void,
     placeholder: string,
-    options?: { multiline?: boolean; keyboardType?: 'default' | 'numeric'; required?: boolean; info?: string }
+    options?: { multiline?: boolean; keyboardType?: 'default' | 'numeric'; required?: boolean; info?: string; disabled?: boolean }
   ) => (
     <View style={styles.fieldGroup}>
       {renderLabel(label, options)}
       <TextInput
         value={value}
         onChangeText={(nextValue) => {
+          if (options?.disabled) {
+            return
+          }
           clearFieldError(field)
           onChangeText(nextValue)
         }}
@@ -865,11 +870,13 @@ export function AddRaceModal({ token, createOptions, onCreated, onCreateOptionsC
         style={[
           styles.fieldInput,
           options?.multiline ? styles.fieldInputMultiline : null,
+          options?.disabled ? styles.fieldInputDisabled : null,
           fieldErrors[field] ? styles.fieldInputError : null,
         ]}
         multiline={options?.multiline}
         keyboardType={options?.keyboardType ?? 'default'}
         autoCapitalize="none"
+        editable={!options?.disabled}
       />
       {fieldErrors[field] ? <Text style={styles.fieldErrorText}>{fieldErrors[field]}</Text> : null}
     </View>
@@ -1049,12 +1056,6 @@ export function AddRaceModal({ token, createOptions, onCreated, onCreateOptionsC
                 )}
                 {renderField('realKm', 'Real KM', formState.realKm, (value) => setFieldValue('realKm', value), '21.10', { keyboardType: 'numeric', info: 'Actual race distance in kilometres, using decimals when needed.' })}
                 {renderField('elevation', 'Elevation', formState.elevation, (value) => setFieldValue('elevation', value), '250', { keyboardType: 'numeric', info: 'Total elevation gain of the race, usually in meters.' })}
-                <Pressable style={styles.checkboxRow} onPress={() => setFormState((current) => ({ ...current, isValidForCategoryRanking: !current.isValidForCategoryRanking }))}>
-                  <View style={[styles.checkbox, formState.isValidForCategoryRanking ? styles.checkboxCheckedOrange : null]}>
-                    {formState.isValidForCategoryRanking ? <FontAwesome6 name="check" size={10} color="#ffffff" /> : null}
-                  </View>
-                  <Text style={styles.checkboxLabel}>Valid for category ranking</Text>
-                </Pressable>
               </View>
             ) : null}
 
@@ -1118,12 +1119,20 @@ export function AddRaceModal({ token, createOptions, onCreated, onCreateOptionsC
                   </View>
                   <Text style={styles.checkboxLabel}>Age group podium</Text>
                 </Pressable>
-                {renderField('teamClassification', 'Team classification', formState.teamClassification, (value) => setFieldValue('teamClassification', value), '1', { keyboardType: 'numeric', info: 'Team finishing position when the race has a team ranking. Positions 1 to 3 automatically mark the podium checkbox.' })}
-                <Pressable style={styles.checkboxRow} onPress={() => setFormState((current) => ({ ...current, isTeamClassificationPodium: !current.isTeamClassificationPodium }))}>
-                  <View style={[styles.checkbox, formState.isTeamClassificationPodium ? styles.checkboxCheckedBlack : null]}>
+                {renderField('teamClassification', 'Team classification', formState.teamClassification, (value) => setFieldValue('teamClassification', value), '1', { keyboardType: 'numeric', info: 'Team finishing position when the race has a team ranking. Positions 1 to 3 automatically mark the podium checkbox.', disabled: !formState.teamId })}
+                <Pressable
+                  style={[styles.checkboxRow, !formState.teamId ? styles.checkboxRowDisabled : null]}
+                  onPress={() => {
+                    if (!formState.teamId) {
+                      return
+                    }
+                    setFormState((current) => ({ ...current, isTeamClassificationPodium: !current.isTeamClassificationPodium }))
+                  }}
+                >
+                  <View style={[styles.checkbox, formState.isTeamClassificationPodium ? styles.checkboxCheckedBlack : null, !formState.teamId ? styles.checkboxDisabled : null]}>
                     {formState.isTeamClassificationPodium ? <FontAwesome6 name="check" size={10} color="#ffffff" /> : null}
                   </View>
-                  <Text style={styles.checkboxLabel}>Team podium</Text>
+                  <Text style={[styles.checkboxLabel, !formState.teamId ? styles.checkboxLabelDisabled : null]}>Team podium</Text>
                 </Pressable>
               </View>
             ) : null}
@@ -1156,12 +1165,6 @@ export function AddRaceModal({ token, createOptions, onCreated, onCreateOptionsC
                 )}
                 {renderField('painInjuries', 'Pain / injuries', formState.painInjuries, (value) => setFieldValue('painInjuries', value), 'Notes about pain or injuries', { multiline: true })}
                 {renderField('analysisNotes', 'Analysis notes', formState.analysisNotes, (value) => setFieldValue('analysisNotes', value), 'Post-race thoughts and notes', { multiline: true })}
-                <Pressable style={styles.checkboxRow} onPress={() => setFormState((current) => ({ ...current, wouldRepeatThisRace: !current.wouldRepeatThisRace }))}>
-                  <View style={[styles.checkbox, formState.wouldRepeatThisRace ? styles.checkboxCheckedBlack : null]}>
-                    {formState.wouldRepeatThisRace ? <FontAwesome6 name="check" size={10} color="#ffffff" /> : null}
-                  </View>
-                  <Text style={styles.checkboxLabel}>I would repeat this race</Text>
-                </Pressable>
               </View>
             ) : null}
           </ScrollView>
@@ -1736,6 +1739,9 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 4,
   },
+  checkboxRowDisabled: {
+    opacity: 0.55,
+  },
   checkbox: {
     width: 22,
     height: 22,
@@ -1745,6 +1751,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#f97316',
     backgroundColor: '#ffffff',
+  },
+  checkboxDisabled: {
+    borderColor: '#d0d5dd',
+    backgroundColor: '#f2f4f7',
   },
   checkboxCheckedOrange: {
     borderColor: '#f97316',
@@ -1759,6 +1769,13 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: 15,
     fontWeight: '600',
+  },
+  checkboxLabelDisabled: {
+    color: '#98a2b3',
+  },
+  fieldInputDisabled: {
+    backgroundColor: '#f8fafc',
+    color: '#98a2b3',
   },
   selectorBackdrop: {
     flex: 1,
