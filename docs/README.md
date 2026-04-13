@@ -5,7 +5,8 @@ This folder centralizes the main written documentation for `RITMA RUNNERS`.
 ## Contents
 
 - `changelog/README.md`: changelog index organized by release
-- `changelog/releases/2.0.0.md`: release 2 notes in preparation, including current web auth, race-list polish, and race follow-up reminder work
+- `changelog/releases/3.0.0.md`: release 3 notes in preparation
+- `changelog/releases/2.0.0.md`: release 2 notes and implementation history
 - `changelog/releases/1.0.0.md`: release 1 notes and implementation history
 - `api/README.md`: API documentation index
 - `api/overview.md`: API overview, setup, and access flow
