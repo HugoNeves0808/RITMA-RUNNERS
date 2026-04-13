@@ -12,6 +12,7 @@ This folder centralizes the main written documentation for `RITMA RUNNERS`.
 - `api/auth.md`: authentication endpoints
 - `api/races.md`: races endpoints and managed options
 - `api/best-efforts.md`: best-effort ranking endpoint
+- `api/podiums.md`: podium-history endpoint and podium test dataset
 - `api/admin.md`: admin endpoints
 - `api/system.md`: system endpoints
 - `api/testing.md`: Postman order and implementation notes

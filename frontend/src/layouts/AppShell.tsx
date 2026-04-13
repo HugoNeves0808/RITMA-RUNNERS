@@ -8,6 +8,7 @@ import {
   faGear,
   faList,
   faRoad,
+  faTrophy,
   faRankingStar,
   faRightFromBracket,
   faShoePrints,
@@ -59,6 +60,10 @@ function getDocumentTitle(pathname: string) {
 
   if (pathname === ROUTES.bestEfforts) {
     return 'RITMA - Best Efforts'
+  }
+
+  if (pathname === ROUTES.podiums) {
+    return 'RITMA - Podiums'
   }
 
   if (pathname === ROUTES.adminRitmaOverview) {
@@ -130,6 +135,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       to: ROUTES.bestEfforts,
       icon: faRankingStar,
       isActive: location.pathname === ROUTES.bestEfforts,
+    },
+    {
+      key: 'podiums',
+      label: 'Podiums',
+      to: ROUTES.podiums,
+      icon: faTrophy,
+      isActive: location.pathname === ROUTES.podiums,
     },
   ]
 

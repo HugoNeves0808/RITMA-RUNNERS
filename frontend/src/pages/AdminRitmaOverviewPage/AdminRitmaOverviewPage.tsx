@@ -257,60 +257,64 @@ export function AdminRitmaOverviewPage() {
           </Card>
         ) : null}
 
-        <div className={styles.metricsGrid}>
-          {metricCards.map((card) => (
-            <Card
-              key={card.key}
-              className={`${styles.metricCard} ${card.highlighted ? styles.metricCardHighlight : ''}`.trim()}
-              variant="borderless"
-            >
-              <span className={styles.metricLabel}>{card.label}</span>
-              <span className={styles.metricValue}>{card.value}</span>
-              <span className={styles.metricHint}>{card.hint}</span>
-            </Card>
-          ))}
-        </div>
+        {!isLoading ? (
+          <div className={styles.metricsGrid}>
+            {metricCards.map((card) => (
+              <Card
+                key={card.key}
+                className={`${styles.metricCard} ${card.highlighted ? styles.metricCardHighlight : ''}`.trim()}
+                variant="borderless"
+              >
+                <span className={styles.metricLabel}>{card.label}</span>
+                <span className={styles.metricValue}>{card.value}</span>
+                <span className={styles.metricHint}>{card.hint}</span>
+              </Card>
+            ))}
+          </div>
+        ) : null}
 
         {overviewError ? (
           <Alert type="error" showIcon message="Could not load overview metrics" description={overviewError} />
         ) : null}
 
-        <div className={styles.mainGrid}>
-          <Card className={styles.pendingCard} variant="borderless">
-          <div className={styles.sectionHeader}>
-            <Title level={4} className={styles.sectionTitle}>Pending approvals</Title>
-            <Button
-              type="primary"
-              className={styles.primaryActionButton}
-              onClick={() => navigate(ROUTES.adminPendingApprovals)}
-            >
-              View all pending approvals
-            </Button>
+        {!isLoading ? (
+          <div className={styles.mainGrid}>
+            <Card className={styles.pendingCard} variant="borderless">
+              <div className={styles.sectionHeader}>
+                <Title level={4} className={styles.sectionTitle}>Pending approvals</Title>
+                <Button
+                  type="primary"
+                  className={styles.primaryActionButton}
+                  onClick={() => navigate(ROUTES.adminPendingApprovals)}
+                >
+                  View all pending approvals
+                </Button>
+              </div>
+
+              {pendingError ? (
+                <Alert type="error" showIcon message="Could not load pending approvals" description={pendingError} />
+              ) : null}
+
+              {!pendingError && previewApprovals.length > 0 ? (
+                <Table
+                  rowKey="id"
+                  columns={pendingColumns}
+                  dataSource={previewApprovals}
+                  pagination={false}
+                />
+              ) : null}
+
+              {!pendingError && previewApprovals.length === 0 ? (
+                <div className={styles.emptyState}>
+                  <Empty
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    description="There are no pending approvals right now."
+                  />
+                </div>
+              ) : null}
+            </Card>
           </div>
-
-          {pendingError ? (
-            <Alert type="error" showIcon message="Could not load pending approvals" description={pendingError} />
-          ) : null}
-
-          {!pendingError && previewApprovals.length > 0 ? (
-            <Table
-              rowKey="id"
-              columns={pendingColumns}
-              dataSource={previewApprovals}
-              pagination={false}
-            />
-          ) : null}
-
-          {!pendingError && previewApprovals.length === 0 ? (
-            <div className={styles.emptyState}>
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description="There are no pending approvals right now."
-              />
-            </div>
-          ) : null}
-          </Card>
-        </div>
+        ) : null}
       </div>
     </>
   )

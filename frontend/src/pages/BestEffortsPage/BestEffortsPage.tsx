@@ -44,7 +44,7 @@ import styles from './BestEffortsPage.module.css'
 const { Title } = Typography
 const PODIUM_ORDER_TOP_THREE = [1, 0, 2]
 const PODIUM_ORDER_TOP_FIVE = [1, 0, 2, 3, 4]
-const CATEGORY_DISTANCE_EXCLUDED_MARGIN_KM = 0.2
+const CATEGORY_DISTANCE_EXCLUDED_MARGIN_KM = 0.1
 
 type PersistedBestEffortsFiltersState = {
   viewMode: BestEffortsViewMode
@@ -607,6 +607,11 @@ export function BestEffortsPage() {
     }
   }, [])
 
+  const shouldShowClearFiltersButton = useMemo(
+    () => viewMode !== 'top-3' || selectedRaceTypes.length > 0,
+    [selectedRaceTypes.length, viewMode],
+  )
+
   const handleClearFilters = () => {
     setViewMode('top-3')
     setSelectedRaceTypes([])
@@ -933,7 +938,7 @@ export function BestEffortsPage() {
 
                     <div className={styles.categoryMetaAside}>
                       <div className={styles.metaRow}>
-                        <Tooltip title={`Valid races are the ones that count for the Best Efforts ranking. To become valid, a race must be marked as valid for category ranking, have chip time, have real distance recorded, and stay within 200 meters of the target distance for the category (${minimumAcceptedDistanceLabel} minimum in this category).`}>
+                        <Tooltip title={`Counts for ranking. Min distance: ${minimumAcceptedDistanceLabel}.`}>
                           <span
                             className={`${styles.categoryScoreBadge} ${getCategoryScoreBadgeClassName('valid')} ${styles.clickableTag}`.trim()}
                             onClick={() => openCategoryRacesModal(category, 'valid')}
@@ -950,7 +955,7 @@ export function BestEffortsPage() {
                           </span>
                         </Tooltip>
                         {excludedCount > 0 ? (
-                          <Tooltip title={`Excluded races are outside the ranking because they are either marked as not valid for category ranking, more than 200 meters below the target (${minimumAcceptedDistanceLabel}), or the race type still has no target km defined.`}>
+                          <Tooltip title={`Outside ranking. Below ${minimumAcceptedDistanceLabel} or not valid.`}>
                             <span
                               className={`${styles.categoryScoreBadge} ${getCategoryScoreBadgeClassName('excluded')} ${styles.clickableTag}`.trim()}
                               onClick={() => openCategoryRacesModal(category, 'excluded')}
@@ -1057,14 +1062,16 @@ export function BestEffortsPage() {
           <div className={styles.sidebarCard}>
             <div className={styles.sidebarHeader}>
               <span className={styles.sidebarTitle}>Filters</span>
-              <Button
-                type="text"
-                className={styles.clearButton}
-                icon={<FontAwesomeIcon icon={faBroom} />}
-                title="Clear filters"
-                aria-label="Clear filters"
-                onClick={handleClearFilters}
-              />
+              {shouldShowClearFiltersButton ? (
+                <Button
+                  type="text"
+                  className={styles.clearButton}
+                  icon={<FontAwesomeIcon icon={faBroom} />}
+                  title="Clear filters"
+                  aria-label="Clear filters"
+                  onClick={handleClearFilters}
+                />
+              ) : null}
             </div>
 
             <div className={styles.sidebarDivider} />

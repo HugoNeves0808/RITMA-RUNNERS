@@ -19,6 +19,11 @@ const BestEffortsPage = lazy(async () => {
   return { default: module.BestEffortsPage }
 })
 
+const PodiumsPage = lazy(async () => {
+  const module = await import('../pages/PodiumsPage/PodiumsPage')
+  return { default: module.PodiumsPage }
+})
+
 const FutureGoalsPage = lazy(async () => {
   const module = await import('../pages/FutureGoalsPage/FutureGoalsPage')
   return { default: module.FutureGoalsPage }
@@ -88,6 +93,7 @@ export function AppRoutes() {
           <Route path={ROUTES.home} element={<HomePage />} />
           <Route path={ROUTES.races} element={<HomePage />} />
           <Route path={ROUTES.bestEfforts} element={<BestEffortsPage />} />
+          <Route path={ROUTES.podiums} element={<PodiumsPage />} />
           <Route path={ROUTES.personalOptionRaceTypes} element={<PersonalOptionsRaceTypesPage />} />
           <Route path={ROUTES.personalOptionTeams} element={<PersonalOptionsTeamsPage />} />
           <Route path={ROUTES.personalOptionCircuits} element={<PersonalOptionsCircuitsPage />} />

@@ -152,6 +152,7 @@ export function PendingApprovalsPage() {
   } | null>(null)
   const deferredSearch = useDeferredValue(search)
   const normalizedSearch = search.trim().toLowerCase()
+  const shouldShowClearFiltersButton = search.trim().length > 0 || olderThanThreeDays
   const filteredApprovals = approvals.filter((approval) => {
     const matchesEmail = !normalizedSearch || approval.email.toLowerCase().includes(normalizedSearch)
     const requestedAt = new Date(approval.requestedAt)
@@ -380,80 +381,82 @@ export function PendingApprovalsPage() {
           </div>
         </Modal>
 
-        <div className={styles.contentLayout}>
-          <div className={styles.tableSection}>
-            <Card className={styles.pageCard} variant="borderless">
-              {!isLoading && filteredApprovals.length === 0 ? (
-                <div className={styles.emptyWrap}>
-                  <Empty description={approvals.length === 0 ? 'No pending approvals.' : 'No pending approvals match the current filters.'} />
-                </div>
-              ) : null}
-
-              {!isLoading && filteredApprovals.length > 0 ? (
-                <Table
-                  rowKey="id"
-                  columns={columns}
-                  dataSource={filteredApprovals}
-                  pagination={{
-                    pageSize: 10,
-                    showSizeChanger: false,
-                    hideOnSinglePage: true,
-                  }}
-                />
-              ) : null}
-            </Card>
-          </div>
-
-          <aside className={styles.sidebar}>
-            <div className={styles.sidebarCard}>
-              <div className={styles.sidebarHeader}>
-                <h3 className={styles.sidebarTitle}>Filters</h3>
-                <Button
-                  type="text"
-                  className={styles.clearButton}
-                  icon={<FontAwesomeIcon icon={faBroom} />}
-                  title="Clear filters"
-                  aria-label="Clear filters"
-                  onClick={() => {
-                    setSearch('')
-                    setOlderThanThreeDays(false)
-                  }}
-                />
-              </div>
-
-              <div className={styles.sidebarDivider} />
-
-              <label className={styles.filterField}>
-                <span className={styles.filterLabel}>Email</span>
-                <Input
-                  allowClear
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search by email"
-                  className={styles.searchInput}
-                  suffix={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-                />
-              </label>
-
-              <CheckboxFilterSection
-                title="Request age"
-                count={olderThanThreeDays ? 1 : 0}
-                isOpen={isAgeOpen}
-                onToggle={() => setIsAgeOpen((current) => !current)}
-              >
-                <div className={styles.checkboxList}>
-                  <label className={styles.checkboxOption}>
-                    <Checkbox
-                      checked={olderThanThreeDays}
-                      onChange={(event) => setOlderThanThreeDays(event.target.checked)}
-                    />
-                    <span className={styles.checkboxOptionLabel}>Waiting for over 3 days</span>
-                  </label>
-                </div>
-              </CheckboxFilterSection>
+        {!isLoading ? (
+          <div className={styles.contentLayout}>
+            <div className={styles.tableSection}>
+              <Card className={styles.pageCard} variant="borderless">
+                {filteredApprovals.length === 0 ? (
+                  <div className={styles.emptyWrap}>
+                    <Empty description={approvals.length === 0 ? 'No pending approvals.' : 'No pending approvals match the current filters.'} />
+                  </div>
+                ) : (
+                  <Table
+                    rowKey="id"
+                    columns={columns}
+                    dataSource={filteredApprovals}
+                    pagination={{
+                      pageSize: 10,
+                      showSizeChanger: false,
+                      hideOnSinglePage: true,
+                    }}
+                  />
+                )}
+              </Card>
             </div>
-          </aside>
-        </div>
+
+            <aside className={styles.sidebar}>
+              <div className={styles.sidebarCard}>
+                <div className={styles.sidebarHeader}>
+                  <h3 className={styles.sidebarTitle}>Filters</h3>
+                  {shouldShowClearFiltersButton ? (
+                    <Button
+                      type="text"
+                      className={styles.clearButton}
+                      icon={<FontAwesomeIcon icon={faBroom} />}
+                      title="Clear filters"
+                      aria-label="Clear filters"
+                      onClick={() => {
+                        setSearch('')
+                        setOlderThanThreeDays(false)
+                      }}
+                    />
+                  ) : null}
+                </div>
+
+                <div className={styles.sidebarDivider} />
+
+                <label className={styles.filterField}>
+                  <span className={styles.filterLabel}>Email</span>
+                  <Input
+                    allowClear
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Search by email"
+                    className={styles.searchInput}
+                    suffix={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+                  />
+                </label>
+
+                <CheckboxFilterSection
+                  title="Request age"
+                  count={olderThanThreeDays ? 1 : 0}
+                  isOpen={isAgeOpen}
+                  onToggle={() => setIsAgeOpen((current) => !current)}
+                >
+                  <div className={styles.checkboxList}>
+                    <label className={styles.checkboxOption}>
+                      <Checkbox
+                        checked={olderThanThreeDays}
+                        onChange={(event) => setOlderThanThreeDays(event.target.checked)}
+                      />
+                      <span className={styles.checkboxOptionLabel}>Waiting for over 3 days</span>
+                    </label>
+                  </div>
+                </CheckboxFilterSection>
+              </div>
+            </aside>
+          </div>
+        ) : null}
       </div>
     </>
   )

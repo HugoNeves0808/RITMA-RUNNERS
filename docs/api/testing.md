@@ -9,7 +9,9 @@
 7. `GET /api/auth/me`
 8. `POST /api/auth/change-password`
 9. `GET /api/admin/users`
-10. `GET /api/db-check`
+10. `GET /api/best-efforts`
+11. `GET /api/podiums`
+12. `GET /api/db-check`
 
 ## Notes
 
@@ -23,4 +25,5 @@
 - the older admin diagnostics page and backend system-health endpoint have been removed from the product
 - `/api/races` is still a technical preview endpoint and should later be restricted by authenticated user context.
 - `/api/races/create/options` now exists to keep create-race dropdown data aligned between backend, web, and mobile.
+- `docs/sql/podium-history-test-data.sql` can be used locally to validate podium history for both the regular and admin seeded accounts.
 - The login and account-request frontend now use more user-friendly validation and error messages than the raw HTTP responses.

@@ -27,7 +27,7 @@ Current ranking note rules:
 
 Current minimum accepted distance rule:
 
-- the backend currently uses `target distance - 0.20 km`
+- the backend currently uses `target distance - 0.10 km`
 
 Response shape:
 
@@ -78,3 +78,4 @@ Notes:
 
 - the current web client hides `excluded` races from the main podium/table ranking views, but still exposes their count and a filtered modal list
 - clicking a best-effort race in the web modal reuses the same race-details drawer, edit drawer, and delete flow used in `Races`
+- the current web tooltips use shorter copy for `valid` and `excluded` states to keep the ranking explanation compact

@@ -155,6 +155,7 @@ export function UserListPage() {
   const [isActivityOpen, setIsActivityOpen] = useState(persistedFilters?.isActivityOpen ?? true)
   const deferredSearch = useDeferredValue(search)
   const normalizedSearch = search.trim().toLowerCase()
+  const shouldShowClearFiltersButton = search.trim().length > 0 || onlyAdmins || staleOnly
   const filteredUsers = users.filter((user) => {
     const matchesEmail = !normalizedSearch || user.email.toLowerCase().includes(normalizedSearch)
     const matchesRole = !onlyAdmins || user.role === 'ADMIN'
@@ -287,92 +288,94 @@ export function UserListPage() {
         <Alert type="error" showIcon message="Could not load users" description={error} />
       ) : null}
 
-      <div className={styles.contentLayout}>
-        <div className={styles.tableSection}>
-          <Card className={styles.pageCard} variant="borderless">
-            {!isLoading && filteredUsers.length === 0 ? (
-              <div className={styles.emptyWrap}>
-                <Empty description={users.length === 0 ? 'No active users.' : 'No users match the current filters.'} />
-              </div>
-            ) : null}
-
-            {!isLoading && filteredUsers.length > 0 ? (
-              <Table
-                rowKey="id"
-                columns={columns}
-                dataSource={filteredUsers}
-                pagination={{
-                  pageSize: 10,
-                  showSizeChanger: false,
-                  hideOnSinglePage: true,
-                }}
-              />
-            ) : null}
-          </Card>
-        </div>
-
-        <aside className={styles.sidebar}>
-          <div className={styles.sidebarCard}>
-            <div className={styles.sidebarHeader}>
-              <h3 className={styles.sidebarTitle}>Filters</h3>
-              <Button
-                type="text"
-                className={styles.clearButton}
-                icon={<FontAwesomeIcon icon={faBroom} />}
-                title="Clear filters"
-                aria-label="Clear filters"
-                onClick={() => {
-                  setSearch('')
-                  setOnlyAdmins(false)
-                  setStaleOnly(false)
-                }}
-              />
-            </div>
-
-            <div className={styles.sidebarDivider} />
-
-            <label className={styles.filterField}>
-              <span className={styles.filterLabel}>Email</span>
-              <Input
-                allowClear
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search by email"
-                className={styles.searchInput}
-                suffix={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-              />
-            </label>
-
-            <CheckboxFilterSection
-              title="Role"
-              count={onlyAdmins ? 1 : 0}
-              isOpen={isRoleOpen}
-              onToggle={() => setIsRoleOpen((current) => !current)}
-            >
-              <div className={styles.checkboxList}>
-                <label className={styles.checkboxOption}>
-                  <Checkbox checked={onlyAdmins} onChange={(event) => setOnlyAdmins(event.target.checked)} />
-                  <span className={styles.checkboxOptionLabel}>Only admins</span>
-                </label>
-              </div>
-            </CheckboxFilterSection>
-
-            <CheckboxFilterSection
-              title="Activity"
-              count={staleOnly ? 1 : 0}
-              isOpen={isActivityOpen}
-              onToggle={() => setIsActivityOpen((current) => !current)}
-            >
-              <div className={styles.checkboxList}>
-                <label className={styles.checkboxOption}>
-                  <Checkbox checked={staleOnly} onChange={(event) => setStaleOnly(event.target.checked)} />
-                  <span className={styles.checkboxOptionLabel}>Inactive for over 1 year</span>
-                </label>
-              </div>
-            </CheckboxFilterSection>
+      {!isLoading ? (
+        <div className={styles.contentLayout}>
+          <div className={styles.tableSection}>
+            <Card className={styles.pageCard} variant="borderless">
+              {filteredUsers.length === 0 ? (
+                <div className={styles.emptyWrap}>
+                  <Empty description={users.length === 0 ? 'No active users.' : 'No users match the current filters.'} />
+                </div>
+              ) : (
+                <Table
+                  rowKey="id"
+                  columns={columns}
+                  dataSource={filteredUsers}
+                  pagination={{
+                    pageSize: 10,
+                    showSizeChanger: false,
+                    hideOnSinglePage: true,
+                  }}
+                />
+              )}
+            </Card>
           </div>
-        </aside>
-      </div>
+
+          <aside className={styles.sidebar}>
+            <div className={styles.sidebarCard}>
+              <div className={styles.sidebarHeader}>
+                <h3 className={styles.sidebarTitle}>Filters</h3>
+                {shouldShowClearFiltersButton ? (
+                  <Button
+                    type="text"
+                    className={styles.clearButton}
+                    icon={<FontAwesomeIcon icon={faBroom} />}
+                    title="Clear filters"
+                    aria-label="Clear filters"
+                    onClick={() => {
+                      setSearch('')
+                      setOnlyAdmins(false)
+                      setStaleOnly(false)
+                    }}
+                  />
+                ) : null}
+              </div>
+
+              <div className={styles.sidebarDivider} />
+
+              <label className={styles.filterField}>
+                <span className={styles.filterLabel}>Email</span>
+                <Input
+                  allowClear
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search by email"
+                  className={styles.searchInput}
+                  suffix={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+                />
+              </label>
+
+              <CheckboxFilterSection
+                title="Role"
+                count={onlyAdmins ? 1 : 0}
+                isOpen={isRoleOpen}
+                onToggle={() => setIsRoleOpen((current) => !current)}
+              >
+                <div className={styles.checkboxList}>
+                  <label className={styles.checkboxOption}>
+                    <Checkbox checked={onlyAdmins} onChange={(event) => setOnlyAdmins(event.target.checked)} />
+                    <span className={styles.checkboxOptionLabel}>Only admins</span>
+                  </label>
+                </div>
+              </CheckboxFilterSection>
+
+              <CheckboxFilterSection
+                title="Activity"
+                count={staleOnly ? 1 : 0}
+                isOpen={isActivityOpen}
+                onToggle={() => setIsActivityOpen((current) => !current)}
+              >
+                <div className={styles.checkboxList}>
+                  <label className={styles.checkboxOption}>
+                    <Checkbox checked={staleOnly} onChange={(event) => setStaleOnly(event.target.checked)} />
+                    <span className={styles.checkboxOptionLabel}>Inactive for over 1 year</span>
+                  </label>
+                </div>
+              </CheckboxFilterSection>
+            </div>
+          </aside>
+        </div>
+      ) : null}
     </div>
   )
 }

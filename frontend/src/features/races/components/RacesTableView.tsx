@@ -401,14 +401,6 @@ function renderRaceMetrics(race: RaceTableItem) {
       {showPerformanceMetrics ? (
         <>
           <div className={styles.metricItem}>
-            <span className={styles.metricLabel}>Official time</span>
-            {renderMetricValueWithTooltip(
-              formatDuration(race.officialTimeSeconds),
-              formatDurationText(race.officialTimeSeconds),
-            )}
-          </div>
-
-          <div className={styles.metricItem}>
             <span className={styles.metricLabel}>Chip time</span>
             {renderMetricValueWithTooltip(
               formatDuration(race.chipTimeSeconds),
@@ -767,6 +759,14 @@ export function RacesTableView({
     () => removeUpcomingRaces(yearsWithoutInList, new Set(upcomingRaces.map((race) => race.id))),
     [upcomingRaces, yearsWithoutInList],
   )
+  const hasRacesForSelectedYears = useMemo(
+    () => visibleYears.length > 0 || visibleInListYears.length > 0 || undatedRaces.length > 0,
+    [undatedRaces.length, visibleInListYears.length, visibleYears.length],
+  )
+  const hasDisplayedRaces = useMemo(
+    () => upcomingRaces.length > 0 || regularYears.length > 0 || filteredInListRaces.length > 0,
+    [filteredInListRaces.length, regularYears.length, upcomingRaces.length],
+  )
 
   const loadBucketListData = useCallback(async (options?: { silent?: boolean }) => {
     if (!token) {
@@ -1076,7 +1076,7 @@ export function RacesTableView({
         </div>
       ) : null}
 
-      {!isLoading && regularYears.length === 0 && filteredInListRaces.length === 0 && (visibleYears.length > 0 || visibleInListYears.length > 0 || undatedRaces.length > 0) ? (
+      {!isLoading && !error && !hasDisplayedRaces && hasRacesForSelectedYears ? (
         <div className={styles.emptyWrap}>
           <Empty description="No races match the current filters." />
         </div>
@@ -1258,6 +1258,8 @@ export function RacesTableView({
     currentYear,
     error,
     filteredInListRaces.length,
+    hasDisplayedRaces,
+    hasRacesForSelectedYears,
     filteredVisibleYears.length,
     getRaceActionsMenu,
     handleOpenDetails,

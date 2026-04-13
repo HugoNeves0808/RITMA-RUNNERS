@@ -17,6 +17,7 @@ The API documentation is now split into logical files for easier navigation.
 - [`auth.md`](./auth.md): authentication and account-access endpoints
 - [`races.md`](./races.md): races, calendars, create/edit flows, and managed race options
 - [`best-efforts.md`](./best-efforts.md): best-effort ranking endpoint
+- [`podiums.md`](./podiums.md): podium-history endpoint and test data notes
 - [`admin.md`](./admin.md): admin overview, users, and pending approvals
 - [`testing.md`](./testing.md): suggested Postman order and implementation notes
 
