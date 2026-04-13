@@ -722,9 +722,9 @@ export function RacesTableView({
       ? filteredInListRaces.filter((race) => (race.raceTypeName?.trim() || 'No race type') === selectedBucketListRaceType)
       : filteredInListRaces
   ), [filteredInListRaces, selectedBucketListRaceType])
-  const allVisibleRaces = useMemo(
-    () => visibleYears.flatMap((yearGroup) => yearGroup.races),
-    [visibleYears],
+  const allFilteredVisibleRaces = useMemo(
+    () => filteredVisibleYears.flatMap((yearGroup) => yearGroup.races),
+    [filteredVisibleYears],
   )
   const allRaces = useMemo(
     () => years.flatMap((yearGroup) => yearGroup.races),
@@ -737,14 +737,14 @@ export function RacesTableView({
     [allRaces, now],
   )
   const weekUpcomingRaces = useMemo(
-    () => allVisibleRaces
+    () => allFilteredVisibleRaces
       .filter((race) => isUpcomingRace(race, now))
       .sort((left, right) => getRaceDateTime(left).diff(getRaceDateTime(right))),
-    [allVisibleRaces, now],
+    [allFilteredVisibleRaces, now],
   )
   const baseUpcomingRaces = useMemo(
-    () => (weekUpcomingRaces.length > 0 ? weekUpcomingRaces : getFallbackUpcomingRaces(allVisibleRaces, now)),
-    [allVisibleRaces, now, weekUpcomingRaces],
+    () => (weekUpcomingRaces.length > 0 ? weekUpcomingRaces : getFallbackUpcomingRaces(allFilteredVisibleRaces, now)),
+    [allFilteredVisibleRaces, now, weekUpcomingRaces],
   )
   const upcomingRaces = useMemo(() => (
     normalizedSearch
