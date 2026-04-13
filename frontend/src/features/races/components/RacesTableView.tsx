@@ -764,8 +764,12 @@ export function RacesTableView({
     [undatedRaces.length, visibleInListYears.length, visibleYears.length],
   )
   const hasDisplayedRaces = useMemo(
-    () => upcomingRaces.length > 0 || regularYears.length > 0 || filteredInListRaces.length > 0,
-    [filteredInListRaces.length, regularYears.length, upcomingRaces.length],
+    () => (
+      upcomingRaces.length > 0
+      || regularYears.length > 0
+      || (isInListModalOpen && filteredInListRaces.length > 0)
+    ),
+    [filteredInListRaces.length, isInListModalOpen, regularYears.length, upcomingRaces.length],
   )
 
   const loadBucketListData = useCallback(async (options?: { silent?: boolean }) => {
