@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { faChevronLeft, faChevronRight } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { Alert, Card, Empty, Spin } from 'antd'
+import dayjs from 'dayjs'
+import { Alert, Card, DatePicker, Spin } from 'antd'
+import { useTranslation } from 'react-i18next'
 import { RacesCalendarDayCell } from './RacesCalendarDayCell'
 import styles from './RacesCalendarMonthlyView.module.css'
 import type { RaceCalendarDay } from '../types/racesCalendar'
@@ -27,13 +29,15 @@ type CalendarCell = {
   races: RaceCalendarDay['races']
 }
 
-const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+function capitalizeFirst(value: string) {
+  return value.length === 0 ? value : `${value.charAt(0).toUpperCase()}${value.slice(1)}`
+}
 
-function getMonthLabel(year: number, month: number) {
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'long',
-    year: 'numeric',
-  }).format(new Date(year, month - 1, 1))
+function getMonthLabel(year: number, month: number, locale: string) {
+  const date = new Date(year, month - 1, 1)
+  const monthLabel = new Intl.DateTimeFormat(locale, { month: 'long' }).format(date)
+  const yearLabel = new Intl.DateTimeFormat(locale, { year: 'numeric' }).format(date)
+  return `${capitalizeFirst(monthLabel)} ${yearLabel}`
 }
 
 function toIsoDate(date: Date) {
@@ -83,8 +87,9 @@ export function RacesCalendarMonthlyView({
   onMonthSelect,
   onDayClick,
 }: RacesCalendarMonthlyViewProps) {
+  const { t, i18n } = useTranslation()
+  const locale = i18n.resolvedLanguage === 'pt' ? 'pt-PT' : 'en-GB'
   const cells = buildCalendarCells(year, month, days)
-  const hasRaces = days.some((day) => day.races.length > 0)
   const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false)
   const pickerRef = useRef<HTMLDivElement | null>(null)
 
@@ -109,7 +114,7 @@ export function RacesCalendarMonthlyView({
     <Card className={styles.calendarCard} variant="borderless">
       <div className={styles.toolbar}>
         <div className={styles.controls}>
-          <button type="button" className={styles.iconButton} onClick={onPreviousMonth} aria-label="Open previous month">
+          <button type="button" className={styles.iconButton} onClick={onPreviousMonth} aria-label={t('races.calendar.monthly.previousMonthAria')}>
             <FontAwesomeIcon icon={faChevronLeft} />
           </button>
           <div className={styles.monthPickerWrap} ref={pickerRef}>
@@ -117,30 +122,29 @@ export function RacesCalendarMonthlyView({
               type="button"
               className={styles.monthLabelButton}
               onClick={() => setIsMonthPickerOpen((current) => !current)}
-              aria-label="Choose calendar month"
+              aria-label={t('races.calendar.monthly.chooseMonthAria')}
               aria-expanded={isMonthPickerOpen}
             >
-              <span className={styles.monthLabel}>{getMonthLabel(year, month)}</span>
+              <span className={styles.monthLabel}>{getMonthLabel(year, month, locale)}</span>
             </button>
 
             {isMonthPickerOpen ? (
               <div className={styles.monthPickerPopover}>
                 <label className={styles.monthPickerLabel}>
-                  <span className={styles.monthPickerText}>Jump to month</span>
-                  <input
-                    type="month"
+                  <span className={styles.monthPickerText}>{t('races.calendar.monthly.jumpToMonth')}</span>
+                  <DatePicker
+                    picker="month"
                     className={styles.monthPickerInput}
-                    value={`${year}-${String(month).padStart(2, '0')}`}
-                    onChange={(event) => {
-                      const [nextYearText, nextMonthText] = event.target.value.split('-')
-                      const nextYear = Number(nextYearText)
-                      const nextMonth = Number(nextMonthText)
-
-                      if (!Number.isInteger(nextYear) || !Number.isInteger(nextMonth)) {
+                    value={dayjs(new Date(year, month - 1, 1))}
+                    allowClear={false}
+                    inputReadOnly
+                    getPopupContainer={() => pickerRef.current ?? document.body}
+                    onChange={(value) => {
+                      if (!value) {
                         return
                       }
 
-                      onMonthSelect(nextYear, nextMonth)
+                      onMonthSelect(value.year(), value.month() + 1)
                       setIsMonthPickerOpen(false)
                     }}
                   />
@@ -148,7 +152,7 @@ export function RacesCalendarMonthlyView({
               </div>
             ) : null}
           </div>
-          <button type="button" className={styles.iconButton} onClick={onNextMonth} aria-label="Open next month">
+          <button type="button" className={styles.iconButton} onClick={onNextMonth} aria-label={t('races.calendar.monthly.nextMonthAria')}>
             <FontAwesomeIcon icon={faChevronRight} />
           </button>
         </div>
@@ -162,22 +166,22 @@ export function RacesCalendarMonthlyView({
 
       {!isLoading && errorMessage ? (
         <div className={styles.feedbackWrap}>
-          <Alert type="error" message="Unable to load races for this month." description={errorMessage} showIcon />
+          <Alert type="error" message={t('races.calendar.monthly.loadErrorTitle')} description={errorMessage} showIcon />
         </div>
       ) : null}
 
-      {!isLoading && !errorMessage && !hasRaces ? (
-        <div className={styles.emptyWrap}>
-          <Empty description="No races match the current filters." />
-        </div>
-      ) : null}
+      {/* Keep calendar visible even when there are no races. */}
 
-      {!isLoading && (errorMessage || hasRaces) ? (
+      {!isLoading && !errorMessage ? (
         <>
           <div className={styles.weekdays}>
-            {WEEKDAYS.map((weekday) => (
-              <span key={weekday} className={styles.weekday}>{weekday}</span>
-            ))}
+            <span className={styles.weekday}>{t('races.calendar.weekdays.mon')}</span>
+            <span className={styles.weekday}>{t('races.calendar.weekdays.tue')}</span>
+            <span className={styles.weekday}>{t('races.calendar.weekdays.wed')}</span>
+            <span className={styles.weekday}>{t('races.calendar.weekdays.thu')}</span>
+            <span className={styles.weekday}>{t('races.calendar.weekdays.fri')}</span>
+            <span className={styles.weekday}>{t('races.calendar.weekdays.sat')}</span>
+            <span className={styles.weekday}>{t('races.calendar.weekdays.sun')}</span>
           </div>
 
           <div className={styles.grid}>

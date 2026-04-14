@@ -15,8 +15,10 @@
     "@fortawesome/free-solid-svg-icons": "^6.7.2",
     "@fortawesome/react-fontawesome": "^3.1.0",
     "antd": "^5.27.5",
+    "i18next": "^25.5.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-i18next": "^15.7.1",
     "react-router-dom": "^7.9.4"
   },
   "devDependencies": {

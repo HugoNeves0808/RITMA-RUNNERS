@@ -16,76 +16,88 @@ import {
   faUsers,
 } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { Button, Layout, Modal } from 'antd'
+import { Button, Dropdown, Layout, Modal } from 'antd'
 import { useEffect, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../features/auth'
 import { ROUTES } from '../constants/routes'
+import { useLanguage } from '../contexts/LanguageContext'
 import styles from './AppShell.module.css'
 
 const { Content } = Layout
 
-function getDocumentTitle(pathname: string) {
+function getDocumentTitle(pathname: string, t: (key: string) => string) {
   if (pathname === ROUTES.login) {
-    return 'RITMA - Login'
+    return `RITMA - ${t('pages.login')}`
   }
 
   if (pathname === ROUTES.futureGoals) {
-    return 'RITMA - Future Goals'
+    return `RITMA - ${t('pages.futureGoals')}`
   }
 
   if (pathname === ROUTES.profile) {
-    return 'RITMA - Profile'
+    return `RITMA - ${t('pages.profile')}`
   }
 
   if (pathname === ROUTES.settings) {
-    return 'RITMA - Settings'
+    return `RITMA - ${t('pages.settings')}`
   }
 
   if (pathname === ROUTES.personalOptionRaceTypes) {
-    return 'RITMA - Race Types'
+    return `RITMA - ${t('pages.raceTypes')}`
   }
 
   if (pathname === ROUTES.personalOptionTeams) {
-    return 'RITMA - Teams'
+    return `RITMA - ${t('pages.teams')}`
   }
 
   if (pathname === ROUTES.personalOptionCircuits) {
-    return 'RITMA - Circuits'
+    return `RITMA - ${t('pages.circuits')}`
   }
 
   if (pathname === ROUTES.personalOptionShoes) {
-    return 'RITMA - Shoes'
+    return `RITMA - ${t('pages.shoes')}`
   }
 
   if (pathname === ROUTES.bestEfforts) {
-    return 'RITMA - Best Efforts'
+    return `RITMA - ${t('pages.bestEfforts')}`
   }
 
   if (pathname === ROUTES.podiums) {
-    return 'RITMA - Podiums'
+    return `RITMA - ${t('pages.podiums')}`
   }
 
   if (pathname === ROUTES.adminRitmaOverview) {
-    return 'RITMA - Admin Overview'
+    return `RITMA - ${t('pages.adminOverview')}`
   }
 
   if (pathname === ROUTES.adminUserList) {
-    return 'RITMA - Users'
+    return `RITMA - ${t('pages.users')}`
   }
 
   if (pathname === ROUTES.adminPendingApprovals || pathname === ROUTES.adminPendingAccounts) {
-    return 'RITMA - Pending Approvals'
+    return `RITMA - ${t('pages.pendingApprovals')}`
   }
 
-  if (pathname === ROUTES.home || pathname === ROUTES.races) {
-    return 'RITMA - Races'
+  if (pathname === ROUTES.races) {
+    return `RITMA - ${t('pages.races')}`
   }
 
   return 'RITMA'
 }
 
+function getLanguageFlag(language: string) {
+  if (language === 'pt') {
+    return String.fromCodePoint(0x1f1f5, 0x1f1f9)
+  }
+
+  return String.fromCodePoint(0x1f1ec, 0x1f1e7)
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const { t } = useTranslation()
+  const { language, setLanguage } = useLanguage()
   const location = useLocation()
   const { isAuthenticated, isAdmin, logout, user } = useAuth()
   const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(false)
@@ -118,27 +130,27 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [isInPersonalOptionsArea])
 
   useEffect(() => {
-    document.title = getDocumentTitle(location.pathname)
-  }, [location.pathname])
+    document.title = getDocumentTitle(location.pathname, t)
+  }, [location.pathname, t])
 
   const mainNavigationItems = [
     {
       key: 'races',
-      label: 'Races',
+      label: t('navigation.races'),
       to: ROUTES.races,
       icon: faFlagCheckered,
-      isActive: location.pathname === ROUTES.races || location.pathname === ROUTES.home,
+      isActive: location.pathname === ROUTES.races,
     },
     {
       key: 'best-efforts',
-      label: 'Best Efforts',
+      label: t('navigation.bestEfforts'),
       to: ROUTES.bestEfforts,
       icon: faRankingStar,
       isActive: location.pathname === ROUTES.bestEfforts,
     },
     {
       key: 'podiums',
-      label: 'Podiums',
+      label: t('navigation.podiums'),
       to: ROUTES.podiums,
       icon: faTrophy,
       isActive: location.pathname === ROUTES.podiums,
@@ -148,28 +160,28 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const personalOptionsNavigationItems = [
     {
       key: 'personal-option-race-types',
-      label: 'Race Types',
+      label: t('pages.raceTypes'),
       to: ROUTES.personalOptionRaceTypes,
       isActive: location.pathname === ROUTES.personalOptionRaceTypes,
       icon: faRoad,
     },
     {
       key: 'personal-option-teams',
-      label: 'Teams',
+      label: t('pages.teams'),
       to: ROUTES.personalOptionTeams,
       isActive: location.pathname === ROUTES.personalOptionTeams,
       icon: faUsers,
     },
     {
       key: 'personal-option-circuits',
-      label: 'Circuits',
+      label: t('pages.circuits'),
       to: ROUTES.personalOptionCircuits,
       isActive: location.pathname === ROUTES.personalOptionCircuits,
       icon: faMap,
     },
     {
       key: 'personal-option-shoes',
-      label: 'Shoes',
+      label: t('pages.shoes'),
       to: ROUTES.personalOptionShoes,
       isActive: location.pathname === ROUTES.personalOptionShoes,
       icon: faShoePrints,
@@ -179,33 +191,38 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const adminNavigationItems = [
     {
       key: 'admin-ritma-overview',
-      label: 'Overview',
+      label: t('navigation.overview'),
       to: ROUTES.adminRitmaOverview,
       isActive: location.pathname === ROUTES.adminRitmaOverview,
     },
     {
       key: 'admin-user-list',
-      label: 'Users',
+      label: t('navigation.users'),
       to: ROUTES.adminUserList,
       isActive: location.pathname === ROUTES.adminUserList,
     },
     {
       key: 'admin-pending-approvals',
-      label: 'Pending Approvals',
+      label: t('navigation.pendingApprovals'),
       to: ROUTES.adminPendingApprovals,
       isActive: location.pathname === ROUTES.adminPendingApprovals,
     },
   ]
 
   if (isAuthenticatedArea) {
+    const languageMenuItems = [
+      { key: 'en', label: <span>{getLanguageFlag('en')} {t('settings.preferences.languageEnglish')}</span> },
+      { key: 'pt', label: <span>{getLanguageFlag('pt')} {t('settings.preferences.languagePortuguese')}</span> },
+    ] as const
+
     return (
       <Layout className={`${styles.appShell} ${styles.authShell}`}>
         <aside className={styles.sidebar}>
-          <NavLink to={ROUTES.races} className={styles.logoLink} aria-label="Open RITMA Races">
+          <NavLink to={ROUTES.races} className={styles.logoLink} aria-label={t('navigation.openRaces')}>
             <img src="/images/ritma-logo.png" alt="RITMA RUNNERS" className={styles.logo} />
           </NavLink>
 
-          <nav className={styles.navSection} aria-label="Main navigation">
+          <nav className={styles.navSection} aria-label={t('navigation.mainNavigation')}>
             {isAdmin ? (
               <div className={`${styles.navGroup} ${styles.navGroupSeparated}`.trim()}>
                 <button
@@ -214,9 +231,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   onClick={() => setIsAdminMenuOpen((currentValue) => !currentValue)}
                 >
                   <FontAwesomeIcon icon={faShieldHalved} className={styles.navIcon} />
-                  <span>Admin Area</span>
+                  <span>{t('navigation.adminArea')}</span>
                   <span className={styles.adminToggle} aria-expanded={isAdminMenuOpen}>
-                    <span>Open admin menu</span>
+                    <span>{t('navigation.openAdminMenu')}</span>
                     <FontAwesomeIcon icon={isAdminMenuOpen ? faAngleDown : faAngleRight} className={styles.adminToggleIcon} />
                   </span>
                 </button>
@@ -265,9 +282,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 onClick={() => setIsPersonalOptionsMenuOpen((currentValue) => !currentValue)}
               >
                 <FontAwesomeIcon icon={faList} className={styles.navIcon} />
-                <span>Personal Options</span>
+                <span>{t('navigation.personalOptions')}</span>
                 <span className={styles.adminToggle} aria-expanded={isPersonalOptionsMenuOpen}>
-                  <span>Open personal options menu</span>
+                  <span>{t('navigation.openPersonalOptionsMenu')}</span>
                   <FontAwesomeIcon icon={isPersonalOptionsMenuOpen ? faAngleDown : faAngleRight} className={styles.adminToggleIcon} />
                 </span>
               </button>
@@ -290,12 +307,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className={styles.sidebarFooter}>
-            <div className={styles.accountActions} aria-label="Account actions">
+            <div className={styles.accountActions} aria-label={t('navigation.accountActions')}>
               <NavLink
                 to={ROUTES.profile}
                 className={location.pathname === ROUTES.profile ? `${styles.accountButton} ${styles.accountButtonActive}` : styles.accountButton}
-                aria-label="Profile"
-                title="Profile"
+                aria-label={t('common.profile')}
+                title={t('common.profile')}
               >
                 <FontAwesomeIcon icon={faCircleUser} />
               </NavLink>
@@ -303,18 +320,36 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <NavLink
                 to={ROUTES.settings}
                 className={location.pathname === ROUTES.settings ? `${styles.accountButton} ${styles.accountButtonActive}` : styles.accountButton}
-                aria-label="Settings"
-                title="Settings"
+                aria-label={t('common.settings')}
+                title={t('common.settings')}
               >
                 <FontAwesomeIcon icon={faGear} />
               </NavLink>
+
+              <Dropdown
+                placement="topLeft"
+                menu={{
+                  items: [...languageMenuItems],
+                  onClick: ({ key }) => setLanguage(key === 'pt' ? 'pt' : 'en'),
+                }}
+                trigger={['click']}
+              >
+                <button
+                  type="button"
+                  className={styles.languageButton}
+                  aria-label={t('common.language')}
+                  title={t('common.language')}
+                >
+                  <span aria-hidden="true">{getLanguageFlag(language)}</span>
+                </button>
+              </Dropdown>
 
               <Button
                 type="primary"
                 className={styles.logoutButton}
                 icon={<FontAwesomeIcon icon={faRightFromBracket} />}
-                aria-label="Logout"
-                title="Logout"
+                aria-label={t('common.logout')}
+                title={t('common.logout')}
                 onClick={() => setIsLogoutModalOpen(true)}
               >
               </Button>
@@ -329,7 +364,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </Layout>
 
         <Modal
-          title="Logout"
+          title={t('modals.logout.title')}
           open={isLogoutModalOpen}
           centered
           okButtonProps={{ className: styles.logoutModalConfirmButton }}
@@ -338,10 +373,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             logout()
           }}
           onCancel={() => setIsLogoutModalOpen(false)}
-          okText="Logout"
-          cancelText="Cancel"
+          okText={t('modals.logout.ok')}
+          cancelText={t('modals.logout.cancel')}
         >
-          <p>Are you sure you want to logout?</p>
+          <p>{t('modals.logout.confirm')}</p>
         </Modal>
       </Layout>
     )

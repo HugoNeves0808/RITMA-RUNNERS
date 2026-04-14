@@ -3,6 +3,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { useState } from 'react'
 import { Alert, Button, Form, Input, Modal } from 'antd'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../hooks/useAuth'
 import { ROUTES } from '../../../constants/routes'
 import { isApiError } from '../../../services/apiClient'
@@ -15,6 +16,7 @@ type ChangePasswordFormValues = {
 }
 
 export function ForcePasswordChangeModal() {
+  const { t } = useTranslation()
   const { user, submitPasswordChange, logout } = useAuth()
   const navigate = useNavigate()
   const [form] = Form.useForm<ChangePasswordFormValues>()
@@ -58,7 +60,7 @@ export function ForcePasswordChangeModal() {
         }
 
         if (submitError.message === 'Current password is incorrect') {
-          setError('Current password is incorrect.')
+          setError(t('forcePasswordChange.errors.currentPasswordIncorrect'))
           return
         }
 
@@ -66,15 +68,15 @@ export function ForcePasswordChangeModal() {
           submitError.message === 'Choose a stronger password.'
           || submitError.message === 'Use at least 8 characters, including uppercase, lowercase, a number, and a symbol.'
         ) {
-          setError('Use at least 8 characters, including uppercase, lowercase, a number, and a symbol.')
+          setError(t('forcePasswordChange.errors.weakPassword'))
           return
         }
 
-        setError(submitError.message || 'Unable to change password right now. Please try again.')
+        setError(submitError.message || t('forcePasswordChange.errors.generic'))
         return
       }
 
-      setError('Unable to change password right now. Please try again.')
+      setError(t('forcePasswordChange.errors.generic'))
     } finally {
       setIsSubmitting(false)
     }
@@ -85,13 +87,13 @@ export function ForcePasswordChangeModal() {
       {isOpen ? <div className={styles.overlay} /> : null}
       <Modal
         open={isOpen}
-        title="Change password"
+        title={t('forcePasswordChange.title')}
         closable={false}
         maskClosable={false}
         keyboard={false}
         footer={[
           <Button key="logout" icon={<FontAwesomeIcon icon={faRightFromBracket} />} onClick={handleLogout}>
-            Sign out
+            {t('forcePasswordChange.signOut')}
           </Button>,
           <Button
             key="submit"
@@ -101,7 +103,7 @@ export function ForcePasswordChangeModal() {
             loading={isSubmitting}
             onClick={handleSubmit}
           >
-            Update password
+            {t('forcePasswordChange.updatePassword')}
           </Button>,
         ]}
         destroyOnHidden
@@ -111,7 +113,7 @@ export function ForcePasswordChangeModal() {
           <Alert
             type="error"
             showIcon
-            message="Unable to update password"
+            message={t('forcePasswordChange.alertTitle')}
             description={error}
             style={{ marginBottom: 16 }}
           />
@@ -119,19 +121,19 @@ export function ForcePasswordChangeModal() {
 
         <Form<ChangePasswordFormValues> form={form} layout="vertical">
           <Form.Item
-            label="Current password"
+            label={t('forcePasswordChange.currentPasswordLabel')}
             name="currentPassword"
-            rules={[{ required: true, message: 'Current password is required' }]}
+            rules={[{ required: true, message: t('forcePasswordChange.currentPasswordRequired') }]}
           >
-            <Input.Password placeholder="Enter your current password" size="large" />
+            <Input.Password placeholder={t('forcePasswordChange.currentPasswordPlaceholder')} size="large" />
           </Form.Item>
 
           <Form.Item
-            label="New password"
+            label={t('forcePasswordChange.newPasswordLabel')}
             name="newPassword"
             validateTrigger={['onBlur', 'onSubmit']}
             rules={[
-              { required: true, message: 'New password is required' },
+              { required: true, message: t('forcePasswordChange.newPasswordRequired') },
               {
                 validator(_, value) {
                   if (!value) {
@@ -150,7 +152,7 @@ export function ForcePasswordChangeModal() {
 
                   return Promise.reject(
                     new Error(
-                      'Use at least 8 characters, including uppercase, lowercase, a number, and a symbol.',
+                      t('forcePasswordChange.errors.weakPassword'),
                     ),
                   )
                 },
@@ -158,29 +160,29 @@ export function ForcePasswordChangeModal() {
             ]}
           >
             <Input.Password
-              placeholder="Enter your new password"
+              placeholder={t('forcePasswordChange.newPasswordPlaceholder')}
               size="large"
             />
           </Form.Item>
 
           <Form.Item
-            label="Confirm new password"
+            label={t('forcePasswordChange.confirmPasswordLabel')}
             name="confirmPassword"
             dependencies={['newPassword']}
             rules={[
-              { required: true, message: 'Please confirm the new password' },
+              { required: true, message: t('forcePasswordChange.confirmPasswordRequired') },
               ({ getFieldValue }) => ({
                 validator(_, value) {
                   if (!value || getFieldValue('newPassword') === value) {
                     return Promise.resolve()
                   }
 
-                  return Promise.reject(new Error('The new passwords do not match'))
+                  return Promise.reject(new Error(t('forcePasswordChange.errors.mismatch')))
                 },
               }),
             ]}
           >
-            <Input.Password placeholder="Confirm your new password" size="large" />
+            <Input.Password placeholder={t('forcePasswordChange.confirmPasswordPlaceholder')} size="large" />
           </Form.Item>
         </Form>
       </Modal>

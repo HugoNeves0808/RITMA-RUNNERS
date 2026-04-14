@@ -3,7 +3,9 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { Button, Drawer, Spin, Tabs, Tooltip } from 'antd'
 import type { TabsProps } from 'antd'
 import type { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { RaceDetailResponse } from '../types/racesTable'
+import { getRaceStatusLabel } from '../types/raceFilters'
 import styles from './RaceDetailsDrawer.module.css'
 
 type RaceDetailsDrawerProps = {
@@ -50,51 +52,15 @@ function formatDisplayTime(value: string | null | undefined) {
   if (!value) {
     return '-'
   }
-
-  const [hoursText = '0', minutesText = '0'] = value.split(':')
-  const hours = Number(hoursText)
-  const minutes = Number(minutesText)
-
-  if (Number.isNaN(hours) || Number.isNaN(minutes)) {
-    return value
-  }
-
-  const suffix = hours >= 12 ? 'PM' : 'AM'
-  const normalizedHours = hours % 12 || 12
-  return `${String(normalizedHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} ${suffix}`
+  return value
 }
 
-function formatBoolean(value: boolean | null | undefined) {
+function formatBoolean(value: boolean | null | undefined, t: (key: string) => string) {
   if (value == null) {
     return '-'
   }
 
-  return value ? 'Yes' : 'No'
-}
-
-function formatStatusLabel(status: string | null | undefined) {
-  if (!status) {
-    return 'Unknown'
-  }
-
-  switch (status) {
-    case 'REGISTERED':
-      return 'Registered'
-    case 'COMPLETED':
-      return 'Completed'
-    case 'IN_LIST':
-      return 'Future races'
-    case 'NOT_REGISTERED':
-      return 'Waiting for registration'
-    case 'CANCELLED':
-      return 'Cancelled'
-    case 'DID_NOT_START':
-      return 'Did not start'
-    case 'DID_NOT_FINISH':
-      return 'Did not finish'
-    default:
-      return status.replaceAll('_', ' ').toLowerCase()
-  }
+  return value ? t('common.yes') : t('common.no')
 }
 
 function getStatusClassName(status: string | null | undefined) {
@@ -151,41 +117,43 @@ export function RaceDetailsDrawer({
   isDeleting = false,
   onClose,
 }: RaceDetailsDrawerProps) {
+  const { t } = useTranslation()
+
   const items: TabsProps['items'] = [
     {
       key: 'race',
-      label: 'Race data',
+      label: t('races.details.tabs.race'),
       children: race ? (
         <div className={styles.tabPane}>
           <section className={styles.overviewCard}>
             <div className={styles.overviewHeader}>
               <div>
-                <div className={styles.overviewEyebrow}>Race overview</div>
+                <div className={styles.overviewEyebrow}>{t('races.details.overviewEyebrow')}</div>
                 <Tooltip title={race.race.name}>
                   <h3 className={styles.overviewTitle}>{race.race.name}</h3>
                 </Tooltip>
               </div>
 
               <span className={`${styles.statusBadge} ${getStatusClassName(race.race.raceStatus)}`.trim()}>
-                {formatStatusLabel(race.race.raceStatus)}
+                {race.race.raceStatus ? getRaceStatusLabel(race.race.raceStatus, t) : t('common.unknown')}
               </span>
             </div>
 
             <div className={styles.summaryRow}>
               <div className={styles.summaryItem}>
-                <span className={styles.summaryLabel}>Date</span>
+                <span className={styles.summaryLabel}>{t('races.details.summary.date')}</span>
                 <Tooltip title={race.race.raceDate ?? '-'}>
                   <span className={styles.summaryValue}>{race.race.raceDate ?? '-'}</span>
                 </Tooltip>
               </div>
               <div className={styles.summaryItem}>
-                <span className={styles.summaryLabel}>Time</span>
+                <span className={styles.summaryLabel}>{t('races.details.summary.time')}</span>
                 <Tooltip title={formatDisplayTime(race.race.raceTime)}>
                   <span className={styles.summaryValue}>{formatDisplayTime(race.race.raceTime)}</span>
                 </Tooltip>
               </div>
               <div className={styles.summaryItem}>
-                <span className={styles.summaryLabel}>Type</span>
+                <span className={styles.summaryLabel}>{t('races.details.summary.type')}</span>
                 <Tooltip title={race.race.raceTypeName ?? '-'}>
                   <span className={styles.summaryValue}>{race.race.raceTypeName ?? '-'}</span>
                 </Tooltip>
@@ -194,36 +162,36 @@ export function RaceDetailsDrawer({
           </section>
 
           {renderFieldsGrid([
-            { label: 'Location', value: race.race.location ?? '-' },
-            { label: 'Team', value: race.race.teamName ?? '-' },
-            { label: 'Circuit', value: race.race.circuitName ?? '-' },
-            { label: 'Real KM', value: race.race.realKm ?? '-' },
-            { label: 'Elevation gain', value: race.race.elevation ?? '-' },
-            { label: 'Valid for category ranking', value: formatBoolean(race.race.isValidForCategoryRanking) },
+            { label: t('races.details.fields.location'), value: race.race.location ?? '-' },
+            { label: t('races.details.fields.team'), value: race.race.teamName ?? '-' },
+            { label: t('races.details.fields.circuit'), value: race.race.circuitName ?? '-' },
+            { label: t('races.details.fields.realKm'), value: race.race.realKm ?? '-' },
+            { label: t('races.details.fields.elevation'), value: race.race.elevation ?? '-' },
+            { label: t('races.details.fields.validForRanking'), value: formatBoolean(race.race.isValidForCategoryRanking, t) },
           ])}
         </div>
       ) : null,
     },
     {
       key: 'results',
-      label: 'Race results',
+      label: t('races.details.tabs.results'),
       children: race ? (
         <div className={styles.tabPane}>
           <section className={styles.metricsPanel}>
             <div className={styles.metricCard}>
-              <span className={styles.metricCardLabel}>Official time</span>
+              <span className={styles.metricCardLabel}>{t('races.details.metrics.officialTime')}</span>
               <Tooltip title={formatDuration(race.results.officialTimeSeconds)}>
                 <span className={styles.metricCardValue}>{formatDuration(race.results.officialTimeSeconds)}</span>
               </Tooltip>
             </div>
             <div className={styles.metricCard}>
-              <span className={styles.metricCardLabel}>Chip time</span>
+              <span className={styles.metricCardLabel}>{t('races.details.metrics.chipTime')}</span>
               <Tooltip title={formatDuration(race.results.chipTimeSeconds)}>
                 <span className={styles.metricCardValue}>{formatDuration(race.results.chipTimeSeconds)}</span>
               </Tooltip>
             </div>
             <div className={styles.metricCard}>
-              <span className={styles.metricCardLabel}>Pace per KM</span>
+              <span className={styles.metricCardLabel}>{t('races.details.metrics.pacePerKm')}</span>
               <Tooltip title={formatPace(race.results.pacePerKmSeconds)}>
                 <span className={styles.metricCardValue}>{formatPace(race.results.pacePerKmSeconds)}</span>
               </Tooltip>
@@ -231,32 +199,32 @@ export function RaceDetailsDrawer({
           </section>
 
           {renderFieldsGrid([
-            { label: 'Shoe', value: race.results.shoeName ?? '-' },
-            { label: 'General classification', value: race.results.generalClassification ?? '-' },
-            { label: 'Age group classification', value: race.results.ageGroupClassification ?? '-' },
-            { label: 'Team classification', value: race.results.teamClassification ?? '-' },
+            { label: t('races.details.fields.shoe'), value: race.results.shoeName ?? '-' },
+            { label: t('races.details.fields.generalClassification'), value: race.results.generalClassification ?? '-' },
+            { label: t('races.details.fields.ageGroupClassification'), value: race.results.ageGroupClassification ?? '-' },
+            { label: t('races.details.fields.teamClassification'), value: race.results.teamClassification ?? '-' },
           ])}
         </div>
       ) : null,
     },
     {
       key: 'analysis',
-      label: 'Race analysis',
+      label: t('races.details.tabs.analysis'),
       children: race ? (
         <div className={styles.tabPane}>
           {renderFieldsGrid([
-            { label: 'Pre-race confidence', value: race.analysis.preRaceConfidence ?? '-' },
-            { label: 'Race difficulty', value: race.analysis.raceDifficulty ?? '-' },
-            { label: 'Final satisfaction', value: race.analysis.finalSatisfaction ?? '-' },
+            { label: t('races.details.fields.preRaceConfidence'), value: race.analysis.preRaceConfidence ?? '-' },
+            { label: t('races.details.fields.raceDifficulty'), value: race.analysis.raceDifficulty ?? '-' },
+            { label: t('races.details.fields.finalSatisfaction'), value: race.analysis.finalSatisfaction ?? '-' },
           ])}
 
           <section className={styles.notesPanel}>
             <div className={styles.noteCard}>
-              <span className={styles.noteLabel}>Pain / injuries</span>
+              <span className={styles.noteLabel}>{t('races.details.fields.painInjuries')}</span>
               <p className={styles.noteValue}>{race.analysis.painInjuries ?? '-'}</p>
             </div>
             <div className={styles.noteCard}>
-              <span className={styles.noteLabel}>Analysis notes</span>
+              <span className={styles.noteLabel}>{t('races.details.fields.analysisNotes')}</span>
               <p className={styles.noteValue}>{race.analysis.analysisNotes ?? '-'}</p>
             </div>
           </section>
@@ -272,7 +240,7 @@ export function RaceDetailsDrawer({
         <Tooltip title={race.race.name}>
           <span>{truncateHeaderTitle(race.race.name)}</span>
         </Tooltip>
-      ) : 'Race details'}
+      ) : t('races.details.title')}
       placement="right"
       width={860}
       extra={race ? (
@@ -283,7 +251,7 @@ export function RaceDetailsDrawer({
             icon={<FontAwesomeIcon icon={faPenToSquare} />}
             onClick={onEdit}
           >
-            Edit
+            {t('races.details.actions.edit')}
           </Button>
           <Button
             danger
@@ -293,7 +261,7 @@ export function RaceDetailsDrawer({
             onClick={onDelete}
             loading={isDeleting}
           >
-            Delete
+            {t('races.details.actions.delete')}
           </Button>
         </div>
       ) : null}
@@ -310,7 +278,7 @@ export function RaceDetailsDrawer({
       ) : race ? (
         <Tabs items={items} />
       ) : (
-        <div className={styles.emptyState}>Could not load this race.</div>
+        <div className={styles.emptyState}>{t('races.calendar.loadRaceErrorFallback')}</div>
       )}
     </Drawer>
   )

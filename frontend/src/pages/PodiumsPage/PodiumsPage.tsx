@@ -1,6 +1,7 @@
 import { faBroom, faCalendarDays, faFlagCheckered } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Alert, Button, Card, Checkbox, Empty, Input, Modal, Spin, Typography } from 'antd'
 import { useAuth } from '../../features/auth'
 import { fetchPodiumHistory, type PodiumHistoryItem, type PodiumType } from '../../features/podiums'
@@ -17,21 +18,25 @@ import styles from './PodiumsPage.module.css'
 
 const { Title } = Typography
 
-function formatRaceDate(value: string | null) {
+function getLocaleFromLanguage(language: string | undefined) {
+  return language === 'pt' ? 'pt-PT' : 'en-GB'
+}
+
+function formatRaceDate(value: string | null, locale: string, noDateLabel: string) {
   if (!value) {
-    return 'No date'
+    return noDateLabel
   }
 
-  return new Intl.DateTimeFormat('pt-PT', {
+  return new Intl.DateTimeFormat(locale, {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
   }).format(new Date(value))
 }
 
-function formatTimelineDate(value: string | null) {
+function formatTimelineDate(value: string | null, locale: string, noDateLabel: string) {
   if (!value) {
-    return 'No date'
+    return noDateLabel
   }
 
   const date = new Date(value)
@@ -40,7 +45,7 @@ function formatTimelineDate(value: string | null) {
   }
 
   const day = String(date.getDate()).padStart(2, '0')
-  const month = new Intl.DateTimeFormat('en-GB', { month: 'short' }).format(date).toLowerCase()
+  const month = new Intl.DateTimeFormat(locale, { month: 'short' }).format(date)
   return `${day} ${month}`
 }
 
@@ -79,14 +84,14 @@ function formatPace(totalSeconds: number | null) {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}/km`
 }
 
-function getPodiumTypeLabel(type: PodiumType) {
+function getPodiumTypeLabel(type: PodiumType, t: (key: string) => string) {
   switch (type) {
     case 'GENERAL':
-      return 'General'
+      return t('podiums.filters.typeGeneral')
     case 'AGE_GROUP':
-      return 'Age group'
+      return t('podiums.filters.typeAgeGroup')
     case 'TEAM':
-      return 'Team'
+      return t('podiums.filters.typeTeam')
   }
 }
 
@@ -122,6 +127,14 @@ function getPositionSuffix(position: number) {
   return 'th'
 }
 
+function formatPodiumPosition(position: number, language: string | undefined) {
+  if (language === 'pt') {
+    return `${position}º`
+  }
+
+  return `${position}${getPositionSuffix(position)}`
+}
+
 function SummaryCard({ label, value }: { label: string; value: number }) {
   return (
     <Card className={styles.summaryCard} bordered={false}>
@@ -133,6 +146,9 @@ function SummaryCard({ label, value }: { label: string; value: number }) {
 
 export function PodiumsPage() {
   const { token } = useAuth()
+  const { t, i18n } = useTranslation()
+  const language = i18n.resolvedLanguage ?? i18n.language
+  const locale = getLocaleFromLanguage(language)
   const [payload, setPayload] = useState<PodiumHistoryItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -173,14 +189,14 @@ export function PodiumsPage() {
         setPayload(response.items)
         setCreateOptions(nextCreateOptions)
       } catch (loadError) {
-        setErrorMessage(loadError instanceof Error ? loadError.message : 'Could not load podium history right now.')
+        setErrorMessage(loadError instanceof Error ? loadError.message : t('podiums.errors.load'))
       } finally {
         setIsLoading(false)
       }
     }
 
     void loadPodiums()
-  }, [token])
+  }, [t, token])
 
   const summary = useMemo(() => ({
     total: payload.length,
@@ -214,13 +230,13 @@ export function PodiumsPage() {
       const searchableFields = [
         item.raceName,
         item.raceTypeName,
-        formatRaceDate(item.raceDate),
-        getPodiumTypeLabel(item.podiumType),
+        formatRaceDate(item.raceDate, locale, t('podiums.format.noDate')),
+        getPodiumTypeLabel(item.podiumType, t),
       ]
 
       return searchableFields.some((field) => field?.toLowerCase().includes(normalizedSearch))
     })
-  }, [payload, searchValue, selectedTypes, selectedYears])
+  }, [locale, payload, searchValue, selectedTypes, selectedYears, t])
 
   const groupedItems = useMemo(() => {
     const groups = new Map<number, PodiumHistoryItem[]>()
@@ -266,7 +282,7 @@ export function PodiumsPage() {
       const details = await fetchRaceDetail(item.raceId, token)
       setRaceDetails(details)
     } catch (loadError) {
-      setDetailsError(loadError instanceof Error ? loadError.message : 'Could not load this race right now.')
+      setDetailsError(loadError instanceof Error ? loadError.message : t('podiums.errors.loadRace'))
     } finally {
       setIsDetailsLoading(false)
     }
@@ -300,7 +316,7 @@ export function PodiumsPage() {
       setIsDetailsOpen(false)
       setIsEditDrawerOpen(true)
     } catch (loadError) {
-      setDetailsError(loadError instanceof Error ? loadError.message : 'Could not load this race for editing right now.')
+      setDetailsError(loadError instanceof Error ? loadError.message : t('podiums.errors.loadRaceForEdit'))
     }
   }
 
@@ -319,23 +335,23 @@ export function PodiumsPage() {
       setDetailsError(null)
       await reloadPodiumsPageData()
     } catch (deleteError) {
-      setDetailsError(deleteError instanceof Error ? deleteError.message : 'Could not delete this race right now.')
+      setDetailsError(deleteError instanceof Error ? deleteError.message : t('podiums.errors.deleteRace'))
     } finally {
       setIsDeletingRace(false)
     }
   }
 
   return (
-    <div className={styles.page}>
+      <div className={styles.page}>
       <div className={styles.header}>
-        <Title level={1} className={styles.pageTitle}>Podiums</Title>
+        <Title level={1} className={styles.pageTitle}>{t('podiums.title')}</Title>
       </div>
 
       <div className={styles.summaryGrid}>
-        <SummaryCard label="Total podiums" value={summary.total} />
-        <SummaryCard label="General" value={summary.general} />
-        <SummaryCard label="Age group" value={summary.ageGroup} />
-        <SummaryCard label="Team" value={summary.team} />
+        <SummaryCard label={t('podiums.summary.total')} value={summary.total} />
+        <SummaryCard label={t('podiums.summary.general')} value={summary.general} />
+        <SummaryCard label={t('podiums.summary.ageGroup')} value={summary.ageGroup} />
+        <SummaryCard label={t('podiums.summary.team')} value={summary.team} />
       </div>
 
       <div className={styles.contentLayout}>
@@ -344,7 +360,7 @@ export function PodiumsPage() {
             <Alert
               type="error"
               showIcon
-              message="Could not load podium history"
+              message={t('podiums.alert.loadTitle')}
               description={errorMessage}
             />
           ) : null}
@@ -357,7 +373,7 @@ export function PodiumsPage() {
 
           {!isLoading && !errorMessage && filteredItems.length === 0 ? (
             <Card className={styles.emptyCard} bordered={false}>
-              <Empty description={payload.length === 0 ? 'No podiums recorded yet.' : 'No podiums match the current filters.'} />
+              <Empty description={payload.length === 0 ? t('podiums.empty.noneYet') : t('podiums.empty.noMatch')} />
             </Card>
           ) : null}
 
@@ -371,7 +387,7 @@ export function PodiumsPage() {
 
                   {items.map((item) => (
                     <div key={item.podiumKey} className={styles.timelineItem}>
-                      <div className={styles.timelineDate}>{formatTimelineDate(item.raceDate)}</div>
+                      <div className={styles.timelineDate}>{formatTimelineDate(item.raceDate, locale, t('podiums.format.noDate'))}</div>
                       <div className={styles.timelineRail}>
                         <span className={styles.timelineDot} aria-hidden="true" />
                       </div>
@@ -383,10 +399,9 @@ export function PodiumsPage() {
                         <div className={styles.cardInner}>
                           <div className={`${styles.podiumBadge} ${getPodiumBadgeClassName(item.podiumPosition)}`.trim()}>
                             <span className={styles.podiumBadgePosition}>
-                              {item.podiumPosition}
-                              {getPositionSuffix(item.podiumPosition)}
+                              {formatPodiumPosition(item.podiumPosition, language)}
                             </span>
-                            <span className={styles.podiumBadgeType}>{getPodiumTypeLabel(item.podiumType)}</span>
+                            <span className={styles.podiumBadgeType}>{getPodiumTypeLabel(item.podiumType, t)}</span>
                           </div>
 
                           <div className={styles.cardContent}>
@@ -394,7 +409,7 @@ export function PodiumsPage() {
                               <h3 className={styles.cardTitle}>{item.raceName}</h3>
                               <span className={styles.inlineMeta}>
                                 <FontAwesomeIcon icon={faCalendarDays} className={styles.metaIcon} />
-                                {formatRaceDate(item.raceDate)}
+                                {formatRaceDate(item.raceDate, locale, t('podiums.format.noDate'))}
                               </span>
                               <span className={styles.inlineMeta}>
                                 <FontAwesomeIcon icon={faFlagCheckered} className={styles.metaIcon} />
@@ -404,15 +419,15 @@ export function PodiumsPage() {
 
                             <div className={styles.metricsGrid}>
                               <div className={styles.metricItem}>
-                                <span className={styles.metricLabel}>Official time</span>
+                                <span className={styles.metricLabel}>{t('podiums.card.officialTime')}</span>
                                 <span className={styles.metricValue}>{formatDuration(item.officialTimeSeconds)}</span>
                               </div>
                               <div className={styles.metricItem}>
-                                <span className={styles.metricLabel}>Chip time</span>
+                                <span className={styles.metricLabel}>{t('podiums.card.chipTime')}</span>
                                 <span className={styles.metricValue}>{formatDuration(item.chipTimeSeconds)}</span>
                               </div>
                               <div className={styles.metricItem}>
-                                <span className={styles.metricLabel}>Pace</span>
+                                <span className={styles.metricLabel}>{t('podiums.card.pace')}</span>
                                 <span className={styles.metricValue}>{formatPace(item.pacePerKmSeconds)}</span>
                               </div>
                             </div>
@@ -430,14 +445,14 @@ export function PodiumsPage() {
         <aside className={styles.sidebar}>
           <div className={styles.sidebarCard}>
             <div className={styles.sidebarHeader}>
-              <span className={styles.sidebarTitle}>Filters</span>
+              <span className={styles.sidebarTitle}>{t('podiums.filters.title')}</span>
               {shouldShowClearFiltersButton ? (
                 <Button
                   type="text"
                   className={styles.clearButton}
                   icon={<FontAwesomeIcon icon={faBroom} />}
-                  title="Clear filters"
-                  aria-label="Clear filters"
+                  title={t('podiums.filters.clear')}
+                  aria-label={t('podiums.filters.clear')}
                   onClick={handleClearFilters}
                 />
               ) : null}
@@ -446,21 +461,21 @@ export function PodiumsPage() {
             <div className={styles.sidebarDivider} />
 
             <div className={styles.filterField}>
-              <label htmlFor="podiums-search" className={styles.filterLabel}>Search</label>
+              <label htmlFor="podiums-search" className={styles.filterLabel}>{t('podiums.filters.searchLabel')}</label>
               <Input
                 id="podiums-search"
                 allowClear
-                placeholder="Race, date or type"
+                placeholder={t('podiums.filters.searchPlaceholder')}
                 value={searchValue}
                 onChange={(event) => setSearchValue(event.target.value)}
               />
             </div>
 
             <div className={styles.filterField}>
-              <span className={styles.filterLabel}>Years</span>
+              <span className={styles.filterLabel}>{t('podiums.filters.yearsLabel')}</span>
               <div className={styles.checkboxList}>
                 {availableYears.length === 0 ? (
-                  <span className={styles.checkboxHint}>No years available</span>
+                  <span className={styles.checkboxHint}>{t('podiums.filters.yearsEmpty')}</span>
                 ) : availableYears.map((year) => (
                   <label key={year} className={styles.checkboxOption}>
                     <Checkbox
@@ -478,12 +493,12 @@ export function PodiumsPage() {
             </div>
 
             <div className={styles.filterField}>
-              <span className={styles.filterLabel}>Podium type</span>
+              <span className={styles.filterLabel}>{t('podiums.filters.typeLabel')}</span>
               <div className={styles.checkboxList}>
                 {([
-                  { label: 'General', value: 'GENERAL', count: summary.general },
-                  { label: 'Age group', value: 'AGE_GROUP', count: summary.ageGroup },
-                  { label: 'Team', value: 'TEAM', count: summary.team },
+                  { label: t('podiums.filters.typeGeneral'), value: 'GENERAL', count: summary.general },
+                  { label: t('podiums.filters.typeAgeGroup'), value: 'AGE_GROUP', count: summary.ageGroup },
+                  { label: t('podiums.filters.typeTeam'), value: 'TEAM', count: summary.team },
                 ] as Array<{ label: string; value: PodiumType; count: number }>).map((option) => (
                   <label key={option.value} className={styles.checkboxOption}>
                     <Checkbox
@@ -560,7 +575,7 @@ export function PodiumsPage() {
             setDetailsError(null)
           } catch (loadError) {
             setRaceDetails(null)
-            setDetailsError(loadError instanceof Error ? loadError.message : 'Could not reload this race right now.')
+            setDetailsError(loadError instanceof Error ? loadError.message : t('podiums.errors.reloadRace'))
           } finally {
             setIsDetailsLoading(false)
           }
@@ -568,12 +583,12 @@ export function PodiumsPage() {
       />
 
       <Modal
-        title="Delete race?"
+        title={t('podiums.deleteRace.title')}
         open={racePendingDelete != null}
         zIndex={1400}
-        okText="Delete"
+        okText={t('podiums.deleteRace.ok')}
         okButtonProps={{ danger: true }}
-        cancelText="Cancel"
+        cancelText={t('common.cancel')}
         confirmLoading={isDeletingRace}
         onOk={() => void handleConfirmDelete()}
         onCancel={() => {
@@ -586,8 +601,8 @@ export function PodiumsPage() {
       >
         <p>
           {racePendingDelete
-            ? `This will permanently delete "${racePendingDelete.raceName}".`
-            : 'This will permanently delete this race.'}
+            ? t('podiums.deleteRace.bodyNamed', { name: racePendingDelete.raceName })
+            : t('podiums.deleteRace.body')}
         </p>
       </Modal>
     </div>

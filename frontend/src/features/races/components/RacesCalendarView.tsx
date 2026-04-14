@@ -1,9 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Drawer, Tooltip } from 'antd'
+import { useTranslation } from 'react-i18next'
+import dayjs from 'dayjs'
+import { faTriangleExclamation } from '@fortawesome/free-solid-svg-icons'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { useAuth } from '../../auth'
 import { fetchRaceCalendarMonth, fetchRaceCalendarYear } from '../services/racesCalendarService'
 import { fetchRaceDetail } from '../services/racesTableService'
 import type { RaceFilters } from '../types/raceFilters'
+import { getRaceStatusLabel as getRaceStatusLabelFromOptions } from '../types/raceFilters'
 import type { RaceCalendarItem, RaceCalendarMonthPayload, RaceCalendarYearPayload } from '../types/racesCalendar'
 import type { RaceDetailResponse } from '../types/racesTable'
 import type { RacesCalendarMode } from '../types/racesCalendarMode'
@@ -11,6 +16,7 @@ import { RaceDetailsDrawer } from './RaceDetailsDrawer'
 import { RacesCalendarMonthlyView } from './RacesCalendarMonthlyView'
 import { RacesCalendarYearlyView } from './RacesCalendarYearlyView'
 import styles from './RacesCalendarView.module.css'
+import { useLanguage } from '../../../contexts/LanguageContext'
 
 type RacesCalendarViewProps = {
   selectedMode: RacesCalendarMode
@@ -30,9 +36,9 @@ function buildCalendarFiltersKey(filters: RaceFilters) {
   })
 }
 
-function formatDayDrawerDate(value: string) {
+function formatDayDrawerDate(value: string, locale: string) {
   const date = new Date(`${value}T00:00:00`)
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat(locale, {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -45,42 +51,23 @@ function formatDisplayTime(value: string | null | undefined) {
     return '-'
   }
 
-  const [hoursText = '0', minutesText = '0'] = value.split(':')
-  const hours = Number(hoursText)
-  const minutes = Number(minutesText)
-
-  if (Number.isNaN(hours) || Number.isNaN(minutes)) {
-    return value
+  const parts = value.split(':')
+  if (parts.length >= 2) {
+    return `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`
   }
 
-  const suffix = hours >= 12 ? 'PM' : 'AM'
-  const normalizedHours = hours % 12 || 12
-  return `${String(normalizedHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} ${suffix}`
+  return value
 }
 
-function formatStatusLabel(status: string | null | undefined) {
+function formatStatusLabel(
+  status: string | null | undefined,
+  t: (key: string, options?: Record<string, unknown>) => string,
+) {
   if (!status) {
-    return 'Unknown'
+    return t('common.unknown')
   }
 
-  switch (status) {
-    case 'REGISTERED':
-      return 'Registered'
-    case 'COMPLETED':
-      return 'Completed'
-    case 'IN_LIST':
-      return 'Future races'
-    case 'NOT_REGISTERED':
-      return 'Waiting for registration'
-    case 'CANCELLED':
-      return 'Cancelled'
-    case 'DID_NOT_START':
-      return 'Did not start'
-    case 'DID_NOT_FINISH':
-      return 'Did not finish'
-    default:
-      return status.replaceAll('_', ' ').toLowerCase()
-  }
+  return getRaceStatusLabelFromOptions(status, t)
 }
 
 function getStatusClassName(status: string | null | undefined) {
@@ -102,6 +89,21 @@ function getStatusClassName(status: string | null | undefined) {
     default:
       return styles.statusUnknown
   }
+}
+
+function isTerminalRaceStatus(status: string | null | undefined) {
+  return status === 'COMPLETED'
+    || status === 'DID_NOT_START'
+    || status === 'DID_NOT_FINISH'
+    || status === 'CANCELLED'
+}
+
+function shouldWarnAboutPastRaceStatus(race: RaceCalendarItem, now: dayjs.Dayjs) {
+  if (!race.raceDate || isTerminalRaceStatus(race.raceStatus)) {
+    return false
+  }
+
+  return now.startOf('day').isAfter(dayjs(race.raceDate).startOf('day'))
 }
 
 function filterCalendarMonthPayload(payload: RaceCalendarMonthPayload, search: string) {
@@ -142,6 +144,8 @@ function filterCalendarYearPayload(payload: RaceCalendarYearPayload, search: str
 }
 
 export function RacesCalendarView({ selectedMode, filters, refreshKey = 0 }: RacesCalendarViewProps) {
+  const { t } = useTranslation()
+  const { language } = useLanguage()
   const { token } = useAuth()
   const raceDetailsCacheRef = useRef<Map<string, RaceDetailResponse>>(new Map())
   const monthlyCalendarCacheRef = useRef<Map<string, RaceCalendarMonthPayload>>(new Map())
@@ -296,7 +300,7 @@ export function RacesCalendarView({ selectedMode, filters, refreshKey = 0 }: Rac
       setRaceDetails(details)
     } catch (loadError) {
       setRaceDetails(null)
-      setDetailsError(loadError instanceof Error ? loadError.message : 'Could not load this race right now.')
+      setDetailsError(loadError instanceof Error ? loadError.message : t('races.calendar.loadRaceErrorFallback'))
     } finally {
       setIsDetailsLoading(false)
     }
@@ -323,8 +327,8 @@ export function RacesCalendarView({ selectedMode, filters, refreshKey = 0 }: Rac
     <>
       {selectedMode === 'monthly' ? (
         <RacesCalendarMonthlyView
-          year={calendarData?.year ?? visibleMonth.year}
-          month={calendarData?.month ?? visibleMonth.month}
+          year={visibleMonth.year}
+          month={visibleMonth.month}
           days={calendarData?.days ?? []}
           isLoading={isMonthlyLoading}
           errorMessage={monthlyErrorMessage}
@@ -335,7 +339,7 @@ export function RacesCalendarView({ selectedMode, filters, refreshKey = 0 }: Rac
         />
       ) : (
         <RacesCalendarYearlyView
-          year={yearCalendarData?.year ?? visibleYear}
+          year={visibleYear}
           months={yearCalendarData?.months ?? []}
           isLoading={isYearlyLoading}
           errorMessage={yearlyErrorMessage}
@@ -353,15 +357,18 @@ export function RacesCalendarView({ selectedMode, filters, refreshKey = 0 }: Rac
         className={styles.dayDrawer}
         title={selectedDay ? (
           <div className={styles.dayDrawerTitle}>
-            <span className={styles.dayDrawerEyebrow}>Race day</span>
-            <span className={styles.dayDrawerDate}>{formatDayDrawerDate(selectedDay.date)}</span>
+            <span className={styles.dayDrawerEyebrow}>{t('races.calendar.raceDay')}</span>
+            <span className={styles.dayDrawerDate}>{formatDayDrawerDate(selectedDay.date, language === 'pt' ? 'pt-PT' : 'en-GB')}</span>
           </div>
-        ) : 'Race day'}
+        ) : t('races.calendar.raceDay')}
       >
         {selectedDay ? (
           <>
             <div className={styles.dayRaceList}>
-              {selectedDay.races.map((race) => (
+              {selectedDay.races.map((race) => {
+                const needsUpdate = shouldWarnAboutPastRaceStatus(race, dayjs())
+
+                return (
                 <button
                   key={race.id}
                   type="button"
@@ -372,25 +379,30 @@ export function RacesCalendarView({ selectedMode, filters, refreshKey = 0 }: Rac
                     <Tooltip title={race.name}>
                       <span className={styles.dayRaceName}>{race.name}</span>
                     </Tooltip>
-                    <span className={`${styles.dayRaceStatus} ${getStatusClassName(race.raceStatus)}`.trim()}>
-                      {formatStatusLabel(race.raceStatus)}
+                    <span
+                      className={`${styles.dayRaceStatus} ${getStatusClassName(race.raceStatus)}`.trim()}
+                      title={needsUpdate ? t('races.calendar.needsUpdate') : undefined}
+                    >
+                      {needsUpdate ? <FontAwesomeIcon icon={faTriangleExclamation} className={styles.statusNeedsUpdateIcon} aria-hidden="true" /> : null}
+                      {formatStatusLabel(race.raceStatus, t)}
                     </span>
                   </div>
 
                   <div className={styles.dayRaceMeta}>
                     <div className={styles.dayRaceMetaItem}>
-                      <span className={styles.dayRaceMetaLabel}>Time</span>
+                      <span className={styles.dayRaceMetaLabel}>{t('races.calendar.timeLabel')}</span>
                       <span className={styles.dayRaceMetaValue}>{formatDisplayTime(race.raceTime)}</span>
                     </div>
                     <div className={styles.dayRaceMetaItem}>
-                      <span className={styles.dayRaceMetaLabel}>Race type</span>
+                      <span className={styles.dayRaceMetaLabel}>{t('races.calendar.raceTypeLabel')}</span>
                       <Tooltip title={race.raceTypeName ?? '-'}>
                         <span className={styles.dayRaceMetaValue}>{race.raceTypeName ?? '-'}</span>
                       </Tooltip>
                     </div>
                   </div>
                 </button>
-              ))}
+                )
+              })}
             </div>
           </>
         ) : null}

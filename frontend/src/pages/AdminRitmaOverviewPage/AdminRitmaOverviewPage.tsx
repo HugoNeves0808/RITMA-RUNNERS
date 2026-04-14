@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { Alert, Button, Card, Empty, Space, Spin, Table, Typography, message } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ROUTES } from '../../constants/routes'
 import { useAuth } from '../../features/auth'
 import {
@@ -14,36 +15,39 @@ import {
   type AdminOverviewPayload,
   type PendingApproval,
 } from '../../features/admin'
+import { useLanguage } from '../../contexts/LanguageContext'
 import styles from './AdminRitmaOverviewPage.module.css'
 
 const { Title } = Typography
 
-function formatRequestDate(value: string) {
+function formatRequestDate(value: string, locale: string) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) {
     return '-'
   }
 
-  return new Intl.DateTimeFormat('en-GB', {
+  return new Intl.DateTimeFormat(locale, {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
   }).format(date)
 }
 
-function formatRequestTime(value: string) {
+function formatRequestTime(value: string, locale: string) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) {
     return '-'
   }
 
-  return new Intl.DateTimeFormat('en-GB', {
+  return new Intl.DateTimeFormat(locale, {
     hour: '2-digit',
     minute: '2-digit',
   }).format(date)
 }
 
 export function AdminRitmaOverviewPage() {
+  const { t } = useTranslation()
+  const { language } = useLanguage()
   const { token } = useAuth()
   const navigate = useNavigate()
   const [messageApi, contextHolder] = message.useMessage()
@@ -78,7 +82,7 @@ export function AdminRitmaOverviewPage() {
       setOverviewError(
         overviewResult.reason instanceof Error
           ? overviewResult.reason.message
-          : 'Unable to load overview right now.',
+          : t('adminOverview.errors.loadOverviewFallback'),
       )
     }
 
@@ -89,7 +93,7 @@ export function AdminRitmaOverviewPage() {
       setPendingError(
         pendingResult.reason instanceof Error
           ? pendingResult.reason.message
-          : 'Unable to load pending approvals right now.',
+          : t('adminOverview.errors.loadPendingFallback'),
       )
     }
 
@@ -103,39 +107,39 @@ export function AdminRitmaOverviewPage() {
 
   const previewApprovals = useMemo(() => pendingApprovals.slice(0, 5), [pendingApprovals])
 
-  const metricCards = [
+  const metricCards = useMemo(() => ([
     {
       key: 'pending',
-      label: 'Pending approvals',
+      label: t('adminOverview.metrics.pending.label'),
       value: pendingApprovals.length,
-      hint: 'Accounts waiting for review',
+      hint: t('adminOverview.metrics.pending.hint'),
       highlighted: true,
     },
     {
       key: 'users',
-      label: 'Total users',
+      label: t('adminOverview.metrics.users.label'),
       value: overview?.totalUsers ?? 0,
-      hint: 'Active accounts',
+      hint: t('adminOverview.metrics.users.hint'),
     },
     {
       key: 'admins',
-      label: 'Total admins',
+      label: t('adminOverview.metrics.admins.label'),
       value: overview?.totalAdmins ?? 0,
-      hint: 'Admin accounts',
+      hint: t('adminOverview.metrics.admins.hint'),
     },
     {
       key: 'active-today',
-      label: 'Active users today',
+      label: t('adminOverview.metrics.activeToday.label'),
       value: overview?.activeUsersToday ?? 0,
-      hint: 'Unique website users today',
+      hint: t('adminOverview.metrics.activeToday.hint'),
     },
     {
       key: 'registrations',
-      label: 'New registrations',
+      label: t('adminOverview.metrics.registrations.label'),
       value: overview?.newRegistrationsLast7Days ?? 0,
-      hint: 'Created in the last 7 days',
+      hint: t('adminOverview.metrics.registrations.hint'),
     },
-  ]
+  ]), [overview, pendingApprovals.length, t])
 
   const handleApprove = async (userId: string) => {
     if (!token) {
@@ -149,19 +153,19 @@ export function AdminRitmaOverviewPage() {
       messageApi.open({
         key: notificationKey,
         type: 'loading',
-        content: 'Approving account...',
+        content: t('adminOverview.approveLoading'),
         duration: 0,
       })
       await approvePendingApproval(userId, token)
       await loadDashboard(true)
       messageApi.success({
         key: notificationKey,
-        content: 'Account approved.',
+        content: t('adminOverview.approveSuccess'),
         duration: 2,
       })
     } catch (actionError) {
       messageApi.destroy(notificationKey)
-      setPendingError(actionError instanceof Error ? actionError.message : 'Unable to approve account.')
+      setPendingError(actionError instanceof Error ? actionError.message : t('adminOverview.errors.approveFallback'))
     } finally {
       setProcessingAction(null)
     }
@@ -178,32 +182,34 @@ export function AdminRitmaOverviewPage() {
       await rejectPendingApproval(userId, token)
       await loadDashboard(true)
     } catch (actionError) {
-      setPendingError(actionError instanceof Error ? actionError.message : 'Unable to reject account.')
+      setPendingError(actionError instanceof Error ? actionError.message : t('adminOverview.errors.rejectFallback'))
     } finally {
       setProcessingAction(null)
     }
   }
 
+  const dateTimeLocale = language === 'pt' ? 'pt-PT' : 'en-GB'
+
   const pendingColumns: ColumnsType<PendingApproval> = [
     {
-      title: 'Email',
+      title: t('adminOverview.table.email'),
       dataIndex: 'email',
       key: 'email',
     },
     {
-      title: 'Request date',
+      title: t('adminOverview.table.requestDate'),
       dataIndex: 'requestedAt',
       key: 'requestDate',
-      render: (value: string) => formatRequestDate(value),
+      render: (value: string) => formatRequestDate(value, dateTimeLocale),
     },
     {
-      title: 'Request time',
+      title: t('adminOverview.table.requestTime'),
       dataIndex: 'requestedAt',
       key: 'requestTime',
-      render: (value: string) => formatRequestTime(value),
+      render: (value: string) => formatRequestTime(value, dateTimeLocale),
     },
     {
-      title: 'Actions',
+      title: t('adminOverview.table.actions'),
       key: 'actions',
       render: (_, approval) => (
         <Space>
@@ -213,7 +219,7 @@ export function AdminRitmaOverviewPage() {
             disabled={processingAction?.userId === approval.id}
             onClick={() => void handleApprove(approval.id)}
           >
-            Approve
+            {t('adminOverview.approve')}
           </Button>
           <Button
             danger
@@ -221,7 +227,7 @@ export function AdminRitmaOverviewPage() {
             disabled={processingAction?.userId === approval.id && processingAction.type === 'approve'}
             onClick={() => void handleReject(approval.id)}
           >
-            Reject
+            {t('adminOverview.reject')}
           </Button>
         </Space>
       ),
@@ -233,15 +239,15 @@ export function AdminRitmaOverviewPage() {
       {contextHolder}
       <div className={styles.page}>
         <div className={styles.pageHeader}>
-          <Title level={1} className={styles.pageTitle}>Overview</Title>
+          <Title level={1} className={styles.pageTitle}>{t('adminOverview.title')}</Title>
 
           <Space wrap>
             <Button
               onClick={() => void loadDashboard(true)}
               loading={isRefreshing}
               icon={<FontAwesomeIcon icon={faRotateLeft} />}
-              aria-label="Refresh overview"
-              title="Refresh"
+              aria-label={t('adminOverview.refreshAria')}
+              title={t('adminOverview.refreshTitle')}
             />
           </Space>
         </div>
@@ -251,7 +257,7 @@ export function AdminRitmaOverviewPage() {
             <div className={styles.loadingState}>
               <Space size="middle">
                 <Spin />
-                <span className={styles.loadingText}>Loading overview</span>
+                <span className={styles.loadingText}>{t('adminOverview.loading')}</span>
               </Space>
             </div>
           </Card>
@@ -274,25 +280,25 @@ export function AdminRitmaOverviewPage() {
         ) : null}
 
         {overviewError ? (
-          <Alert type="error" showIcon message="Could not load overview metrics" description={overviewError} />
+          <Alert type="error" showIcon message={t('adminOverview.metricsErrorTitle')} description={overviewError} />
         ) : null}
 
         {!isLoading ? (
           <div className={styles.mainGrid}>
             <Card className={styles.pendingCard} variant="borderless">
               <div className={styles.sectionHeader}>
-                <Title level={4} className={styles.sectionTitle}>Pending approvals</Title>
+                <Title level={4} className={styles.sectionTitle}>{t('adminOverview.pendingTitle')}</Title>
                 <Button
                   type="primary"
                   className={styles.primaryActionButton}
                   onClick={() => navigate(ROUTES.adminPendingApprovals)}
                 >
-                  View all pending approvals
+                  {t('adminOverview.viewAllPending')}
                 </Button>
               </div>
 
               {pendingError ? (
-                <Alert type="error" showIcon message="Could not load pending approvals" description={pendingError} />
+                <Alert type="error" showIcon message={t('adminOverview.pendingErrorTitle')} description={pendingError} />
               ) : null}
 
               {!pendingError && previewApprovals.length > 0 ? (
@@ -308,7 +314,7 @@ export function AdminRitmaOverviewPage() {
                 <div className={styles.emptyState}>
                   <Empty
                     image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    description="There are no pending approvals right now."
+                    description={t('adminOverview.emptyPending')}
                   />
                 </div>
               ) : null}

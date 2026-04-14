@@ -1,6 +1,7 @@
 import styles from './RacesCalendarYearMonth.module.css'
 import type { RaceCalendarDay, RaceCalendarItem } from '../types/racesCalendar'
 import { getPrimaryRaceForDay } from '../utils/racesCalendarRacePriority'
+import { useTranslation } from 'react-i18next'
 
 type RacesCalendarYearMonthProps = {
   year: number
@@ -17,8 +18,6 @@ type CalendarCell = {
   races: RaceCalendarItem[]
 }
 
-const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
-
 const RACE_STATUS_CLASS_MAP: Record<string, string> = {
   IN_LIST: 'dayBadgeInList',
   REGISTERED: 'dayBadgeRegistered',
@@ -29,10 +28,9 @@ const RACE_STATUS_CLASS_MAP: Record<string, string> = {
   DID_NOT_START: 'dayBadgeDidNotStart',
 }
 
-function getMonthLabel(year: number, month: number) {
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'long',
-  }).format(new Date(year, month - 1, 1))
+function getMonthLabel(year: number, month: number, locale: string) {
+  const label = new Intl.DateTimeFormat(locale, { month: 'long' }).format(new Date(year, month - 1, 1))
+  return label.length === 0 ? label : `${label.charAt(0).toUpperCase()}${label.slice(1)}`
 }
 
 function toIsoDate(date: Date) {
@@ -64,17 +62,26 @@ function buildCalendarCells(year: number, month: number, days: RaceCalendarDay[]
   })
 }
 
-function buildDayTitle(dayNumber: number, races: RaceCalendarItem[]) {
+function buildDayTitle(
+  dayNumber: number,
+  races: RaceCalendarItem[],
+  t: (key: string, options?: Record<string, unknown>) => string,
+) {
   if (races.length === 0) {
     return String(dayNumber)
   }
 
   const primaryRace = getPrimaryRaceForDay(races)
-  const suffix = races.length === 1 ? 'race' : 'races'
-  return `${dayNumber} - ${races.length} ${suffix}${primaryRace ? ` - ${primaryRace.name}` : ''}`
+  const base = races.length === 1
+    ? t('races.calendar.yearMonth.titleOne', { day: dayNumber })
+    : t('races.calendar.yearMonth.titleOther', { day: dayNumber, count: races.length })
+
+  return primaryRace ? `${base} - ${primaryRace.name}` : base
 }
 
 export function RacesCalendarYearMonth({ year, month, days, onDayClick }: RacesCalendarYearMonthProps) {
+  const { t, i18n } = useTranslation()
+  const locale = i18n.resolvedLanguage === 'pt' ? 'pt-PT' : 'en-GB'
   const cells = buildCalendarCells(year, month, days)
   const today = new Date()
   const isCurrentYearMonth = today.getFullYear() === year && today.getMonth() + 1 === month
@@ -82,13 +89,17 @@ export function RacesCalendarYearMonth({ year, month, days, onDayClick }: RacesC
   return (
     <div className={[styles.monthCard, isCurrentYearMonth ? styles.monthCardCurrent : ''].filter(Boolean).join(' ')}>
       <div className={styles.monthHeader}>
-        <span className={styles.monthLabel}>{getMonthLabel(year, month)}</span>
+        <span className={styles.monthLabel}>{getMonthLabel(year, month, locale)}</span>
       </div>
 
       <div className={styles.weekdays}>
-        {WEEKDAYS.map((weekday, index) => (
-          <span key={`${weekday}-${month}-${index}`} className={styles.weekday}>{weekday}</span>
-        ))}
+        <span className={styles.weekday}>{t('races.calendar.weekdaysNarrow.mon')}</span>
+        <span className={styles.weekday}>{t('races.calendar.weekdaysNarrow.tue')}</span>
+        <span className={styles.weekday}>{t('races.calendar.weekdaysNarrow.wed')}</span>
+        <span className={styles.weekday}>{t('races.calendar.weekdaysNarrow.thu')}</span>
+        <span className={styles.weekday}>{t('races.calendar.weekdaysNarrow.fri')}</span>
+        <span className={styles.weekday}>{t('races.calendar.weekdaysNarrow.sat')}</span>
+        <span className={styles.weekday}>{t('races.calendar.weekdaysNarrow.sun')}</span>
       </div>
 
       <div className={styles.grid}>
@@ -107,7 +118,7 @@ export function RacesCalendarYearMonth({ year, month, days, onDayClick }: RacesC
                 !cell.isCurrentMonth ? styles.dayCellMuted : '',
                 isInteractive ? styles.dayCellInteractive : '',
               ].filter(Boolean).join(' ')}
-              title={buildDayTitle(cell.dayNumber, cell.races)}
+              title={buildDayTitle(cell.dayNumber, cell.races, t)}
               onClick={isInteractive ? () => onDayClick(cell.races) : undefined}
               onKeyDown={isInteractive ? (event) => {
                 if (event.key === 'Enter' || event.key === ' ') {

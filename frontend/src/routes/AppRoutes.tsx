@@ -34,6 +34,11 @@ const HomePage = lazy(async () => {
   return { default: module.HomePage }
 })
 
+const RootRedirectPage = lazy(async () => {
+  const module = await import('../pages/RootRedirectPage/RootRedirectPage')
+  return { default: module.RootRedirectPage }
+})
+
 const LoginPage = lazy(async () => {
   const module = await import('../pages/LoginPage/LoginPage')
   return { default: module.LoginPage }
@@ -90,7 +95,7 @@ export function AppRoutes() {
         <Route path={ROUTES.login} element={<LoginPage />} />
         <Route path={ROUTES.futureGoals} element={<FutureGoalsPage />} />
         <Route element={<ProtectedRoute />}>
-          <Route path={ROUTES.home} element={<HomePage />} />
+          <Route path={ROUTES.home} element={<RootRedirectPage />} />
           <Route path={ROUTES.races} element={<HomePage />} />
           <Route path={ROUTES.bestEfforts} element={<BestEffortsPage />} />
           <Route path={ROUTES.podiums} element={<PodiumsPage />} />

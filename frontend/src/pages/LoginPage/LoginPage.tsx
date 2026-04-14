@@ -2,9 +2,11 @@ import { useState } from 'react'
 import { faBuffer } from '@fortawesome/free-brands-svg-icons'
 import { faArrowTrendUp, faRankingStar, faRightToBracket, faWrench } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { Alert, Button, Card, Checkbox, Form, Input, Space, Typography } from 'antd'
+import { Alert, Button, Card, Checkbox, Form, Input, Select, Typography } from 'antd'
 import { Link as RouterLink, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ROUTES } from '../../constants/routes'
+import { useLanguage } from '../../contexts/LanguageContext'
 import { RequestAccountModal, useAuth } from '../../features/auth'
 import { isApiError } from '../../services/apiClient'
 import styles from './LoginPage.module.css'
@@ -17,7 +19,17 @@ type LoginFormValues = {
   rememberPassword?: boolean
 }
 
+function getLanguageFlag(language: string) {
+  if (language === 'pt') {
+    return String.fromCodePoint(0x1f1f5, 0x1f1f9)
+  }
+
+  return String.fromCodePoint(0x1f1ec, 0x1f1e7)
+}
+
 export function LoginPage() {
+  const { t } = useTranslation()
+  const { language, setLanguage } = useLanguage()
   const { login, isAuthenticated, isAdmin } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -51,31 +63,43 @@ export function LoginPage() {
         { replace: true },
       )
     } catch (loginError) {
-      setError(getLoginErrorMessage(loginError))
+      setError(getLoginErrorMessage(loginError, t))
     } finally {
       setIsSubmitting(false)
     }
   }
 
+  const languageOptions = [
+    { value: 'en', label: <span>{getLanguageFlag('en')} {t('settings.preferences.languageEnglish')}</span> },
+    { value: 'pt', label: <span>{getLanguageFlag('pt')} {t('settings.preferences.languagePortuguese')}</span> },
+  ] as const
+
   return (
     <div className={styles.page}>
       <img src="/images/ritma-logo.png" alt="RITMA RUNNERS" className={styles.cornerLogo} />
+      <div className={styles.fixedLanguage}>
+        <Select
+          aria-label={t('common.language')}
+          className={styles.languageSelect}
+          value={language}
+          onChange={setLanguage}
+          options={[...languageOptions]}
+        />
+      </div>
 
       <div className={styles.split}>
         <Card className={`${styles.card} ${styles.formCard}`} variant="borderless">
-          <Space direction="vertical" size={10} className={styles.header}>
-            <div>
-              <Title level={2} className={styles.title}>
-                Welcome back to RITMA
-              </Title>
-            </div>
-          </Space>
+          <div className={styles.header}>
+            <Title level={2} className={styles.title}>
+              {t('login.welcomeTitle')}
+            </Title>
+          </div>
 
           {error ? (
             <Alert
               type="error"
               showIcon
-              message="Login failed"
+              message={t('login.alertTitle')}
               description={error}
               style={{ marginBottom: 16 }}
             />
@@ -83,24 +107,31 @@ export function LoginPage() {
 
           <Form<LoginFormValues> layout="vertical" onFinish={handleFinish}>
             <Form.Item
-              label="Email"
+              label={t('login.emailLabel')}
               name="email"
               validateTrigger="onBlur"
-              rules={[{ required: true, type: 'email' }]}
+              rules={[
+                { required: true, message: t('login.emailRequired') },
+                { type: 'email', message: t('login.emailInvalid') },
+              ]}
             >
-              <Input placeholder="Enter your email" size="large" />
+              <Input placeholder={t('login.emailPlaceholder')} size="large" />
             </Form.Item>
 
-            <Form.Item label="Password" name="password" rules={[{ required: true }]}>
-              <Input.Password placeholder="Enter your password" size="large" />
+            <Form.Item
+              label={t('login.passwordLabel')}
+              name="password"
+              rules={[{ required: true, message: t('login.passwordRequired') }]}
+            >
+              <Input.Password placeholder={t('login.passwordPlaceholder')} size="large" />
             </Form.Item>
 
             <div className={styles.metaRow}>
               <Form.Item name="rememberPassword" valuePropName="checked" noStyle>
-                <Checkbox>Remember me</Checkbox>
+                <Checkbox>{t('login.rememberMe')}</Checkbox>
               </Form.Item>
               <Link className={styles.secondaryLink} onClick={() => setIsRequestAccountOpen(true)}>
-                Request account
+                {t('login.requestAccount')}
               </Link>
             </div>
 
@@ -113,7 +144,7 @@ export function LoginPage() {
               loading={isSubmitting}
               block
             >
-              Sign in
+              {t('login.signIn')}
             </Button>
           </Form>
         </Card>
@@ -124,28 +155,28 @@ export function LoginPage() {
               <div className={styles.sidePoint}>
                 <FontAwesomeIcon icon={faBuffer} className={styles.sidePointIcon} />
                 <Paragraph className={styles.sideCopy}>
-                  Manage your races in one place
+                  {t('login.sideManageRaces')}
                 </Paragraph>
               </div>
               <div className={styles.sidePoint}>
                 <FontAwesomeIcon icon={faArrowTrendUp} className={styles.sidePointIcon} />
                 <Paragraph className={styles.sideCopy}>
-                  Track results, progress, and history
+                  {t('login.sideTrackProgress')}
                 </Paragraph>
               </div>
               <div className={styles.sidePoint}>
                 <FontAwesomeIcon icon={faRankingStar} className={styles.sidePointIcon} />
                 <Paragraph className={styles.sideCopy}>
-                  Identify your best performances
+                  {t('login.sideBestPerformances')}
                 </Paragraph>
               </div>
             </div>
             <div className={styles.sideDevelopment}>
               <FontAwesomeIcon icon={faWrench} className={styles.sideDevelopmentIcon} />
               <Paragraph className={styles.sideDevelopmentCopy}>
-                RITMA is still in development.{' '}
+                {t('login.sideDevelopmentPrefix')}{' '}
                 <RouterLink to={ROUTES.futureGoals} className={styles.sideDevelopmentLink}>
-                  See what is planned next.
+                  {t('login.sideDevelopmentLink')}
                 </RouterLink>
               </Paragraph>
             </div>
@@ -161,18 +192,18 @@ export function LoginPage() {
   )
 }
 
-function getLoginErrorMessage(error: unknown) {
+function getLoginErrorMessage(error: unknown, t: (key: string) => string) {
   if (!(error instanceof Error)) {
-    return 'Unable to sign in right now. Please try again.'
+    return t('login.errors.generic')
   }
 
   if (isApiError(error) && error.status === 401) {
-    return 'Invalid email or password.'
+    return t('login.errors.invalidCredentials')
   }
 
   if (error.message === 'Invalid email or password') {
-    return error.message
+    return t('login.errors.invalidCredentials')
   }
 
-  return 'Unable to sign in right now. Please try again.'
+  return t('login.errors.generic')
 }

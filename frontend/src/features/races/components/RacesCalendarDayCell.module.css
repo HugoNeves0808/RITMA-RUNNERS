@@ -147,6 +147,15 @@
   white-space: nowrap;
 }
 
+.updateIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #b42318;
+  font-size: 10px;
+  line-height: 1;
+}
+
 .statusDot {
   flex: 0 0 auto;
   width: 7px;

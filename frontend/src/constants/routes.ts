@@ -1,6 +1,6 @@
 export const ROUTES = {
   home: '/',
-  races: '/',
+  races: '/races',
   bestEfforts: '/best-efforts',
   podiums: '/podiums',
   personalOptionRaceTypes: '/personal-options/race-types',

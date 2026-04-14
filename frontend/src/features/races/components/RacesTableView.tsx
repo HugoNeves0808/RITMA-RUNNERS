@@ -3,6 +3,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import dayjs from 'dayjs'
+import { useTranslation } from 'react-i18next'
 import {
   Alert,
   Button,
@@ -27,6 +28,7 @@ import {
   EMPTY_RACE_FILTERS,
   getRaceStatusBackgroundColor,
   getRaceStatusColor,
+  getRaceStatusLabel as getRaceStatusLabelFromOptions,
   type RaceFilters,
 } from '../types/raceFilters'
 import type {
@@ -54,7 +56,7 @@ function getDayLabel(value: string | null) {
   return String(date.getDate()).padStart(2, '0')
 }
 
-function getCompactMonthLabel(value: string | null) {
+function getCompactMonthLabel(value: string | null, locale: string) {
   if (!value) {
     return 'date'
   }
@@ -64,11 +66,12 @@ function getCompactMonthLabel(value: string | null) {
     return '---'
   }
 
-  const month = new Intl.DateTimeFormat('en-GB', { month: 'short' }).format(date)
+  const month = new Intl.DateTimeFormat(locale, { month: 'short' }).format(date)
+    .replace('.', '')
   return month.charAt(0).toUpperCase() + month.slice(1).toLowerCase()
 }
 
-function getCompactInlineDateLabel(value: string | null) {
+function getCompactInlineDateLabel(value: string | null, locale: string) {
   if (!value) {
     return 'No date'
   }
@@ -79,14 +82,13 @@ function getCompactInlineDateLabel(value: string | null) {
   }
 
   const day = String(date.getDate()).padStart(2, '0')
-  const month = new Intl.DateTimeFormat('pt-PT', { month: 'short' }).format(date)
-    .replace('.', '')
+  const month = new Intl.DateTimeFormat(locale, { month: 'short' }).format(date).replace('.', '')
   const normalizedMonth = month.charAt(0).toUpperCase() + month.slice(1).toLowerCase()
 
   return `${day}/${normalizedMonth}`
 }
 
-function getShortDateWithYear(value: string | null) {
+function getShortDateWithYear(value: string | null, locale: string) {
   if (!value) {
     return ''
   }
@@ -96,47 +98,33 @@ function getShortDateWithYear(value: string | null) {
     return value
   }
 
-  return new Intl.DateTimeFormat('en-GB', {
+  return new Intl.DateTimeFormat(locale, {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
   }).format(date)
 }
 
-function getLongMonthLabel(value: string) {
+function getLongMonthLabel(value: string, locale: string) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) {
     return 'NO MONTH'
   }
 
-  return new Intl.DateTimeFormat('en-GB', {
+  return new Intl.DateTimeFormat(locale, {
     month: 'long',
   }).format(date).toUpperCase()
 }
 
-function getRaceStatusLabel(status: string | null | undefined) {
+function getRaceStatusLabelText(
+  status: string | null | undefined,
+  t: (key: string, options?: Record<string, unknown>) => string,
+) {
   if (!status) {
-    return 'Unknown'
+    return t('common.unknown')
   }
 
-  switch (status) {
-    case 'REGISTERED':
-      return 'Registered'
-    case 'COMPLETED':
-      return 'Completed'
-    case 'IN_LIST':
-      return 'Future races'
-    case 'NOT_REGISTERED':
-      return 'Waiting for registration'
-    case 'CANCELLED':
-      return 'Cancelled'
-    case 'DID_NOT_START':
-      return 'Did not start'
-    case 'DID_NOT_FINISH':
-      return 'Did not finish'
-    default:
-      return status.replaceAll('_', ' ').toLowerCase()
-  }
+  return getRaceStatusLabelFromOptions(status, t)
 }
 
 function getRaceStatusClassName(status: string | null | undefined) {
@@ -343,7 +331,10 @@ function buildUpdatePayloadFromDetails(details: RaceDetailResponse, nextStatus: 
   }
 }
 
-function renderRaceMetrics(race: RaceTableItem) {
+function renderRaceMetrics(
+  race: RaceTableItem,
+  t: (key: string, options?: Record<string, unknown>) => string,
+) {
   const showPerformanceMetrics = shouldShowPerformanceMetrics(race.raceStatus)
   const useInlineCompactMeta = shouldUseInlineCompactMeta(race.raceStatus)
   const showRegisteredMeta = shouldShowRegisteredMeta(race.raceStatus)
@@ -351,10 +342,10 @@ function renderRaceMetrics(race: RaceTableItem) {
   if (useInlineCompactMeta) {
     return (
       <div className={styles.inlineMetaRow}>
-        <span className={styles.inlineMetaLabel}>Location</span>
+        <span className={styles.inlineMetaLabel}>{t('races.table.card.location')}</span>
         <span className={styles.inlineMetaValue}>{race.location ?? '-'}</span>
         <span className={styles.inlineMetaDivider}>•</span>
-        <span className={styles.inlineMetaLabel}>Race type</span>
+        <span className={styles.inlineMetaLabel}>{t('races.table.card.raceType')}</span>
         <span className={styles.inlineMetaValue}>{race.raceTypeName ?? '-'}</span>
       </div>
     )
@@ -363,7 +354,7 @@ function renderRaceMetrics(race: RaceTableItem) {
   return (
     <div className={styles.metricsGrid}>
       <div className={styles.metricItem}>
-        <span className={styles.metricLabel}>Location</span>
+        <span className={styles.metricLabel}>{t('races.table.card.location')}</span>
         {renderMetricValueWithTooltip(
           race.location ?? <span className={styles.emptyValue}>-</span>,
           race.location ?? '-',
@@ -371,7 +362,7 @@ function renderRaceMetrics(race: RaceTableItem) {
       </div>
 
       <div className={styles.metricItem}>
-        <span className={styles.metricLabel}>Race type</span>
+        <span className={styles.metricLabel}>{t('races.table.card.raceType')}</span>
         {renderMetricValueWithTooltip(
           race.raceTypeName ?? <span className={styles.emptyValue}>-</span>,
           race.raceTypeName ?? '-',
@@ -381,7 +372,7 @@ function renderRaceMetrics(race: RaceTableItem) {
       {showRegisteredMeta ? (
         <>
           <div className={styles.metricItem}>
-            <span className={styles.metricLabel}>Circuit</span>
+            <span className={styles.metricLabel}>{t('races.table.card.circuit')}</span>
             {renderMetricValueWithTooltip(
               race.circuitName ?? <span className={styles.emptyValue}>-</span>,
               race.circuitName ?? '-',
@@ -389,7 +380,7 @@ function renderRaceMetrics(race: RaceTableItem) {
           </div>
 
           <div className={styles.metricItem}>
-            <span className={styles.metricLabel}>Time</span>
+            <span className={styles.metricLabel}>{t('races.table.card.time')}</span>
             {renderMetricValueWithTooltip(
               formatDisplayTime(race.raceTime),
               formatDisplayTime(race.raceTime),
@@ -401,7 +392,7 @@ function renderRaceMetrics(race: RaceTableItem) {
       {showPerformanceMetrics ? (
         <>
           <div className={styles.metricItem}>
-            <span className={styles.metricLabel}>Chip time</span>
+            <span className={styles.metricLabel}>{t('races.table.card.chipTime')}</span>
             {renderMetricValueWithTooltip(
               formatDuration(race.chipTimeSeconds),
               formatDurationText(race.chipTimeSeconds),
@@ -409,7 +400,7 @@ function renderRaceMetrics(race: RaceTableItem) {
           </div>
 
           <div className={styles.metricItem}>
-            <span className={styles.metricLabel}>Pace per km</span>
+            <span className={styles.metricLabel}>{t('races.table.card.pacePerKm')}</span>
             {renderMetricValueWithTooltip(
               formatPace(race.pacePerKmSeconds),
               formatPaceText(race.pacePerKmSeconds),
@@ -421,7 +412,10 @@ function renderRaceMetrics(race: RaceTableItem) {
   )
 }
 
-function renderCompactInlineMeta(race: RaceTableItem) {
+function renderCompactInlineMeta(
+  race: RaceTableItem,
+  t: (key: string, options?: Record<string, unknown>) => string,
+) {
   const hideLocation = shouldHideLocationInCompactMeta(race.raceStatus)
 
   if (hideLocation) {
@@ -430,10 +424,10 @@ function renderCompactInlineMeta(race: RaceTableItem) {
 
   return (
     <div className={styles.compactInlineMeta}>
-      <span className={styles.compactInlineMetaLabel}>Location</span>
+      <span className={styles.compactInlineMetaLabel}>{t('races.table.card.location')}</span>
       <span className={styles.compactInlineMetaValue}>{race.location ?? '-'}</span>
       <span className={styles.compactInlineMetaDivider}>•</span>
-      <span className={styles.compactInlineMetaLabel}>Race type</span>
+      <span className={styles.compactInlineMetaLabel}>{t('races.table.card.raceType')}</span>
       <span className={styles.compactInlineMetaValue}>{race.raceTypeName ?? '-'}</span>
     </div>
   )
@@ -443,13 +437,14 @@ function renderPastRaceStatusWarning(
   race: RaceTableItem,
   now: dayjs.Dayjs,
   onClick: (race: RaceTableItem) => void,
+  t: (key: string, options?: Record<string, unknown>) => string,
 ) {
   if (!shouldWarnAboutPastRaceStatus(race, now)) {
     return null
   }
 
   return (
-    <Tooltip title="This race date has passed. Click to review and update the final race status.">
+    <Tooltip title={t('races.table.pastDateHint')}>
       <button
         type="button"
         className={styles.statusWarningBadge}
@@ -459,13 +454,13 @@ function renderPastRaceStatusWarning(
         }}
       >
         <FontAwesomeIcon icon={faTriangleExclamation} className={styles.statusWarningIcon} />
-        <span>Click to Update</span>
+        <span>{t('races.table.clickToUpdate')}</span>
       </button>
     </Tooltip>
   )
 }
 
-function groupRacesByMonth(races: RaceTableItem[]) {
+function groupRacesByMonth(races: RaceTableItem[], locale: string) {
   const monthMap = new Map<string, RaceTableItem[]>()
 
   races.forEach((race) => {
@@ -485,7 +480,7 @@ function groupRacesByMonth(races: RaceTableItem[]) {
 
   return Array.from(monthMap.entries()).map(([key, monthRaces]) => ({
     key,
-    label: getLongMonthLabel(`${key}-01`),
+    label: getLongMonthLabel(`${key}-01`, locale),
     races: monthRaces,
   }))
 }
@@ -637,7 +632,9 @@ export function RacesTableView({
   onPendingUpdatesCountChange,
   onCreateOptionsChange,
 }: RacesTableViewProps) {
+  const { t, i18n } = useTranslation()
   const { token } = useAuth()
+  const locale = i18n.resolvedLanguage === 'pt' ? 'pt-PT' : 'en-GB'
   const currentYear = dayjs().year()
   const [now, setNow] = useState(() => dayjs())
   const [years, setYears] = useState<RaceTableYearGroup[]>([])
@@ -714,14 +711,14 @@ export function RacesTableView({
     [filteredDatedInListRaces, filteredUndatedRaces],
   )
   const bucketListRaceTypeOptions = useMemo(() => (
-    Array.from(new Set(filteredInListRaces.map((race) => race.raceTypeName?.trim() || 'No race type')))
+    Array.from(new Set(filteredInListRaces.map((race) => race.raceTypeName?.trim() || t('races.calendar.noRaceType'))))
       .sort((left, right) => left.localeCompare(right))
-  ), [filteredInListRaces])
+  ), [filteredInListRaces, t])
   const visibleBucketListRaces = useMemo(() => (
     selectedBucketListRaceType
-      ? filteredInListRaces.filter((race) => (race.raceTypeName?.trim() || 'No race type') === selectedBucketListRaceType)
+      ? filteredInListRaces.filter((race) => (race.raceTypeName?.trim() || t('races.calendar.noRaceType')) === selectedBucketListRaceType)
       : filteredInListRaces
-  ), [filteredInListRaces, selectedBucketListRaceType])
+  ), [filteredInListRaces, selectedBucketListRaceType, t])
   const allFilteredVisibleRaces = useMemo(
     () => filteredVisibleYears.flatMap((yearGroup) => yearGroup.races),
     [filteredVisibleYears],
@@ -962,11 +959,11 @@ export function RacesTableView({
         loadBucketListData(),
       ])
     } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : 'Could not delete this race right now.')
+      setError(deleteError instanceof Error ? deleteError.message : t('races.table.deleteErrorFallback'))
     } finally {
       setIsDeletingRace(false)
     }
-  }, [loadBucketListData, loadTableData, token])
+  }, [loadBucketListData, loadTableData, t, token])
 
   const handleMoveFutureRace = useCallback(async (
     race: RaceTableItem,
@@ -999,11 +996,11 @@ export function RacesTableView({
         loadBucketListData({ silent: true }),
       ])
     } catch (moveError) {
-      setBucketListModalError(moveError instanceof Error ? moveError.message : `Could not move this race to ${nextStatusLabel}.`)
+      setBucketListModalError(moveError instanceof Error ? moveError.message : t('races.table.moveErrorFallback', { status: nextStatusLabel }))
     } finally {
       setMovingFutureRaceId(null)
     }
-  }, [handleOpenEdit, loadBucketListData, loadTableData, token])
+  }, [handleOpenEdit, loadBucketListData, loadTableData, t, token])
 
   const handleConfirmDelete = useCallback(async () => {
     if (!racePendingDelete) {
@@ -1017,12 +1014,12 @@ export function RacesTableView({
     items: [
       {
         key: 'edit',
-        label: 'Edit race',
+        label: t('races.table.editRace'),
         icon: <FontAwesomeIcon icon={faPenToSquare} />,
       },
       {
         key: 'delete',
-        label: 'Delete race',
+        label: t('races.table.deleteRace'),
         icon: <FontAwesomeIcon icon={faTrashCan} />,
         danger: true,
       },
@@ -1040,7 +1037,7 @@ export function RacesTableView({
         handleRequestDelete(race)
       }
     },
-  }), [handleOpenEdit, handleRequestDelete])
+  }), [handleOpenEdit, handleRequestDelete, t])
 
   const tableContent = useMemo(() => (
     <>
@@ -1048,7 +1045,7 @@ export function RacesTableView({
         <div className={styles.loadingState}>
           <Space size="middle">
             <Spin />
-            <span className={styles.loadingText}>Loading races</span>
+            <span className={styles.loadingText}>{t('races.table.loadingRaces')}</span>
           </Space>
         </div>
       ) : null}
@@ -1056,17 +1053,17 @@ export function RacesTableView({
       {isPreparingEdit ? (
         <Space>
           <Spin size="small" />
-          <span>Loading race editor</span>
+          <span>{t('races.table.loadingEditor')}</span>
         </Space>
       ) : null}
 
       {error ? (
-        <Alert type="error" showIcon message="Could not load the race table" description={error} />
+        <Alert type="error" showIcon message={t('races.table.loadErrorTitle')} description={error} />
       ) : null}
 
       {!isLoading && years.length === 0 && inListYears.length === 0 && undatedRaces.length === 0 ? (
         <div className={styles.emptyWrap}>
-          <Empty description="No races available." />
+          <Empty description={t('races.table.emptyNoRaces')} />
         </div>
       ) : null}
 
@@ -1074,15 +1071,15 @@ export function RacesTableView({
         <div className={styles.emptyWrap}>
           <Empty
             description={tableYearSelection.selectedYears.length === 1 && tableYearSelection.selectedYears[0] === currentYear
-              ? `No races available for ${currentYear}.`
-              : 'No races available for the selected years.'}
+              ? t('races.table.emptyNoRacesForYear', { year: currentYear })
+              : t('races.table.emptyNoRacesForSelectedYears')}
           />
         </div>
       ) : null}
 
       {!isLoading && !error && !hasDisplayedRaces && hasRacesForSelectedYears ? (
         <div className={styles.emptyWrap}>
-          <Empty description="No races match the current filters." />
+          <Empty description={t('races.table.emptyNoMatches')} />
         </div>
       ) : null}
 
@@ -1101,11 +1098,11 @@ export function RacesTableView({
                       onClick={() => void handleOpenDetails(race)}
                     >
                       {isCompactInlineCard ? (
-                        <div className={styles.compactDateLabel}>{getCompactInlineDateLabel(race.raceDate)}</div>
+                        <div className={styles.compactDateLabel}>{getCompactInlineDateLabel(race.raceDate, locale)}</div>
                       ) : (
                         <div className={styles.dateBadge}>
                           <span className={styles.dateBadgeDay}>{getDayLabel(race.raceDate)}</span>
-                          <span className={styles.dateBadgeMonth}>{getCompactMonthLabel(race.raceDate)}</span>
+                          <span className={styles.dateBadgeMonth}>{getCompactMonthLabel(race.raceDate, locale)}</span>
                         </div>
                       )}
 
@@ -1116,16 +1113,16 @@ export function RacesTableView({
                               <OverflowTooltip title={race.name} className={styles.raceCardTitle}>
                                 {race.name}
                               </OverflowTooltip>
-                              {isCompactInlineCard ? renderCompactInlineMeta(race) : null}
+                              {isCompactInlineCard ? renderCompactInlineMeta(race, t) : null}
                             </div>
                           </div>
 
                           <div className={styles.raceTopMeta}>
                             {renderPastRaceStatusWarning(race, now, (selectedRace) => {
                               void handleOpenEdit(selectedRace)
-                            })}
+                            }, t)}
                             <span className={`${styles.raceStatusBadge} ${getRaceStatusClassName(race.raceStatus)}`.trim()}>
-                              {getRaceStatusLabel(race.raceStatus)}
+                              {getRaceStatusLabelText(race.raceStatus, t)}
                             </span>
                             <Dropdown
                               menu={getRaceActionsMenu(race)}
@@ -1135,7 +1132,7 @@ export function RacesTableView({
                               <Button
                                 type="text"
                                 className={styles.moreAction}
-                                aria-label="Race actions"
+                                aria-label={t('races.table.raceActionsAria')}
                                 icon={<FontAwesomeIcon icon={faEllipsisVertical} />}
                                 onClick={(event) => event.stopPropagation()}
                               />
@@ -1145,7 +1142,7 @@ export function RacesTableView({
 
                         {!isCompactInlineCard ? (
                           <div className={styles.raceBottomRow}>
-                            {renderRaceMetrics(race)}
+                            {renderRaceMetrics(race, t)}
                           </div>
                         ) : null}
                       </div>
@@ -1168,7 +1165,9 @@ export function RacesTableView({
               [yearGroup.year]: !(current[yearGroup.year] ?? true),
             }))}
             aria-expanded={openYearSections[yearGroup.year] ?? true}
-            aria-label={(openYearSections[yearGroup.year] ?? true) ? `Collapse ${yearGroup.year} section` : `Expand ${yearGroup.year} section`}
+            aria-label={(openYearSections[yearGroup.year] ?? true)
+              ? t('races.table.yearSectionToggle.collapse', { year: yearGroup.year })
+              : t('races.table.yearSectionToggle.expand', { year: yearGroup.year })}
           >
             <span className={styles.yearHeaderLineLeft} aria-hidden="true" />
             <span className={styles.yearHeaderContent}>
@@ -1183,7 +1182,7 @@ export function RacesTableView({
 
           {(openYearSections[yearGroup.year] ?? true) ? (
             <div className={styles.yearCard}>
-              {groupRacesByMonth(yearGroup.races).map((monthGroup) => (
+              {groupRacesByMonth(yearGroup.races, locale).map((monthGroup) => (
                 <div key={monthGroup.key} className={styles.monthSection}>
                   <div className={styles.raceList}>
                     {monthGroup.races.map((race) => {
@@ -1199,11 +1198,11 @@ export function RacesTableView({
                           onClick={() => void handleOpenDetails(race)}
                         >
                           {isCompactInlineCard ? (
-                            <div className={styles.compactDateLabel}>{getCompactInlineDateLabel(race.raceDate)}</div>
+                            <div className={styles.compactDateLabel}>{getCompactInlineDateLabel(race.raceDate, locale)}</div>
                           ) : (
                             <div className={styles.dateBadge}>
                               <span className={styles.dateBadgeDay}>{getDayLabel(race.raceDate)}</span>
-                              <span className={styles.dateBadgeMonth}>{getCompactMonthLabel(race.raceDate)}</span>
+                              <span className={styles.dateBadgeMonth}>{getCompactMonthLabel(race.raceDate, locale)}</span>
                             </div>
                           )}
 
@@ -1214,16 +1213,16 @@ export function RacesTableView({
                                   <OverflowTooltip title={race.name} className={styles.raceCardTitle}>
                                     {race.name}
                                   </OverflowTooltip>
-                                  {isCompactInlineCard ? renderCompactInlineMeta(race) : null}
+                                  {isCompactInlineCard ? renderCompactInlineMeta(race, t) : null}
                                 </div>
                               </div>
 
                               <div className={styles.raceTopMeta}>
                                 {renderPastRaceStatusWarning(race, now, (selectedRace) => {
                                   void handleOpenEdit(selectedRace)
-                                })}
+                                }, t)}
                                 <span className={`${styles.raceStatusBadge} ${getRaceStatusClassName(race.raceStatus)}`.trim()}>
-                                  {getRaceStatusLabel(race.raceStatus)}
+                                  {getRaceStatusLabelText(race.raceStatus, t)}
                                 </span>
                                 <Dropdown
                                   menu={getRaceActionsMenu(race)}
@@ -1233,7 +1232,7 @@ export function RacesTableView({
                                   <Button
                                     type="text"
                                     className={styles.moreAction}
-                                    aria-label="Race actions"
+                                    aria-label={t('races.table.raceActionsAria')}
                                     icon={<FontAwesomeIcon icon={faEllipsisVertical} />}
                                     onClick={(event) => event.stopPropagation()}
                                   />
@@ -1243,7 +1242,7 @@ export function RacesTableView({
 
                             {!isCompactInlineCard ? (
                               <div className={styles.raceBottomRow}>
-                                {renderRaceMetrics(race)}
+                                {renderRaceMetrics(race, t)}
                               </div>
                             ) : null}
                           </div>
@@ -1279,6 +1278,7 @@ export function RacesTableView({
     visibleInListYears.length,
     visibleYears,
     years.length,
+    i18n.resolvedLanguage,
   ])
 
   return (
@@ -1374,11 +1374,11 @@ export function RacesTableView({
       />
 
       <Modal
-        title="Delete race?"
+        title={t('races.table.deleteRaceTitle')}
         open={racePendingDelete != null}
-        okText="Delete"
+        okText={t('races.table.deleteOk')}
         okButtonProps={{ danger: true }}
-        cancelText="Cancel"
+        cancelText={t('races.table.deleteCancel')}
         confirmLoading={isDeletingRace}
         onOk={() => void handleConfirmDelete()}
         onCancel={() => {
@@ -1391,8 +1391,8 @@ export function RacesTableView({
       >
         <p className={styles.modalHint}>
           {racePendingDelete
-            ? `This will permanently delete "${racePendingDelete.name}".`
-            : 'This will permanently delete this race.'}
+            ? t('races.table.deleteHintWithName', { name: racePendingDelete.name })
+            : t('races.table.deleteHintGeneric')}
         </p>
       </Modal>
 
@@ -1400,12 +1400,12 @@ export function RacesTableView({
         open={isInListModalOpen}
         title={(
           <div className={styles.bucketListModalHeader}>
-            <span className={styles.bucketListModalTitle}>Future Races</span>
+            <span className={styles.bucketListModalTitle}>{t('races.table.bucketListTitle')}</span>
             <Select
               allowClear
               showSearch
               className={styles.bucketListFilter}
-              placeholder="Filter race type"
+              placeholder={t('races.addEdit.placeholders.filterRaceType')}
               optionFilterProp="label"
               value={selectedBucketListRaceType}
               onChange={(value) => setSelectedBucketListRaceType(value)}
@@ -1429,7 +1429,7 @@ export function RacesTableView({
             <Alert
               type="error"
               showIcon
-              message="Could not update this future race"
+              message={t('races.table.bucketListMoveErrorTitle')}
               description={bucketListModalError}
               className={styles.bucketListModalAlert}
             />
@@ -1439,7 +1439,7 @@ export function RacesTableView({
             <div className={styles.loadingState}>
               <Space size="middle">
                 <Spin />
-                <span className={styles.loadingText}>Updating bucket list</span>
+                <span className={styles.loadingText}>{t('races.table.bucketListUpdating')}</span>
               </Space>
             </div>
           ) : null}
@@ -1474,7 +1474,7 @@ export function RacesTableView({
                                 </span>
                               </div>
                               <div className={styles.inListModalSubtitle}>
-                                {race.raceDate ? <span>{getShortDateWithYear(race.raceDate)}</span> : null}
+                                {race.raceDate ? <span>{getShortDateWithYear(race.raceDate, locale)}</span> : null}
                                 {race.location ? <span>{race.location}</span> : null}
                               </div>
                             </div>
@@ -1484,7 +1484,7 @@ export function RacesTableView({
                             {movingFutureRaceId === race.id ? (
                               <div className={styles.bucketListInlineLoading}>
                                 <Spin size="small" />
-                                <span>Updating...</span>
+                                <span>{t('races.table.updatingInline')}</span>
                               </div>
                             ) : null}
 
@@ -1501,10 +1501,10 @@ export function RacesTableView({
                                 }}
                                 onClick={(event) => {
                                   event.stopPropagation()
-                                  void handleMoveFutureRace(race, 'REGISTERED', 'Registered')
+                                  void handleMoveFutureRace(race, 'REGISTERED', getRaceStatusLabelFromOptions('REGISTERED', t))
                                 }}
                               >
-                                Move to Registered
+                                {t('races.table.moveToRegistered')}
                               </Button>
                               <Button
                                 size="small"
@@ -1518,10 +1518,10 @@ export function RacesTableView({
                                 }}
                                 onClick={(event) => {
                                   event.stopPropagation()
-                                  void handleMoveFutureRace(race, 'NOT_REGISTERED', 'Waiting for registration')
+                                  void handleMoveFutureRace(race, 'NOT_REGISTERED', getRaceStatusLabelFromOptions('NOT_REGISTERED', t))
                                 }}
                               >
-                                Move to Waiting
+                                {t('races.table.moveToWaiting')}
                               </Button>
                             </div>
 
@@ -1529,7 +1529,7 @@ export function RacesTableView({
                               <Button
                                 type="text"
                                 className={`${styles.bucketListActionButton} ${styles.bucketListEditAction}`.trim()}
-                                aria-label="Edit race"
+                                aria-label={t('races.table.editRace')}
                                 icon={<FontAwesomeIcon icon={faPenToSquare} />}
                                 disabled={movingFutureRaceId != null}
                                 onClick={(event) => {
@@ -1542,7 +1542,7 @@ export function RacesTableView({
                                 type="text"
                                 danger
                                 className={`${styles.bucketListActionButton} ${styles.bucketListDeleteAction}`.trim()}
-                                aria-label="Delete race"
+                                aria-label={t('races.table.deleteRace')}
                                 icon={<FontAwesomeIcon icon={faTrashCan} />}
                                 disabled={movingFutureRaceId != null}
                                 onClick={(event) => {
@@ -1560,14 +1560,14 @@ export function RacesTableView({
           ) : null}
 
           {!isBucketListLoading && visibleBucketListRaces.length === 0 ? (
-            <Empty description="Nao existem corridas com esse status." />
+            <Empty description={t('races.table.noRacesForStatus')} />
           ) : null}
         </div>
       </Modal>
 
       <Modal
         open={isPendingUpdatesModalOpen}
-        title="Races Needing Updates"
+        title={t('races.table.pendingUpdatesTitle')}
         footer={null}
         onCancel={() => setIsPendingUpdatesModalOpen(false)}
         width={980}
@@ -1583,11 +1583,11 @@ export function RacesTableView({
                 onClick={() => void handleOpenDetails(race)}
               >
                 {isCompactInlineCard ? (
-                  <div className={styles.compactDateLabel}>{getCompactInlineDateLabel(race.raceDate)}</div>
+                  <div className={styles.compactDateLabel}>{getCompactInlineDateLabel(race.raceDate, locale)}</div>
                 ) : (
                   <div className={styles.dateBadge}>
                     <span className={styles.dateBadgeDay}>{getDayLabel(race.raceDate)}</span>
-                    <span className={styles.dateBadgeMonth}>{getCompactMonthLabel(race.raceDate)}</span>
+                    <span className={styles.dateBadgeMonth}>{getCompactMonthLabel(race.raceDate, locale)}</span>
                   </div>
                 )}
 
@@ -1598,16 +1598,16 @@ export function RacesTableView({
                         <OverflowTooltip title={race.name} className={styles.raceCardTitle}>
                           {race.name}
                         </OverflowTooltip>
-                        {isCompactInlineCard ? renderCompactInlineMeta(race) : null}
+                        {isCompactInlineCard ? renderCompactInlineMeta(race, t) : null}
                       </div>
                     </div>
 
                     <div className={styles.raceTopMeta}>
                       {renderPastRaceStatusWarning(race, now, (selectedRace) => {
                         void handleOpenEdit(selectedRace)
-                      })}
+                      }, t)}
                       <span className={`${styles.raceStatusBadge} ${getRaceStatusClassName(race.raceStatus)}`.trim()}>
-                        {getRaceStatusLabel(race.raceStatus)}
+                        {getRaceStatusLabelText(race.raceStatus, t)}
                       </span>
                       <Dropdown
                         menu={getRaceActionsMenu(race)}
@@ -1617,7 +1617,7 @@ export function RacesTableView({
                         <Button
                           type="text"
                           className={styles.moreAction}
-                          aria-label="Race actions"
+                          aria-label={t('races.table.raceActionsAria')}
                           icon={<FontAwesomeIcon icon={faEllipsisVertical} />}
                           onClick={(event) => event.stopPropagation()}
                         />
@@ -1627,7 +1627,7 @@ export function RacesTableView({
 
                   {!isCompactInlineCard ? (
                     <div className={styles.raceBottomRow}>
-                      {renderRaceMetrics(race)}
+                      {renderRaceMetrics(race, t)}
                     </div>
                   ) : null}
                 </div>
@@ -1636,7 +1636,7 @@ export function RacesTableView({
           })}
 
           {pendingUpdateRaces.length === 0 ? (
-            <Empty description="No races are waiting for a status update." />
+            <Empty description={t('races.table.pendingUpdatesEmpty')} />
           ) : null}
         </div>
       </Modal>

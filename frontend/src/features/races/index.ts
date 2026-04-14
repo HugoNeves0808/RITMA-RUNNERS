@@ -24,6 +24,7 @@ export {
   EMPTY_RACE_FILTERS,
   getRaceStatusBackgroundColor,
   getRaceStatusColor,
+  getRaceStatusLabel,
   IN_LIST_WITHOUT_DATE_STATUS,
   RACE_STATUS_OPTIONS,
 } from './types/raceFilters'

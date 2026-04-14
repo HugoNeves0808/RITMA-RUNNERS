@@ -1,5 +1,6 @@
 import { Segmented } from 'antd'
 import type { RacesViewMode } from '../types/racesViewMode'
+import { useTranslation } from 'react-i18next'
 import styles from './RacesViewSwitcher.module.css'
 
 type RacesViewSwitcherProps = {
@@ -7,19 +8,18 @@ type RacesViewSwitcherProps = {
   onViewChange: (view: RacesViewMode) => void
 }
 
-const VIEW_OPTIONS: Array<{ value: RacesViewMode; label: string }> = [
-  { value: 'table', label: 'List' },
-  { value: 'calendar', label: 'Calendar' },
-]
-
 export function RacesViewSwitcher({ selectedView, onViewChange }: RacesViewSwitcherProps) {
+  const { t } = useTranslation()
   return (
     <Segmented<RacesViewMode>
       value={selectedView}
       onChange={onViewChange}
-      options={VIEW_OPTIONS}
+      options={[
+        { value: 'table', label: t('races.view.list') },
+        { value: 'calendar', label: t('races.view.calendar') },
+      ]}
       className={styles.segmented}
-      aria-label="Races view selector"
+      aria-label={t('races.view.selectorAria')}
     />
   )
 }

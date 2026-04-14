@@ -1,6 +1,7 @@
 import { faChevronLeft, faChevronRight } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { Alert, Card, Empty, Spin } from 'antd'
+import { Alert, Card, Spin } from 'antd'
+import { useTranslation } from 'react-i18next'
 import type { RaceCalendarYearMonth } from '../types/racesCalendar'
 import { RacesCalendarYearMonth } from './RacesCalendarYearMonth'
 import styles from './RacesCalendarYearlyView.module.css'
@@ -24,17 +25,17 @@ export function RacesCalendarYearlyView({
   onNextYear,
   onDayClick,
 }: RacesCalendarYearlyViewProps) {
-  const hasRaces = months.some((month) => month.days.some((day) => day.races.length > 0))
+  const { t } = useTranslation()
 
   return (
     <Card className={styles.calendarCard} variant="borderless">
       <div className={styles.toolbar}>
         <div className={styles.controls}>
-          <button type="button" className={styles.iconButton} onClick={onPreviousYear} aria-label="Open previous year">
+          <button type="button" className={styles.iconButton} onClick={onPreviousYear} aria-label={t('races.calendar.yearly.previousYearAria')}>
             <FontAwesomeIcon icon={faChevronLeft} />
           </button>
           <span className={styles.yearLabel}>{year}</span>
-          <button type="button" className={styles.iconButton} onClick={onNextYear} aria-label="Open next year">
+          <button type="button" className={styles.iconButton} onClick={onNextYear} aria-label={t('races.calendar.yearly.nextYearAria')}>
             <FontAwesomeIcon icon={faChevronRight} />
           </button>
         </div>
@@ -48,17 +49,13 @@ export function RacesCalendarYearlyView({
 
       {!isLoading && errorMessage ? (
         <div className={styles.feedbackWrap}>
-          <Alert type="error" message="Unable to load races for this year." description={errorMessage} showIcon />
+          <Alert type="error" message={t('races.calendar.yearly.loadErrorTitle')} description={errorMessage} showIcon />
         </div>
       ) : null}
 
-      {!isLoading && !errorMessage && !hasRaces ? (
-        <div className={styles.emptyWrap}>
-          <Empty description="No races match the current filters." />
-        </div>
-      ) : null}
+      {/* Keep calendar visible even when there are no races. */}
 
-      {!isLoading && (errorMessage || hasRaces) ? (
+      {!isLoading && !errorMessage ? (
         <div className={styles.monthsGrid}>
           {months.map((month) => (
             <RacesCalendarYearMonth

@@ -2,6 +2,7 @@ import { faAngleDown, faAngleUp, faBroom, faBucket, faMagnifyingGlass, faPenToSq
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Checkbox, Input, Typography } from 'antd'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../features/auth'
 import {
   AddRaceDrawer,
@@ -14,6 +15,7 @@ import {
   EMPTY_RACE_FILTERS,
   fetchRaceCreateOptions,
   fetchRaceFilterOptions,
+  getRaceStatusLabel,
   type RaceFilterOptions,
   type RaceCreateOptions,
   type RaceFilters,
@@ -113,6 +115,7 @@ type CheckboxFilterSectionProps = {
   count: number
   isOpen: boolean
   onToggle: () => void
+  toggleLabel: string
   titleAction?: React.ReactNode
   children: React.ReactNode
 }
@@ -122,6 +125,7 @@ function CheckboxFilterSection({
   count,
   isOpen,
   onToggle,
+  toggleLabel,
   titleAction,
   children,
 }: CheckboxFilterSectionProps) {
@@ -138,7 +142,7 @@ function CheckboxFilterSection({
           className={styles.checkboxSectionToggle}
           onClick={onToggle}
           aria-expanded={isOpen}
-          aria-label={isOpen ? `Collapse ${title}` : `Expand ${title}`}
+          aria-label={toggleLabel}
         >
           <FontAwesomeIcon icon={isOpen ? faAngleUp : faAngleDown} className={styles.checkboxSectionIcon} />
         </button>
@@ -150,6 +154,7 @@ function CheckboxFilterSection({
 }
 
 export function HomePage() {
+  const { t } = useTranslation()
   const { token } = useAuth()
   const currentYear = new Date().getFullYear()
   const persistedState = useMemo(() => readPersistedRacesFilters(), [])
@@ -455,12 +460,16 @@ export function HomePage() {
     setTableYearSelection(defaultTableYearSelection)
   }
 
+  const pendingUpdatesLabel = pendingUpdatesCount === 1
+    ? t('races.page.pendingUpdatesOne')
+    : t('races.page.pendingUpdatesOther', { count: pendingUpdatesCount })
+
   return (
     <div className={styles.page}>
       <div className={styles.pageHeader}>
         <div className={styles.titleBlock}>
           <div className={styles.titleRow}>
-            <Title level={1} className={styles.pageTitle}>Races</Title>
+            <Title level={1} className={styles.pageTitle}>{t('races.title')}</Title>
             {pendingUpdatesCount > 0 ? (
               <button
                 type="button"
@@ -468,7 +477,7 @@ export function HomePage() {
                 onClick={() => setIsPendingUpdatesModalOpen(true)}
               >
                 <FontAwesomeIcon icon={faTriangleExclamation} />
-                <span>{pendingUpdatesCount} race{pendingUpdatesCount === 1 ? '' : 's'} need updating</span>
+                <span>{pendingUpdatesLabel}</span>
               </button>
             ) : null}
           </div>
@@ -482,14 +491,14 @@ export function HomePage() {
             onClick={() => setIsBucketListModalOpen(true)}
             disabled={bucketListCount === 0}
           >
-            Future Races
+            {t('races.page.futureRaces')}
           </Button>
 
           <RacesViewSwitcher selectedView={selectedView} onViewChange={setSelectedView} />
 
           <AddRaceDrawer
             createOptions={createOptions}
-            triggerLabel="Add Race"
+            triggerLabel={t('races.page.addRace')}
             onCreateOptionsChange={(nextOptions) => {
               setCreateOptions(nextOptions)
               setFilterOptions((current) => ({
@@ -517,7 +526,7 @@ export function HomePage() {
             ? <RacesCalendarView selectedMode={selectedCalendarMode} onModeChange={setSelectedCalendarMode} filters={viewFilters} refreshKey={refreshKey} />
             : null}
 
-          {selectedView === 'table' || isBucketListModalOpen ? (
+          {selectedView === 'table' || isBucketListModalOpen || isPendingUpdatesModalOpen ? (
             <RacesTableView
               tableYearSelection={tableYearSelection}
               filters={viewFilters}
@@ -550,14 +559,14 @@ export function HomePage() {
         <aside className={styles.sidebar}>
           <div className={styles.sidebarCard}>
             <div className={styles.sidebarHeader}>
-              <h3 className={styles.sidebarTitle}>Filters</h3>
+              <h3 className={styles.sidebarTitle}>{t('races.page.filtersTitle')}</h3>
               {shouldShowClearFiltersButton ? (
                 <Button
                   type="text"
                   className={styles.clearButton}
                   icon={<FontAwesomeIcon icon={faBroom} />}
-                  title="Clear filters"
-                  aria-label="Clear filters"
+                  title={t('races.page.clearFilters')}
+                  aria-label={t('races.page.clearFilters')}
                   onClick={clearSidebarFilters}
                 />
               ) : null}
@@ -567,7 +576,7 @@ export function HomePage() {
 
             {selectedView === 'calendar' ? (
               <div className={styles.filterField}>
-                <span className={styles.filterLabel}>Calendar mode</span>
+                <span className={styles.filterLabel}>{t('races.page.calendarModeLabel')}</span>
                 <RacesCalendarModeSwitcher
                   selectedMode={selectedCalendarMode}
                   onModeChange={setSelectedCalendarMode}
@@ -576,12 +585,12 @@ export function HomePage() {
             ) : null}
 
             <label className={styles.filterField}>
-              <span className={styles.filterLabel}>Race search</span>
+              <span className={styles.filterLabel}>{t('races.page.raceSearchLabel')}</span>
               <Input
                 allowClear
                 className={styles.searchInput}
                 value={filters.search}
-                placeholder="Search race"
+                placeholder={t('races.page.raceSearchPlaceholder')}
                 suffix={<FontAwesomeIcon icon={faMagnifyingGlass} />}
                 onChange={(event) => setFilters((current) => ({ ...current, search: event.target.value }))}
               />
@@ -589,10 +598,11 @@ export function HomePage() {
 
             {selectedView === 'table' ? (
               <CheckboxFilterSection
-                title="Years"
+                title={t('races.page.yearsTitle')}
                 count={tableYearSelection.allRaces ? 0 : tableYearSelection.selectedYears.length}
                 isOpen={isYearsOpen}
                 onToggle={() => setIsYearsOpen((current) => !current)}
+                toggleLabel={t(isYearsOpen ? 'races.page.toggle.collapse' : 'races.page.toggle.expand', { section: t('races.page.yearsTitle') })}
               >
                 <div className={styles.checkboxList}>
                   <label className={styles.checkboxOption}>
@@ -600,7 +610,7 @@ export function HomePage() {
                       checked={tableYearSelection.allRaces}
                       onChange={(event) => handleYearToggle('all-years', event.target.checked)}
                     />
-                    <span className={styles.checkboxOptionLabel}>All years</span>
+                    <span className={styles.checkboxOptionLabel}>{t('races.page.allYears')}</span>
                   </label>
 
                   {availableYears.map((year) => (
@@ -617,10 +627,11 @@ export function HomePage() {
             ) : null}
 
             <CheckboxFilterSection
-              title="Race status"
+              title={t('races.page.statusTitle')}
               count={filters.statuses.length}
               isOpen={isStatusesOpen}
               onToggle={() => setIsStatusesOpen((current) => !current)}
+              toggleLabel={t(isStatusesOpen ? 'races.page.toggle.collapse' : 'races.page.toggle.expand', { section: t('races.page.statusTitle') })}
             >
               <div className={styles.checkboxList}>
                 {VISIBLE_RACE_STATUS_OPTIONS.map((status) => (
@@ -642,7 +653,7 @@ export function HomePage() {
                           className={styles.statusDot}
                           style={{ backgroundColor: getRaceStatusColor(status.value) }}
                         />
-                        <span className={styles.checkboxOptionLabel}>{status.label}</span>
+                        <span className={styles.checkboxOptionLabel}>{getRaceStatusLabel(status.value, t)}</span>
                       </span>
                   </label>
                 ))}
@@ -650,25 +661,26 @@ export function HomePage() {
             </CheckboxFilterSection>
 
             <CheckboxFilterSection
-              title="Race types"
+              title={t('races.page.typesTitle')}
               count={filters.raceTypeIds.length}
               isOpen={isRaceTypesOpen}
               onToggle={() => setIsRaceTypesOpen((current) => !current)}
+              toggleLabel={t(isRaceTypesOpen ? 'races.page.toggle.collapse' : 'races.page.toggle.expand', { section: t('races.page.typesTitle') })}
               titleAction={(
                 <button
                   type="button"
                   className={styles.filterManageButton}
                   onClick={() => setManagedOptionModalType('race-types')}
-                  aria-label="Create or manage race types"
+                  aria-label={t('races.page.manageRaceTypesAria')}
                 >
                   <FontAwesomeIcon icon={faPenToSquare} />
                 </button>
               )}
             >
               <div className={styles.checkboxList}>
-                {isFilterOptionsLoading ? <span className={styles.checkboxListHint}>Loading race types</span> : null}
+                {isFilterOptionsLoading ? <span className={styles.checkboxListHint}>{t('races.page.loadingRaceTypes')}</span> : null}
                 {!isFilterOptionsLoading && raceTypeOptions.length === 0 ? (
-                  <span className={styles.checkboxListHint}>No race types available</span>
+                  <span className={styles.checkboxListHint}>{t('races.page.noRaceTypes')}</span>
                 ) : null}
 
                 {!isFilterOptionsLoading ? raceTypeOptions.map((raceType) => (

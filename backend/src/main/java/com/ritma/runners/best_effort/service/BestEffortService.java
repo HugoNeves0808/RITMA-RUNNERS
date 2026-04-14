@@ -127,7 +127,7 @@ public class BestEffortService {
     }
 
     private boolean isValidForBestEffortRanking(BestEffortRaceRow row, BigDecimal expectedDistanceKm) {
-        if (!Boolean.TRUE.equals(row.isValidForCategoryRanking())) {
+        if (Boolean.FALSE.equals(row.isValidForCategoryRanking())) {
             return false;
         }
 
@@ -139,7 +139,7 @@ public class BestEffortService {
     }
 
     private String buildRankingNote(BestEffortRaceRow row, BigDecimal expectedDistanceKm) {
-        if (!Boolean.TRUE.equals(row.isValidForCategoryRanking())) {
+        if (Boolean.FALSE.equals(row.isValidForCategoryRanking())) {
             return "Excluded from category ranking";
         }
 

@@ -98,6 +98,11 @@
   text-transform: capitalize;
 }
 
+.statusNeedsUpdateIcon {
+  margin-right: 6px;
+  color: #b42318;
+}
+
 .statusRegistered {
   background: rgba(255, 237, 213, 0.95);
   color: #c2410c;

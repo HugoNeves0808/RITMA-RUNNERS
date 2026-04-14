@@ -12,6 +12,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Alert, Button, Card, Checkbox, Empty, Input, InputNumber, Modal, Segmented, Space, Spin, Tag, Tooltip, Typography } from 'antd'
 import { useAuth } from '../../features/auth'
 import { STORAGE_KEYS } from '../../constants/storage'
@@ -45,6 +46,10 @@ const { Title } = Typography
 const PODIUM_ORDER_TOP_THREE = [1, 0, 2]
 const PODIUM_ORDER_TOP_FIVE = [1, 0, 2, 3, 4]
 const CATEGORY_DISTANCE_EXCLUDED_MARGIN_KM = 0.1
+
+function getLocaleFromLanguage(language: string | undefined) {
+  return language === 'pt' ? 'pt-PT' : 'en-GB'
+}
 
 type PersistedBestEffortsFiltersState = {
   viewMode: BestEffortsViewMode
@@ -143,24 +148,29 @@ function formatPace(totalSeconds: number | null) {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}/km`
 }
 
-function formatRaceDate(value: string | null) {
+function formatRaceDate(value: string | null, locale: string, noDateLabel: string) {
   if (!value) {
-    return 'No date'
+    return noDateLabel
   }
 
-  return new Intl.DateTimeFormat('pt-PT', {
+  return new Intl.DateTimeFormat(locale, {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
   }).format(new Date(value))
 }
 
-function formatDistance(value: number | null) {
+function formatDistance(value: number | null, locale: string) {
   if (value == null) {
     return '-'
   }
 
-  return `${value.toFixed(2)} km`
+  const formattedValue = new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value)
+
+  return `${formattedValue} km`
 }
 
 function normalizeDecimalInput(value: string | number | undefined) {
@@ -281,21 +291,13 @@ function getPodiumTone(rank: number) {
   return styles.podiumNeutral
 }
 
-function getModalRaceTone(rank: number) {
-  if (rank >= 1 && rank <= 3) {
-    return styles.modalRaceGold
-  }
-
-  if (rank === 4 || rank === 5) {
-    return styles.modalRaceNeutral
-  }
-
-  return ''
-}
-
-function getPodiumLabel(rank: number) {
+function formatPodiumLabel(rank: number, language: string | undefined, prLabel: string) {
   if (rank === 1) {
-    return 'PR'
+    return prLabel
+  }
+
+  if (language === 'pt') {
+    return `${rank}º`
   }
 
   if (rank === 2) {
@@ -317,17 +319,40 @@ function shouldShowPodiumIcon(rank: number) {
   return rank <= 3
 }
 
+function getRankingNoteLabel(
+  rankingNote: string,
+  t: (key: string, options?: Record<string, unknown>) => string,
+) {
+  switch (rankingNote) {
+    case 'Valid for ranking':
+      return t('bestEfforts.rankingNote.valid')
+    case 'Excluded from category ranking':
+      return t('bestEfforts.rankingNote.excluded')
+    case 'Missing category target':
+      return t('bestEfforts.rankingNote.missingTarget')
+    case 'Missing real distance':
+      return t('bestEfforts.rankingNote.missingDistance')
+    default:
+      return rankingNote
+  }
+}
+
 function EntryBadges({ item }: { item: BestEffortItem }) {
+  const { t } = useTranslation()
   return (
     <Space wrap>
       <span className={`${styles.categoryScoreBadge} ${getCategoryScoreBadgeClassNameForItem(item)}`.trim()}>
-        {item.rankingNote}
+        {getRankingNoteLabel(item.rankingNote, t)}
       </span>
     </Space>
   )
 }
 
 function PodiumCard({ item }: { item: BestEffortItem }) {
+  const { t, i18n } = useTranslation()
+  const language = i18n.resolvedLanguage ?? i18n.language
+  const locale = getLocaleFromLanguage(language)
+  const prLabel = t('bestEfforts.podium.pr')
   return (
     <article
       className={[
@@ -342,17 +367,17 @@ function PodiumCard({ item }: { item: BestEffortItem }) {
           <FontAwesomeIcon icon={getPodiumIcon(item.overallRank)} className={styles.podiumIcon} />
         </div>
       ) : null}
-      <div className={styles.podiumRankBadge}>{getPodiumLabel(item.overallRank)}</div>
+      <div className={styles.podiumRankBadge}>{formatPodiumLabel(item.overallRank, language, prLabel)}</div>
       <div className={styles.podiumContent}>
         <span className={styles.podiumRaceName}>{item.raceName}</span>
         <span className={styles.podiumMeta}>
           <span className={styles.inlineMetaItem}>
             <FontAwesomeIcon icon={faCalendarDays} className={styles.inlineMetaIcon} />
-            {formatRaceDate(item.raceDate)}
+            {formatRaceDate(item.raceDate, locale, t('bestEfforts.format.noDate'))}
           </span>
           <span className={styles.inlineMetaItem}>
             <FontAwesomeIcon icon={faRoad} className={styles.inlineMetaIcon} />
-            {formatDistance(item.realKm)}
+            {formatDistance(item.realKm, locale)}
           </span>
         </span>
         <span className={styles.podiumTime}>{formatDuration(item.chipTimeSeconds)}</span>
@@ -362,16 +387,20 @@ function PodiumCard({ item }: { item: BestEffortItem }) {
   )
 }
 
-function getEmptyPodiumMessage(expectedDistanceKm: number | null, missingCount: number) {
+function getEmptyPodiumMessage(
+  expectedDistanceKm: number | null,
+  missingCount: number,
+  t: (key: string, options?: Record<string, unknown>) => string,
+) {
   if (expectedDistanceKm == null) {
-    return 'Define target km'
+    return t('bestEfforts.podium.defineTargetKm')
   }
 
   if (missingCount === 1) {
-    return 'Need 1 more ranked race'
+    return t('bestEfforts.podium.needOneMore')
   }
 
-  return `Need ${missingCount} more ranked races`
+  return t('bestEfforts.podium.needMore', { count: missingCount })
 }
 
 function PodiumEmptyCard({
@@ -383,6 +412,9 @@ function PodiumEmptyCard({
   expectedDistanceKm: number | null
   missingCount: number
 }) {
+  const { t, i18n } = useTranslation()
+  const language = i18n.resolvedLanguage ?? i18n.language
+  const prLabel = t('bestEfforts.podium.pr')
   return (
     <article
       className={[
@@ -391,11 +423,11 @@ function PodiumEmptyCard({
         getPodiumHeight(rank),
       ].join(' ')}
     >
-      <div className={styles.podiumRankBadge}>{getPodiumLabel(rank)}</div>
+      <div className={styles.podiumRankBadge}>{formatPodiumLabel(rank, language, prLabel)}</div>
       <div className={styles.podiumEmptyContent}>
-        <span className={styles.podiumEmptyTitle}>Empty podium slot</span>
+        <span className={styles.podiumEmptyTitle}>{t('bestEfforts.podium.emptySlot')}</span>
         <span className={styles.podiumEmptyMessage}>
-          {getEmptyPodiumMessage(expectedDistanceKm, missingCount)}
+          {getEmptyPodiumMessage(expectedDistanceKm, missingCount, t)}
         </span>
       </div>
     </article>
@@ -438,18 +470,21 @@ function PodiumShowcase({
 }
 
 function EntryTableRow({ item }: { item: BestEffortItem }) {
+  const { t, i18n } = useTranslation()
+  const language = i18n.resolvedLanguage ?? i18n.language
+  const locale = getLocaleFromLanguage(language)
   return (
     <tr className={styles.entryTableRow}>
       <td className={styles.entryTableRank}>#{item.overallRank}</td>
       <td className={styles.entryTableName}>{item.raceName}</td>
-      <td className={styles.entryTableCell}>{formatRaceDate(item.raceDate)}</td>
-      <td className={styles.entryTableCell}>{formatDistance(item.realKm)}</td>
+      <td className={styles.entryTableCell}>{formatRaceDate(item.raceDate, locale, t('bestEfforts.format.noDate'))}</td>
+      <td className={styles.entryTableCell}>{formatDistance(item.realKm, locale)}</td>
       <td className={styles.entryTableMetric}>{formatDuration(item.chipTimeSeconds)}</td>
       <td className={styles.entryTableMetric}>{formatPace(item.pacePerKmSeconds)}</td>
       <td className={styles.entryTableMetric}>{formatDuration(item.officialTimeSeconds)}</td>
       <td className={styles.entryTableStatus}>
         <span className={`${styles.rankingNoteBadge} ${getRankingNoteBadgeClassName(item)}`.trim()}>
-          {item.rankingNote}
+          {getRankingNoteLabel(item.rankingNote, t)}
         </span>
       </td>
     </tr>
@@ -460,7 +495,6 @@ type CategoryRacesModalState = {
   categoryName: string
   categoryKey: string
   mode: CategoryRacesMode
-  title: string
   items: BestEffortItem[]
 }
 
@@ -472,7 +506,7 @@ type ManagedOptionConfirmState =
 type CategoryRacesMode = 'valid' | 'excluded'
 
 function getExcludedItems(category: BestEffortCategory) {
-  return category.efforts.filter((item) => !item.validForBestEffortRanking && item.rankingNote !== 'Below category distance')
+  return category.efforts.filter((item) => !item.validForBestEffortRanking)
 }
 
 function getCategoryScoreBadgeClassName(mode: CategoryRacesMode) {
@@ -486,6 +520,9 @@ function getCategoryScoreBadgeClassName(mode: CategoryRacesMode) {
 
 export function BestEffortsPage() {
   const { token } = useAuth()
+  const { t, i18n } = useTranslation()
+  const language = i18n.resolvedLanguage ?? i18n.language
+  const locale = getLocaleFromLanguage(language)
   const persistedFilters = useMemo(() => readPersistedBestEffortsFilters(), [])
   const isPageRefreshRef = useRef(false)
   const [payload, setPayload] = useState<BestEffortCategory[]>([])
@@ -543,7 +580,7 @@ export function BestEffortsPage() {
         setRaceTypes(raceTypeOptions)
         setCreateOptions(nextCreateOptions)
       } catch (error) {
-        setErrorMessage(error instanceof Error ? error.message : 'Unable to load best efforts right now.')
+        setErrorMessage(error instanceof Error ? error.message : t('bestEfforts.errors.load'))
       } finally {
         setIsLoading(false)
       }
@@ -644,7 +681,7 @@ export function BestEffortsPage() {
       const latestRaceTypes = await fetchManagedRaceOptions('race-types', token)
       setRaceTypes(latestRaceTypes)
     } catch (loadError) {
-      setManagedRaceTypeError(loadError instanceof Error ? loadError.message : 'Could not load race types right now.')
+      setManagedRaceTypeError(loadError instanceof Error ? loadError.message : t('bestEfforts.errors.loadRaceTypes'))
     } finally {
       setIsManagedRaceTypeLoading(false)
     }
@@ -683,7 +720,7 @@ export function BestEffortsPage() {
       setManagedRaceTypeTargetKm(null)
       setEditingRaceTypeId(null)
     } catch (saveError) {
-      setManagedRaceTypeError(saveError instanceof Error ? saveError.message : 'Could not save this race type right now.')
+      setManagedRaceTypeError(saveError instanceof Error ? saveError.message : t('bestEfforts.errors.saveRaceType'))
     } finally {
       setIsManagedRaceTypeSubmitting(false)
     }
@@ -707,7 +744,7 @@ export function BestEffortsPage() {
 
       setManagedRaceTypeConfirmState({ kind: 'delete', option })
     } catch (deleteError) {
-      setManagedRaceTypeError(deleteError instanceof Error ? deleteError.message : 'Could not delete this race type right now.')
+      setManagedRaceTypeError(deleteError instanceof Error ? deleteError.message : t('bestEfforts.errors.deleteRaceType'))
     }
   }
 
@@ -744,24 +781,23 @@ export function BestEffortsPage() {
       setManagedRaceTypeUsage(null)
       setManagedRaceTypeConfirmState(null)
     } catch (confirmError) {
-      setManagedRaceTypeError(confirmError instanceof Error ? confirmError.message : 'Could not complete this action right now.')
+      setManagedRaceTypeError(confirmError instanceof Error ? confirmError.message : t('bestEfforts.errors.confirmAction'))
     } finally {
       setIsManagedRaceTypeSubmitting(false)
     }
   }
 
   const openCategoryRacesModal = (category: BestEffortCategory, mode: CategoryRacesMode) => {
-    const items = mode === 'valid'
+    const baseItems = mode === 'valid'
       ? category.efforts.filter((item) => item.validForBestEffortRanking)
       : getExcludedItems(category)
 
-    const title = mode === 'valid' ? 'Valid races' : 'Excluded races'
+    const items = mode === 'valid' ? assignVisibleRanks(baseItems) : baseItems
 
     setCategoryRacesModal({
       categoryName: category.categoryName,
       categoryKey: category.categoryKey,
       mode,
-      title,
       items,
     })
   }
@@ -787,7 +823,7 @@ export function BestEffortsPage() {
     setCategoryRacesModal({
       ...currentModal,
       categoryName: category.categoryName,
-      items,
+      items: currentModal.mode === 'valid' ? assignVisibleRanks(items) : items,
     })
   }
 
@@ -805,7 +841,7 @@ export function BestEffortsPage() {
       setRaceDetails(details)
     } catch (loadError) {
       setRaceDetails(null)
-      setDetailsError(loadError instanceof Error ? loadError.message : 'Could not load this race right now.')
+      setDetailsError(loadError instanceof Error ? loadError.message : t('bestEfforts.errors.loadRace'))
     } finally {
       setIsDetailsLoading(false)
     }
@@ -842,7 +878,7 @@ export function BestEffortsPage() {
       setIsDetailsOpen(false)
       setIsEditDrawerOpen(true)
     } catch (loadError) {
-      setDetailsError(loadError instanceof Error ? loadError.message : 'Could not load this race for editing right now.')
+      setDetailsError(loadError instanceof Error ? loadError.message : t('bestEfforts.errors.loadRaceForEdit'))
     }
   }
 
@@ -861,7 +897,7 @@ export function BestEffortsPage() {
       setDetailsError(null)
       await reloadBestEffortsPageData()
     } catch (deleteError) {
-      setDetailsError(deleteError instanceof Error ? deleteError.message : 'Could not delete this race right now.')
+      setDetailsError(deleteError instanceof Error ? deleteError.message : t('bestEfforts.errors.deleteRace'))
     } finally {
       setIsDeletingRace(false)
     }
@@ -871,18 +907,18 @@ export function BestEffortsPage() {
     <div className={styles.page}>
       <header className={styles.pageHeader}>
         <div className={styles.titleBlock}>
-          <Title level={1} className={styles.pageTitle}>Best Efforts</Title>
+          <Title level={1} className={styles.pageTitle}>{t('bestEfforts.title')}</Title>
         </div>
         <Segmented<BestEffortsViewMode>
           value={viewMode}
           onChange={(value) => setViewMode(value)}
           options={[
-            { label: 'Top 3', value: 'top-3' },
-            { label: 'Top 5', value: 'top-5' },
-            { label: 'All races', value: 'all' },
+            { label: t('bestEfforts.viewMode.top3'), value: 'top-3' },
+            { label: t('bestEfforts.viewMode.top5'), value: 'top-5' },
+            { label: t('bestEfforts.viewMode.all'), value: 'all' },
           ]}
           className={styles.viewSwitcher}
-          aria-label="Best efforts view selector"
+          aria-label={t('bestEfforts.viewMode.aria')}
         />
       </header>
 
@@ -893,7 +929,7 @@ export function BestEffortsPage() {
           <div className={styles.loadingState}>
             <Space size="middle">
               <Spin />
-              <span className={styles.loadingText}>Loading best efforts</span>
+              <span className={styles.loadingText}>{t('bestEfforts.loading')}</span>
             </Space>
           </div>
         </Card>
@@ -904,7 +940,7 @@ export function BestEffortsPage() {
           {!isLoading && !errorMessage && visibleCategories.length === 0 ? (
             <Card className={styles.emptyCard} variant="borderless">
               <div className={styles.emptyWrap}>
-                <Empty description="No best efforts found for the current filters." />
+                <Empty description={t('bestEfforts.empty')} />
               </div>
             </Card>
           ) : null}
@@ -918,8 +954,8 @@ export function BestEffortsPage() {
                     const effectiveValidCount = category.efforts.filter((item) => item.validForBestEffortRanking).length
                     const minimumAcceptedDistance = getMinimumAcceptedDistance(category.expectedDistanceKm)
                     const minimumAcceptedDistanceLabel = minimumAcceptedDistance != null
-                      ? formatDistance(minimumAcceptedDistance)
-                      : 'the category minimum distance'
+                      ? formatDistance(minimumAcceptedDistance, locale)
+                      : t('bestEfforts.category.minimumDistanceFallback')
 
                     return (
                   <div className={styles.categoryHeader}>
@@ -928,17 +964,17 @@ export function BestEffortsPage() {
                         <Title level={3} className={styles.categoryTitle}>{category.categoryName}</Title>
                         {category.expectedDistanceKm != null ? (
                           <span className={`${styles.categoryScoreBadge} ${styles.categoryScoreTarget}`.trim()}>
-                            {formatDistance(category.expectedDistanceKm)}
+                            {formatDistance(category.expectedDistanceKm, locale)}
                           </span>
                         ) : (
-                          <Tag>No target km defined</Tag>
+                          <Tag>{t('bestEfforts.category.noTargetKm')}</Tag>
                         )}
                       </div>
                     </div>
 
                     <div className={styles.categoryMetaAside}>
                       <div className={styles.metaRow}>
-                        <Tooltip title={`Counts for ranking. Min distance: ${minimumAcceptedDistanceLabel}.`}>
+                        <Tooltip title={t('bestEfforts.category.validTooltip', { minDistance: minimumAcceptedDistanceLabel })}>
                           <span
                             className={`${styles.categoryScoreBadge} ${getCategoryScoreBadgeClassName('valid')} ${styles.clickableTag}`.trim()}
                             onClick={() => openCategoryRacesModal(category, 'valid')}
@@ -951,11 +987,11 @@ export function BestEffortsPage() {
                             role="button"
                             tabIndex={0}
                           >
-                            {effectiveValidCount} valid
+                            {effectiveValidCount} {t('bestEfforts.category.validLabel')}
                           </span>
                         </Tooltip>
                         {excludedCount > 0 ? (
-                          <Tooltip title={`Outside ranking. Below ${minimumAcceptedDistanceLabel} or not valid.`}>
+                          <Tooltip title={t('bestEfforts.category.excludedTooltip', { minDistance: minimumAcceptedDistanceLabel })}>
                             <span
                               className={`${styles.categoryScoreBadge} ${getCategoryScoreBadgeClassName('excluded')} ${styles.clickableTag}`.trim()}
                               onClick={() => openCategoryRacesModal(category, 'excluded')}
@@ -968,7 +1004,7 @@ export function BestEffortsPage() {
                               role="button"
                               tabIndex={0}
                             >
-                              {excludedCount} excluded
+                              {excludedCount} {t('bestEfforts.category.excludedLabel')}
                             </span>
                           </Tooltip>
                         ) : null}
@@ -976,7 +1012,7 @@ export function BestEffortsPage() {
                         <span
                           className={`${styles.categoryScoreBadge} ${styles.categoryScoreTotal}`.trim()}
                         >
-                          {category.totalEffortCount} total
+                          {category.totalEffortCount} {t('bestEfforts.category.totalLabel')}
                         </span>
                       </div>
                     </div>
@@ -995,8 +1031,8 @@ export function BestEffortsPage() {
                     {category.visibleItems.length === 0 ? (
                       <div className={styles.categoryEmptyState}>
                         {category.expectedDistanceKm == null
-                          ? 'Define a target km for this race type to unlock the ranking.'
-                          : 'No races are currently eligible for this ranking.'}
+                          ? t('bestEfforts.category.defineTargetKmHint')
+                          : t('bestEfforts.category.noEligibleHint')}
                       </div>
                     ) : null}
 
@@ -1013,14 +1049,14 @@ export function BestEffortsPage() {
                                 <table className={styles.entryTable}>
                                   <thead>
                                     <tr className={styles.entryTableHeader}>
-                                      <th className={styles.entryTableHeading}>Rank</th>
-                                      <th className={styles.entryTableHeading}>Race</th>
-                                      <th className={styles.entryTableHeading}>Date</th>
-                                      <th className={styles.entryTableHeading}>Distance</th>
-                                      <th className={styles.entryTableHeading}>Chip</th>
-                                      <th className={styles.entryTableHeading}>Pace</th>
-                                      <th className={styles.entryTableHeading}>Official</th>
-                                      <th className={styles.entryTableHeading}>Status</th>
+                                      <th className={styles.entryTableHeading}>{t('bestEfforts.table.rank')}</th>
+                                      <th className={styles.entryTableHeading}>{t('bestEfforts.table.race')}</th>
+                                      <th className={styles.entryTableHeading}>{t('bestEfforts.table.date')}</th>
+                                      <th className={styles.entryTableHeading}>{t('bestEfforts.table.distance')}</th>
+                                      <th className={styles.entryTableHeading}>{t('bestEfforts.table.chip')}</th>
+                                      <th className={styles.entryTableHeading}>{t('bestEfforts.table.pace')}</th>
+                                      <th className={styles.entryTableHeading}>{t('bestEfforts.table.official')}</th>
+                                      <th className={styles.entryTableHeading}>{t('bestEfforts.table.status')}</th>
                                     </tr>
                                   </thead>
                                   <tbody className={styles.rankList}>
@@ -1043,7 +1079,7 @@ export function BestEffortsPage() {
                                     expandCategoryTable(category.categoryKey)
                                   }}
                                 >
-                                  {isExpanded ? 'Show less' : `See all ${remainingItems.length} races`}
+                                  {isExpanded ? t('bestEfforts.table.showLess') : t('bestEfforts.table.seeAll', { count: remainingItems.length })}
                                 </button>
                               ) : null}
                             </>
@@ -1061,14 +1097,14 @@ export function BestEffortsPage() {
         <aside className={styles.sidebar}>
           <div className={styles.sidebarCard}>
             <div className={styles.sidebarHeader}>
-              <span className={styles.sidebarTitle}>Filters</span>
+              <span className={styles.sidebarTitle}>{t('bestEfforts.filters.title')}</span>
               {shouldShowClearFiltersButton ? (
                 <Button
                   type="text"
                   className={styles.clearButton}
                   icon={<FontAwesomeIcon icon={faBroom} />}
-                  title="Clear filters"
-                  aria-label="Clear filters"
+                  title={t('bestEfforts.filters.clear')}
+                  aria-label={t('bestEfforts.filters.clear')}
                   onClick={handleClearFilters}
                 />
               ) : null}
@@ -1077,7 +1113,7 @@ export function BestEffortsPage() {
             <div className={styles.sidebarDivider} />
 
             <CheckboxFilterSection
-              title="Race types"
+              title={t('bestEfforts.filters.raceTypes')}
               count={selectedRaceTypes.length}
               isOpen={isRaceTypesOpen}
               onToggle={() => setIsRaceTypesOpen((current) => !current)}
@@ -1087,7 +1123,7 @@ export function BestEffortsPage() {
                     type="button"
                     className={styles.manageFilterButton}
                     onClick={() => void openManageRaceTypesModal()}
-                    aria-label="Create or manage race types"
+                    aria-label={t('bestEfforts.filters.manageRaceTypesAria')}
                   >
                     <FontAwesomeIcon icon={faPenToSquare} />
                   </button>
@@ -1096,7 +1132,7 @@ export function BestEffortsPage() {
             >
               <div className={styles.checkboxList}>
                 {raceTypeOptions.length === 0 ? (
-                  <span className={styles.checkboxListHint}>No race types available</span>
+                  <span className={styles.checkboxListHint}>{t('bestEfforts.filters.noRaceTypes')}</span>
                 ) : raceTypeOptions.map((raceType) => (
                   <label key={raceType.value} className={styles.checkboxOption}>
                     <Checkbox
@@ -1119,7 +1155,9 @@ export function BestEffortsPage() {
 
       <Modal
         open={categoryRacesModal != null}
-        title={categoryRacesModal ? `${categoryRacesModal.categoryName} · ${categoryRacesModal.title}` : ''}
+        title={categoryRacesModal
+          ? `${categoryRacesModal.categoryName} \u00B7 ${categoryRacesModal.mode === 'valid' ? t('bestEfforts.category.modal.validTitle') : t('bestEfforts.category.modal.excludedTitle')}`
+          : ''}
         footer={null}
         onCancel={() => setCategoryRacesModal(null)}
         width={860}
@@ -1128,7 +1166,7 @@ export function BestEffortsPage() {
           {categoryRacesModal?.items.map((item) => (
             <Card
               key={item.raceId}
-              className={`${styles.modalRaceCard} ${styles.clickableModalRaceCard} ${getModalRaceTone(item.overallRank)}`.trim()}
+              className={`${styles.modalRaceCard} ${styles.clickableModalRaceCard}`.trim()}
               styles={{ body: { padding: 16 } }}
               onClick={() => void handleOpenRaceDetails(item)}
             >
@@ -1138,8 +1176,8 @@ export function BestEffortsPage() {
                   <div className={styles.modalRaceTitleBlock}>
                     <Title level={5} className={styles.modalRaceTitle}>{item.raceName}</Title>
                     <div className={styles.entrySubtitle}>
-                      <span>{formatRaceDate(item.raceDate)}</span>
-                      <span>{formatDistance(item.realKm)}</span>
+                      <span>{formatRaceDate(item.raceDate, locale, t('bestEfforts.format.noDate'))}</span>
+                      <span>{formatDistance(item.realKm, locale)}</span>
                       <span>{item.raceTypeName}</span>
                     </div>
                   </div>
@@ -1151,7 +1189,7 @@ export function BestEffortsPage() {
           ))}
 
           {categoryRacesModal && categoryRacesModal.items.length === 0 ? (
-            <Empty description="No races found for this category." />
+            <Empty description={t('bestEfforts.category.modal.empty')} />
           ) : null}
         </div>
       </Modal>
@@ -1210,7 +1248,7 @@ export function BestEffortsPage() {
             setDetailsError(null)
           } catch (loadError) {
             setRaceDetails(null)
-            setDetailsError(loadError instanceof Error ? loadError.message : 'Could not reload this race right now.')
+            setDetailsError(loadError instanceof Error ? loadError.message : t('bestEfforts.errors.reloadRace'))
           } finally {
             setIsDetailsLoading(false)
           }
@@ -1218,11 +1256,11 @@ export function BestEffortsPage() {
       />
 
       <Modal
-        title="Delete race?"
+        title={t('bestEfforts.deleteRace.title')}
         open={racePendingDelete != null}
-        okText="Delete"
+        okText={t('bestEfforts.deleteRace.ok')}
         okButtonProps={{ danger: true }}
-        cancelText="Cancel"
+        cancelText={t('common.cancel')}
         confirmLoading={isDeletingRace}
         onOk={() => void handleConfirmDelete()}
         onCancel={() => {
@@ -1235,15 +1273,15 @@ export function BestEffortsPage() {
       >
         <p>
           {racePendingDelete
-            ? `This will permanently delete "${racePendingDelete.raceName}".`
-            : 'This will permanently delete this race.'}
+            ? t('bestEfforts.deleteRace.bodyNamed', { name: racePendingDelete.raceName })
+            : t('bestEfforts.deleteRace.body')}
         </p>
       </Modal>
 
       <Modal
         className={styles.manageOptionsDialog}
         open={isManageRaceTypesModalOpen}
-        title="Manage race types"
+        title={t('bestEfforts.manageRaceTypes.title')}
         footer={null}
         onCancel={closeManageRaceTypesModal}
       >
@@ -1253,7 +1291,7 @@ export function BestEffortsPage() {
           <div className={styles.manageOptionsForm}>
             <div className={styles.manageInputRow}>
               <Input
-                placeholder="Type the race type name here"
+                placeholder={t('bestEfforts.manageRaceTypes.namePlaceholder')}
                 value={managedRaceTypeName}
                 onChange={(event) => setManagedRaceTypeName(event.target.value)}
                 maxLength={100}
@@ -1264,7 +1302,7 @@ export function BestEffortsPage() {
                 precision={2}
                 step={0.01}
                 className={styles.manageRaceTypeTargetInput}
-                placeholder="Target km"
+                placeholder={t('bestEfforts.manageRaceTypes.targetPlaceholder')}
                 value={managedRaceTypeTargetKm ?? undefined}
                 parser={(value) => parseDecimalNumberInput(value)}
                 onChange={(value) => setManagedRaceTypeTargetKm(typeof value === 'number' ? value : null)}
@@ -1282,7 +1320,7 @@ export function BestEffortsPage() {
                       setManagedRaceTypeUsage(null)
                       setManagedRaceTypeConfirmState(null)
                     }}
-                    aria-label="Cancel editing"
+                    aria-label={t('bestEfforts.manageRaceTypes.cancelEditing')}
                   >
                     <FontAwesomeIcon icon={faXmark} />
                   </button>
@@ -1296,7 +1334,7 @@ export function BestEffortsPage() {
                     disabled={!managedRaceTypeName.trim() || managedRaceTypeTargetKm == null}
                     onClick={() => void handleSaveRaceType()}
                   >
-                    {editingRaceTypeId ? 'Save changes' : 'Add'}
+                    {editingRaceTypeId ? t('bestEfforts.manageRaceTypes.saveChanges') : t('bestEfforts.manageRaceTypes.add')}
                   </Button>
                 ) : null}
               </div>
@@ -1307,12 +1345,12 @@ export function BestEffortsPage() {
             <div className={styles.manageOptionsLoading}>
               <Space size="middle">
                 <Spin />
-                <span className={styles.loadingText}>Loading race types</span>
+                <span className={styles.loadingText}>{t('bestEfforts.manageRaceTypes.loading')}</span>
               </Space>
             </div>
           ) : raceTypes.length === 0 ? (
             <div className={styles.manageOptionsEmptyState}>
-              <Empty description="No race types found yet." />
+              <Empty description={t('bestEfforts.manageRaceTypes.empty')} />
             </div>
           ) : (
             <div className={styles.manageOptionsList}>
@@ -1322,13 +1360,15 @@ export function BestEffortsPage() {
                     <span className={styles.manageOptionName}>{option.name}</span>
                     <div className={styles.manageOptionMetaRow}>
                       <span className={styles.manageOptionMeta}>
-                        {option.targetKm != null ? `${option.targetKm.toFixed(2)} km` : 'No target km set'}
+                        {option.targetKm != null
+                          ? `${new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(option.targetKm)} km`
+                          : t('bestEfforts.manageRaceTypes.noTargetKm')}
                       </span>
                     </div>
                   </div>
                   {option.isDefault ? (
                     <div className={styles.manageOptionActions}>
-                      <span className={styles.defaultOptionBadge}>Default from RITMA</span>
+                      <span className={styles.defaultOptionBadge}>{t('bestEfforts.manageRaceTypes.defaultBadge')}</span>
                     </div>
                   ) : (
                     <div className={styles.manageOptionActions}>
@@ -1337,7 +1377,7 @@ export function BestEffortsPage() {
                         icon={<FontAwesomeIcon icon={faPenToSquare} />}
                         onClick={() => void openManageRaceTypesModal(option)}
                       >
-                        Edit
+                        {t('bestEfforts.manageRaceTypes.edit')}
                       </Button>
                       <Button
                         type="text"
@@ -1345,7 +1385,7 @@ export function BestEffortsPage() {
                         icon={<FontAwesomeIcon icon={faTrashCan} />}
                         onClick={() => void handleDeleteRaceType(option)}
                       >
-                        Delete
+                        {t('bestEfforts.manageRaceTypes.delete')}
                       </Button>
                     </div>
                   )}
@@ -1358,8 +1398,8 @@ export function BestEffortsPage() {
             <div className={styles.manageConfirmBox}>
               <p className={styles.manageConfirmText}>
                 {managedRaceTypeConfirmState.kind === 'detach-delete'
-                  ? `This race type is being used in ${managedRaceTypeUsage?.usageCount ?? 0} race(s). Delete it and detach it from those races?`
-                  : `Delete "${managedRaceTypeConfirmState.option.name}"?`}
+                  ? t('bestEfforts.manageRaceTypes.confirmDetachDelete', { count: managedRaceTypeUsage?.usageCount ?? 0 })
+                  : t('bestEfforts.manageRaceTypes.confirmDelete', { name: managedRaceTypeConfirmState.option.name })}
               </p>
               <Space>
                 <Button onClick={() => {
@@ -1367,10 +1407,12 @@ export function BestEffortsPage() {
                   setManagedRaceTypeUsage(null)
                 }}
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
                 <Button danger loading={isManagedRaceTypeSubmitting} onClick={() => void handleConfirmRaceTypeAction()}>
-                  {managedRaceTypeConfirmState.kind === 'detach-delete' ? 'Detach and delete' : 'Delete'}
+                  {managedRaceTypeConfirmState.kind === 'detach-delete'
+                    ? t('bestEfforts.manageRaceTypes.detachDelete')
+                    : t('bestEfforts.manageRaceTypes.delete')}
                 </Button>
               </Space>
             </div>

@@ -1,6 +1,7 @@
 import { faBoxArchive, faBroom, faMagnifyingGlass, faPenToSquare, faPlus, faRotateLeft, faTrashCan } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { useDeferredValue, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Alert, Button, Card, Checkbox, Drawer, Empty, Input, InputNumber, Modal, Space, Spin, Tooltip, Typography } from 'antd'
 import { useAuth } from '../../features/auth'
 import {
@@ -24,41 +25,12 @@ type ManagedOptionConfirmState =
   | { kind: 'detach-delete'; option: RaceTypeOption }
   | null
 
-const OPTION_CONFIG: Record<ManagedRaceOptionType, {
-  title: string
-  singularLabel: string
-  description: string
-  emptyLabel: string
-  inputPlaceholder: string
-}> = {
-  'race-types': {
-    title: 'Race types',
-    singularLabel: 'race type',
-    description: 'Define the race categories you want to reuse across your races and best-effort analysis.',
-    emptyLabel: 'No race types created yet.',
-    inputPlaceholder: 'Type the race type name here',
-  },
-  teams: {
-    title: 'Teams',
-    singularLabel: 'team',
-    description: 'Keep your teams ready so they are always available when creating or editing races.',
-    emptyLabel: 'No teams created yet.',
-    inputPlaceholder: 'Type the team name here',
-  },
-  circuits: {
-    title: 'Circuits',
-    singularLabel: 'circuit',
-    description: 'Store the circuits or championships you use often.',
-    emptyLabel: 'No circuits created yet.',
-    inputPlaceholder: 'Type the circuit name here',
-  },
-  shoes: {
-    title: 'Shoes',
-    singularLabel: 'shoe',
-    description: 'Manage the shoes you want to assign to race results.',
-    emptyLabel: 'No shoes created yet.',
-    inputPlaceholder: 'Type the shoe name here',
-  },
+function getLocaleFromLanguage(language: string | undefined) {
+  return language === 'pt' ? 'pt-PT' : 'en-GB'
+}
+
+function getOptionTypeKey(optionType: ManagedRaceOptionType) {
+  return optionType === 'race-types' ? 'raceTypes' : optionType
 }
 
 function normalizeDecimalInput(value: string | number | undefined) {
@@ -89,6 +61,9 @@ type PersonalOptionsPageProps = {
 
 export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
   const { token } = useAuth()
+  const { t, i18n } = useTranslation()
+  const language = i18n.resolvedLanguage ?? i18n.language
+  const locale = getLocaleFromLanguage(language)
   const [options, setOptions] = useState<RaceTypeOption[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -106,7 +81,13 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
   const [showDefaultFromRitma, setShowDefaultFromRitma] = useState(true)
 
   const activeType = optionType
-  const config = OPTION_CONFIG[activeType]
+  const optionTypeKey = getOptionTypeKey(activeType)
+  const config = useMemo(() => ({
+    title: t(`personalOptions.options.${optionTypeKey}.title`),
+    itemLabel: t(`personalOptions.options.${optionTypeKey}.item`),
+    emptyLabel: t(`personalOptions.options.${optionTypeKey}.empty`),
+    inputPlaceholder: t(`personalOptions.options.${optionTypeKey}.inputPlaceholder`),
+  }), [optionTypeKey, t])
   const deferredSearch = useDeferredValue(search)
   const visibleOptions = useMemo(
     () => options.filter((option) => {
@@ -143,14 +124,14 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
         const payload = await fetchManagedRaceOptions(activeType, token, true)
         setOptions(payload)
       } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : 'Could not load your personal options right now.')
+        setError(loadError instanceof Error ? loadError.message : t('personalOptions.errors.load'))
       } finally {
         setIsLoading(false)
       }
     }
 
     void loadOptions()
-  }, [activeType, token])
+  }, [activeType, t, token])
 
   const resetEditorState = () => {
     setOptionName('')
@@ -238,7 +219,7 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
       setEditingOptionId(null)
       setIsEditorOpen(false)
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : `Could not save this ${config.singularLabel} right now.`)
+      setError(saveError instanceof Error ? saveError.message : t('personalOptions.errors.save', { item: config.itemLabel }))
     } finally {
       setIsSubmitting(false)
     }
@@ -263,7 +244,7 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
 
       setConfirmState({ kind: 'delete', option })
     } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : `Could not delete this ${config.singularLabel} right now.`)
+      setError(deleteError instanceof Error ? deleteError.message : t('personalOptions.errors.delete', { item: config.itemLabel }))
     }
   }
 
@@ -280,7 +261,7 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
         .map((currentOption) => (currentOption.id === savedOption.id ? savedOption : currentOption))
         .sort((left, right) => left.name.localeCompare(right.name)))
     } catch (archiveError) {
-      setError(archiveError instanceof Error ? archiveError.message : `Could not update this ${config.singularLabel} right now.`)
+      setError(archiveError instanceof Error ? archiveError.message : t('personalOptions.errors.update', { item: config.itemLabel }))
     } finally {
       setIsSubmitting(false)
     }
@@ -313,7 +294,7 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
       setPendingDeleteOption(null)
       setConfirmState(null)
     } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : `Could not delete this ${config.singularLabel} right now.`)
+      setError(deleteError instanceof Error ? deleteError.message : t('personalOptions.errors.delete', { item: config.itemLabel }))
     } finally {
       setIsSubmitting(false)
     }
@@ -343,7 +324,7 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
       setPendingDeleteOption(null)
       setConfirmState(null)
     } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : `Could not delete this ${config.singularLabel} right now.`)
+      setError(deleteError instanceof Error ? deleteError.message : t('personalOptions.errors.delete', { item: config.itemLabel }))
     } finally {
       setIsSubmitting(false)
     }
@@ -368,7 +349,7 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
               setIsEditorOpen(true)
             }}
           >
-            {`Add ${config.singularLabel}`}
+            {t('personalOptions.actions.add', { item: config.itemLabel })}
           </Button>
         </div>
       </div>
@@ -380,7 +361,7 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
               <Alert
                 type="error"
                 showIcon
-                message={`Could not manage ${config.title.toLowerCase()}`}
+                message={t('personalOptions.errors.manageTitle', { title: config.title })}
                 description={error}
                 style={{ marginBottom: 18 }}
               />
@@ -390,12 +371,12 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
               <div className={styles.loadingState}>
                 <Space size="middle">
                   <Spin />
-                  <span className={styles.loadingText}>Loading {config.title.toLowerCase()}</span>
+                  <span className={styles.loadingText}>{t('personalOptions.loading', { title: config.title })}</span>
                 </Space>
               </div>
             ) : visibleOptions.length === 0 ? (
               <div className={styles.emptyWrap}>
-                <Empty description={hasActiveFilters ? `No ${config.title.toLowerCase()} match the selected filters.` : config.emptyLabel} />
+                <Empty description={hasActiveFilters ? t('personalOptions.empty.filtered') : config.emptyLabel} />
               </div>
             ) : (
               <div className={styles.optionList}>
@@ -407,12 +388,14 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
                     <div className={styles.optionInfo}>
                       <div className={styles.optionNameRow}>
                         <span className={styles.optionName}>{option.name}</span>
-                        {option.archived ? <span className={styles.archivedBadge}>Archived</span> : null}
+                        {option.archived ? <span className={styles.archivedBadge}>{t('personalOptions.badges.archived')}</span> : null}
                       </div>
                       {activeType === 'race-types' ? (
                         <div className={styles.optionMetaRow}>
                           <span className={styles.optionMeta}>
-                            {option.targetKm != null ? `${option.targetKm.toFixed(2)} km` : 'No target km set'}
+                            {option.targetKm != null
+                              ? `${new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(option.targetKm)} km`
+                              : t('personalOptions.raceTypes.noTargetKm')}
                           </span>
                         </div>
                       ) : null}
@@ -420,7 +403,7 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
 
                     {option.isDefault ? (
                       <div className={styles.optionActions}>
-                        <span className={styles.defaultOptionBadge}>Default from RITMA</span>
+                        <span className={styles.defaultOptionBadge}>{t('personalOptions.badges.defaultFromRitma')}</span>
                       </div>
                     ) : (
                       <div className={styles.optionActions}>
@@ -429,7 +412,7 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
                           icon={<FontAwesomeIcon icon={option.archived ? faRotateLeft : faBoxArchive} />}
                           onClick={() => void handleToggleArchived(option, !option.archived)}
                         >
-                          {option.archived ? 'Restore' : 'Archive'}
+                          {option.archived ? t('personalOptions.actions.restore') : t('personalOptions.actions.archive')}
                         </Button>
                         <Button
                           type="text"
@@ -445,7 +428,7 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
                             setError(null)
                           }}
                         >
-                          Edit
+                          {t('personalOptions.actions.edit')}
                         </Button>
                         <Button
                           type="text"
@@ -453,7 +436,7 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
                           icon={<FontAwesomeIcon icon={faTrashCan} />}
                           onClick={() => void handleDelete(option)}
                         >
-                          Delete
+                          {t('personalOptions.actions.delete')}
                         </Button>
                       </div>
                     )}
@@ -467,14 +450,14 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
         <aside className={styles.sidebar}>
           <div className={styles.sidebarCard}>
             <div className={styles.sidebarHeader}>
-              <h3 className={styles.sidebarTitle}>Filters</h3>
+              <h3 className={styles.sidebarTitle}>{t('personalOptions.filters.title')}</h3>
               {hasActiveFilters ? (
                 <Button
                   type="text"
                   className={styles.clearButton}
                   icon={<FontAwesomeIcon icon={faBroom} />}
-                  title="Clear filters"
-                  aria-label="Clear filters"
+                  title={t('personalOptions.filters.clear')}
+                  aria-label={t('personalOptions.filters.clear')}
                   onClick={handleClearFilters}
                 />
               ) : null}
@@ -483,30 +466,30 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
             <div className={styles.sidebarDivider} />
 
             <label className={styles.filterField}>
-              <span className={styles.filterLabel}>Search</span>
+              <span className={styles.filterLabel}>{t('personalOptions.filters.search')}</span>
               <Input
                 allowClear
                 className={styles.searchInput}
                 value={search}
-                placeholder={`Search ${config.title.toLowerCase()} by name`}
+                placeholder={t('personalOptions.filters.searchPlaceholder')}
                 suffix={<FontAwesomeIcon icon={faMagnifyingGlass} />}
                 onChange={(event) => setSearch(event.target.value)}
               />
             </label>
 
             <div className={styles.filterField}>
-              <span className={styles.filterLabel}>Visibility</span>
+              <span className={styles.filterLabel}>{t('personalOptions.filters.visibility')}</span>
               <label className={styles.checkboxRow}>
                 <Checkbox checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} />
-                <span>Show archived</span>
+                <span>{t('personalOptions.filters.showArchived')}</span>
               </label>
             </div>
 
             <div className={styles.filterField}>
-              <span className={styles.filterLabel}>Source</span>
+              <span className={styles.filterLabel}>{t('personalOptions.filters.source')}</span>
               <label className={styles.checkboxRow}>
                 <Checkbox checked={showDefaultFromRitma} onChange={(event) => setShowDefaultFromRitma(event.target.checked)} />
-                <span>Default from RITMA</span>
+                <span>{t('personalOptions.badges.defaultFromRitma')}</span>
               </label>
             </div>
           </div>
@@ -514,15 +497,17 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
       </div>
 
       <Drawer
-        title={editingOptionId ? `Edit ${config.singularLabel}` : `Add ${config.singularLabel}`}
+        title={editingOptionId
+          ? t('personalOptions.drawer.editTitle', { item: config.itemLabel })
+          : t('personalOptions.drawer.addTitle', { item: config.itemLabel })}
         placement="right"
-        width={460}
+        width={560}
         open={isEditorOpen}
         onClose={handleCloseEditor}
         destroyOnHidden
         extra={(
           <Space>
-            <Button onClick={handleCloseEditor}>Cancel</Button>
+            <Button onClick={handleCloseEditor}>{t('common.cancel')}</Button>
             <Button
               type="primary"
               className={styles.saveButton}
@@ -530,7 +515,7 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
               disabled={!optionName.trim() || (activeType === 'race-types' && targetKm == null)}
               onClick={() => void handleSave()}
             >
-              {editingOptionId ? 'Save changes' : 'Add'}
+              {editingOptionId ? t('personalOptions.actions.saveChanges') : t('personalOptions.actions.addShort')}
             </Button>
           </Space>
         )}
@@ -539,7 +524,7 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
           <Alert
             type="error"
             showIcon
-            message={`Could not save this ${config.singularLabel}`}
+            message={t('personalOptions.errors.saveTitle', { item: config.itemLabel })}
             description={error}
             style={{ marginBottom: 18 }}
           />
@@ -547,9 +532,9 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
 
         <div className={styles.drawerForm}>
           <label className={styles.fieldGroup}>
-            <span className={styles.fieldLabel}>
-              <span className={styles.requiredMark} aria-hidden="true">*</span>
-              <span>Name</span>
+              <span className={styles.fieldLabel}>
+                <span className={styles.requiredMark} aria-hidden="true">*</span>
+              <span>{t('personalOptions.fields.name')}</span>
             </span>
             <Input
               value={optionName}
@@ -563,9 +548,9 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
             <label className={styles.fieldGroup}>
               <span className={styles.fieldLabel}>
                 <span className={styles.requiredMark} aria-hidden="true">*</span>
-                <span>Target km</span>
-                <Tooltip title="Expected distance for this race type. It is used to group races correctly and power best-effort rankings.">
-                  <span className={styles.infoIcon} aria-label="Target km info">i</span>
+                <span>{t('personalOptions.fields.targetKm')}</span>
+                <Tooltip title={t('personalOptions.raceTypes.targetKmHelp')}>
+                  <span className={styles.infoIcon} aria-label={t('personalOptions.raceTypes.targetKmInfoAria')}>i</span>
                 </Tooltip>
               </span>
               <InputNumber
@@ -574,7 +559,7 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
                 precision={2}
                 step={0.01}
                 className={styles.targetInput}
-                placeholder="Target km"
+                placeholder={t('personalOptions.fields.targetKm')}
                 value={targetKm ?? undefined}
                 parser={(value) => parseDecimalNumberInput(value)}
                 onChange={(value) => setTargetKm(typeof value === 'number' ? value : null)}
@@ -585,22 +570,22 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
       </Drawer>
 
       <Modal
-        title="Discard changes?"
+        title={t('personalOptions.discard.title')}
         open={isDiscardModalOpen}
-        okText="Discard"
-        cancelText="Keep editing"
+        okText={t('personalOptions.discard.ok')}
+        cancelText={t('personalOptions.discard.cancel')}
         okButtonProps={{ danger: true }}
         onOk={resetEditorState}
         onCancel={() => setIsDiscardModalOpen(false)}
       >
-        <p>You have unsaved changes. If you leave now, the information you entered will be lost.</p>
+        <p>{t('personalOptions.discard.body')}</p>
       </Modal>
 
       <Modal
-        title="Remove associations and delete?"
+        title={t('personalOptions.detachDelete.title')}
         open={usage != null && pendingDeleteOption != null}
-        okText="Remove and delete"
-        cancelText="Cancel"
+        okText={t('personalOptions.detachDelete.ok')}
+        cancelText={t('common.cancel')}
         okButtonProps={{ danger: true }}
         confirmLoading={isSubmitting}
         onOk={() => void handleConfirmDetachDelete()}
@@ -611,9 +596,9 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
       >
         <div className={styles.usageCard}>
           <div className={styles.usageHeader}>
-            <strong>Used in {usage?.usageCount ?? 0} record{usage?.usageCount === 1 ? '' : 's'}</strong>
+            <strong>{t('personalOptions.detachDelete.usedIn', { count: usage?.usageCount ?? 0 })}</strong>
             <span>
-              This {config.singularLabel} is already attached to existing races. You can remove those links and delete it.
+              {t('personalOptions.detachDelete.body', { item: config.itemLabel })}
             </span>
           </div>
 
@@ -629,17 +614,17 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
       </Modal>
 
       <Modal
-        title={confirmState?.kind === 'detach-delete' ? 'Remove associations and delete?' : 'Delete option?'}
+        title={t('personalOptions.delete.title')}
         open={confirmState?.kind === 'delete'}
-        okText="Delete"
-        cancelText="Cancel"
+        okText={t('personalOptions.actions.delete')}
+        cancelText={t('common.cancel')}
         okButtonProps={{ danger: true }}
         confirmLoading={isSubmitting}
         onOk={() => void handleConfirmDelete()}
         onCancel={() => setConfirmState(null)}
       >
         <p>
-          {`Delete "${confirmState?.option.name ?? ''}"? This action cannot be undone.`}
+          {t('personalOptions.delete.body', { name: confirmState?.option.name ?? '' })}
         </p>
       </Modal>
     </div>

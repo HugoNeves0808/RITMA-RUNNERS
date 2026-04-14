@@ -1,6 +1,11 @@
 import styles from './RacesCalendarDayCell.module.css'
 import type { RaceCalendarItem } from '../types/racesCalendar'
 import { getPrimaryRaceForDay } from '../utils/racesCalendarRacePriority'
+import { useTranslation } from 'react-i18next'
+import { getRaceStatusLabel } from '../types/raceFilters'
+import dayjs from 'dayjs'
+import { faTriangleExclamation } from '@fortawesome/free-solid-svg-icons'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 
 type RacesCalendarDayCellProps = {
   dayNumber: number
@@ -35,11 +40,22 @@ function formatRaceCategory(race: RaceCalendarItem) {
     return race.raceTypeName
   }
 
-  return 'No race type'
+  return null
 }
 
-function formatRaceStatus(race: RaceCalendarItem) {
-  return race.raceStatus.replaceAll('_', ' ').toLowerCase()
+function isTerminalRaceStatus(status: string | null | undefined) {
+  return status === 'COMPLETED'
+    || status === 'DID_NOT_START'
+    || status === 'DID_NOT_FINISH'
+    || status === 'CANCELLED'
+}
+
+function shouldWarnAboutPastRaceStatus(race: RaceCalendarItem, now: dayjs.Dayjs) {
+  if (!race.raceDate || isTerminalRaceStatus(race.raceStatus)) {
+    return false
+  }
+
+  return now.startOf('day').isAfter(dayjs(race.raceDate).startOf('day'))
 }
 
 export function RacesCalendarDayCell({
@@ -49,6 +65,8 @@ export function RacesCalendarDayCell({
   races,
   onDayClick,
 }: RacesCalendarDayCellProps) {
+  const { t } = useTranslation()
+  const now = dayjs()
   const primaryRace = getPrimaryRaceForDay(races)
   const visibleRaces = primaryRace ? [primaryRace] : []
   const remainingRaces = races.length - visibleRaces.length
@@ -76,11 +94,15 @@ export function RacesCalendarDayCell({
         <span className={isCurrentMonth ? styles.dayNumber : `${styles.dayNumber} ${styles.dayNumberMuted}`}>
           {dayNumber}
         </span>
-        {isToday ? <span className={styles.todayBadge}>Today</span> : null}
+        {isToday ? <span className={styles.todayBadge}>{t('races.calendar.today')}</span> : null}
       </div>
 
       <div className={styles.raceList}>
         {visibleRaces.map((race) => (
+          (() => {
+            const needsUpdate = shouldWarnAboutPastRaceStatus(race, now)
+
+            return (
           <div
             key={race.id}
             className={[
@@ -89,7 +111,7 @@ export function RacesCalendarDayCell({
             ].filter(Boolean).join(' ')}
           >
             <span className={styles.raceName}>{race.name}</span>
-            <span className={styles.raceMeta}>{formatRaceCategory(race)}</span>
+            <span className={styles.raceMeta}>{formatRaceCategory(race) ?? t('races.calendar.noRaceType')}</span>
             <span className={styles.raceStatus}>
               <span
                 className={[
@@ -97,12 +119,25 @@ export function RacesCalendarDayCell({
                   styles[RACE_STATUS_DOT_CLASS_MAP[race.raceStatus] ?? ''],
                 ].filter(Boolean).join(' ')}
               />
-              {formatRaceStatus(race)}
+              {needsUpdate ? (
+                <span className={styles.updateIcon} aria-label={t('races.calendar.needsUpdate')} title={t('races.calendar.needsUpdate')}>
+                  <FontAwesomeIcon icon={faTriangleExclamation} />
+                </span>
+              ) : null}
+              {getRaceStatusLabel(race.raceStatus, t)}
             </span>
           </div>
+            )
+          })()
         ))}
 
-        {remainingRaces > 0 ? <span className={styles.moreLabel}>+{remainingRaces} more</span> : null}
+        {remainingRaces > 0 ? (
+          <span className={styles.moreLabel}>
+            {remainingRaces === 1
+              ? t('races.calendar.moreOne')
+              : t('races.calendar.moreOther', { count: remainingRaces })}
+          </span>
+        ) : null}
       </div>
     </div>
   )

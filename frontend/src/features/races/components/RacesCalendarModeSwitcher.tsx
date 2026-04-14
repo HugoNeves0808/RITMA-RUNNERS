@@ -1,6 +1,7 @@
 import { Segmented } from 'antd'
 import styles from './RacesCalendarModeSwitcher.module.css'
 import type { RacesCalendarMode } from '../types/racesCalendarMode'
+import { useTranslation } from 'react-i18next'
 
 type RacesCalendarModeSwitcherProps = {
   selectedMode: RacesCalendarMode
@@ -8,24 +9,23 @@ type RacesCalendarModeSwitcherProps = {
   disabled?: boolean
 }
 
-const OPTIONS = [
-  { value: 'monthly', label: 'Monthly' },
-  { value: 'yearly', label: 'Yearly' },
-] satisfies Array<{ value: RacesCalendarMode; label: string }>
-
 export function RacesCalendarModeSwitcher({
   selectedMode,
   onModeChange,
   disabled = false,
 }: RacesCalendarModeSwitcherProps) {
+  const { t } = useTranslation()
   return (
     <Segmented<RacesCalendarMode>
       value={selectedMode}
       disabled={disabled}
       onChange={onModeChange}
-      options={OPTIONS}
+      options={[
+        { value: 'monthly', label: t('races.calendarMode.monthly') },
+        { value: 'yearly', label: t('races.calendarMode.yearly') },
+      ]}
       className={styles.segmented}
-      aria-label="Calendar view mode"
+      aria-label={t('races.calendarMode.selectorAria')}
     />
   )
 }

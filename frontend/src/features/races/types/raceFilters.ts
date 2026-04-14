@@ -22,15 +22,25 @@ export const EMPTY_RACE_FILTERS: RaceFilters = {
 export const IN_LIST_WITHOUT_DATE_STATUS = 'IN_LIST_WITHOUT_DATE'
 
 export const RACE_STATUS_OPTIONS = [
-  { value: 'REGISTERED', label: 'Registered' },
-  { value: 'COMPLETED', label: 'Completed' },
-  { value: 'IN_LIST', label: 'Future races (with date)' },
-  { value: IN_LIST_WITHOUT_DATE_STATUS, label: 'Future races (without date)' },
-  { value: 'NOT_REGISTERED', label: 'Waiting for registration' },
-  { value: 'CANCELLED', label: 'Cancelled' },
-  { value: 'DID_NOT_START', label: 'Did not start' },
-  { value: 'DID_NOT_FINISH', label: 'Did not finish' },
+  { value: 'REGISTERED', labelKey: 'races.status.registered' },
+  { value: 'COMPLETED', labelKey: 'races.status.completed' },
+  { value: 'IN_LIST', labelKey: 'races.status.futureWithDate' },
+  { value: IN_LIST_WITHOUT_DATE_STATUS, labelKey: 'races.status.futureWithoutDate' },
+  { value: 'NOT_REGISTERED', labelKey: 'races.status.waitingRegistration' },
+  { value: 'CANCELLED', labelKey: 'races.status.cancelled' },
+  { value: 'DID_NOT_START', labelKey: 'races.status.didNotStart' },
+  { value: 'DID_NOT_FINISH', labelKey: 'races.status.didNotFinish' },
 ] as const
+
+export type RaceStatusValue = (typeof RACE_STATUS_OPTIONS)[number]['value']
+
+export function getRaceStatusLabel(
+  status: string,
+  t: (key: string) => string,
+) {
+  const option = RACE_STATUS_OPTIONS.find((candidate) => candidate.value === status)
+  return option ? t(option.labelKey) : status
+}
 
 export function getRaceStatusColor(status: string) {
   switch (status) {

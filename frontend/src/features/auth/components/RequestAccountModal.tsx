@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Alert, Button, Form, Input, Modal, message } from 'antd'
+import { useTranslation } from 'react-i18next'
 import { requestAccount } from '../services/authService'
 
 type RequestAccountModalProps = {
@@ -12,7 +13,8 @@ type RequestAccountFormValues = {
 }
 
 export function RequestAccountModal({ open, onCancel }: RequestAccountModalProps) {
-  const pendingApprovalMessage = 'This account is still pending administrator approval. Please wait.'
+  const { t } = useTranslation()
+  const pendingApprovalMessage = t('requestAccount.errors.pendingApproval')
   const [form] = Form.useForm<RequestAccountFormValues>()
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -55,7 +57,7 @@ export function RequestAccountModal({ open, onCancel }: RequestAccountModalProps
         return
       }
 
-      setError('Unable to process the request right now. Please try again.')
+      setError(t('requestAccount.errors.generic'))
     } finally {
       setIsSubmitting(false)
     }
@@ -66,14 +68,14 @@ export function RequestAccountModal({ open, onCancel }: RequestAccountModalProps
       {contextHolder}
       <Modal
         open={open}
-        title="Request Account"
+        title={t('requestAccount.title')}
         onCancel={onCancel}
         footer={[
           <Button key="cancel" onClick={onCancel} disabled={isSubmitting}>
-            Cancel
+            {t('requestAccount.cancel')}
           </Button>,
           <Button key="submit" type="primary" loading={isSubmitting} onClick={handleSubmit}>
-            Submit
+            {t('requestAccount.submit')}
           </Button>,
         ]}
         destroyOnHidden
@@ -82,7 +84,7 @@ export function RequestAccountModal({ open, onCancel }: RequestAccountModalProps
           <Alert
             type="error"
             showIcon
-            message="Request failed"
+            message={t('requestAccount.alertTitle')}
             description={error}
             style={{ marginBottom: 16 }}
           />
@@ -90,14 +92,14 @@ export function RequestAccountModal({ open, onCancel }: RequestAccountModalProps
 
         <Form<RequestAccountFormValues> form={form} layout="vertical" validateTrigger="onSubmit">
           <Form.Item
-            label="Email"
+            label={t('requestAccount.emailLabel')}
             name="email"
             rules={[
-              { required: true, message: 'Email is required' },
-              { type: 'email', message: 'Enter a valid email address' },
+              { required: true, message: t('requestAccount.emailRequired') },
+              { type: 'email', message: t('requestAccount.emailInvalid') },
             ]}
           >
-            <Input placeholder="name@domain.com" size="large" />
+            <Input placeholder={t('requestAccount.placeholder')} size="large" />
           </Form.Item>
         </Form>
       </Modal>

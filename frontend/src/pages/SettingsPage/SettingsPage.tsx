@@ -1,9 +1,11 @@
 import { faAngleDown, faKey, faUserGear } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { useMemo, useState } from 'react'
-import { Alert, Button, Card, Form, Input, Switch, Typography } from 'antd'
+import { Alert, Button, Card, Form, Input, Select, Switch, Typography } from 'antd'
+import { useTranslation } from 'react-i18next'
 import { isApiError } from '../../services/apiClient'
 import { useAuth } from '../../features/auth'
+import { useLanguage } from '../../contexts/LanguageContext'
 import styles from './SettingsPage.module.css'
 
 const { Title } = Typography
@@ -17,7 +19,9 @@ type ChangePasswordFormValues = {
 type SettingsSectionKey = 'password' | 'preferences'
 
 export function SettingsPage() {
+  const { t } = useTranslation()
   const { submitPasswordChange, rememberSession, updateRememberSession } = useAuth()
+  const { language, setLanguage } = useLanguage()
   const [form] = Form.useForm<ChangePasswordFormValues>()
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null)
@@ -31,21 +35,21 @@ export function SettingsPage() {
   const sections = useMemo(() => ([
     {
       key: 'password' as const,
-      eyebrow: 'Security',
+      eyebrow: t('settings.sidebar.securityEyebrow'),
       title: '',
       icon: faKey,
     },
     {
       key: 'preferences' as const,
-      eyebrow: 'Preferences',
+      eyebrow: t('settings.sidebar.preferencesEyebrow'),
       title: '',
       icon: faUserGear,
     },
-  ]), [])
+  ]), [t])
 
   const activeSectionTitle = activeSection === 'password'
-    ? 'Change password'
-    : 'Local preferences'
+    ? t('settings.sections.changePassword')
+    : t('settings.sections.localPreferences')
 
   const toggleActiveSection = () => {
     setOpenSections((current) => ({
@@ -110,7 +114,7 @@ export function SettingsPage() {
 
   return (
     <div className={styles.page}>
-      <Title level={1} className={styles.title}>Settings</Title>
+      <Title level={1} className={styles.title}>{t('settings.title')}</Title>
 
       <div className={styles.layout}>
         <Card className={styles.sidebarCard} bordered={false}>
@@ -148,7 +152,7 @@ export function SettingsPage() {
           {activeSection === 'password' && openSections.password ? (
             <div className={styles.contentBody}>
               {passwordError ? (
-                <Alert type="error" showIcon message="Unable to update password" description={passwordError} />
+                <Alert type="error" showIcon message={t('forcePasswordChange.alertTitle')} description={passwordError} />
               ) : null}
 
               {passwordSuccess ? (
@@ -157,21 +161,21 @@ export function SettingsPage() {
 
               <Form<ChangePasswordFormValues> form={form} layout="vertical">
                 <Form.Item
-                  label="Current password"
+                  label={t('forcePasswordChange.currentPasswordLabel')}
                   name="currentPassword"
-                  rules={[{ required: true, message: 'Current password is required' }]}
+                  rules={[{ required: true, message: t('forcePasswordChange.currentPasswordRequired') }]}
                 >
-                  <Input.Password placeholder="Enter your current password" size="large" />
+                  <Input.Password placeholder={t('forcePasswordChange.currentPasswordPlaceholder')} size="large" />
                 </Form.Item>
 
                 <Form.Item
-                  label="New password"
+                  label={t('forcePasswordChange.newPasswordLabel')}
                   name="newPassword"
                   dependencies={['currentPassword']}
                   validateTrigger={['onBlur', 'onSubmit']}
                   rules={[
-                    { required: true, message: 'New password is required' },
-                    { min: 8, message: 'Use at least 8 characters.' },
+                    { required: true, message: t('forcePasswordChange.newPasswordRequired') },
+                    { min: 8, message: t('forcePasswordChange.errors.weakPassword') },
                     ({ getFieldValue }) => ({
                       validator(_, value) {
                         if (!value) {
@@ -197,30 +201,30 @@ export function SettingsPage() {
 
                         return isStrongPassword
                           ? Promise.resolve()
-                          : Promise.reject(new Error('Use uppercase, lowercase, a number, and a symbol.'))
+                          : Promise.reject(new Error(t('forcePasswordChange.errors.weakPassword')))
                       },
                     },
                   ]}
                 >
-                  <Input.Password placeholder="Enter your new password" size="large" />
+                  <Input.Password placeholder={t('forcePasswordChange.newPasswordPlaceholder')} size="large" />
                 </Form.Item>
 
                 <Form.Item
-                  label="Confirm new password"
+                  label={t('forcePasswordChange.confirmPasswordLabel')}
                   name="confirmPassword"
                   dependencies={['newPassword']}
                   rules={[
-                    { required: true, message: 'Please confirm the new password' },
+                    { required: true, message: t('forcePasswordChange.confirmPasswordRequired') },
                     ({ getFieldValue }) => ({
                       validator(_, value) {
                         return !value || getFieldValue('newPassword') === value
                           ? Promise.resolve()
-                          : Promise.reject(new Error('The new passwords do not match'))
+                          : Promise.reject(new Error(t('forcePasswordChange.errors.mismatch')))
                       },
                     }),
                   ]}
                 >
-                  <Input.Password placeholder="Confirm your new password" size="large" />
+                  <Input.Password placeholder={t('forcePasswordChange.confirmPasswordPlaceholder')} size="large" />
                 </Form.Item>
 
                 <Button
@@ -229,7 +233,7 @@ export function SettingsPage() {
                   loading={isSubmittingPassword}
                   onClick={() => void handlePasswordSubmit()}
                 >
-                  Update password
+                  {t('forcePasswordChange.updatePassword')}
                 </Button>
               </Form>
             </div>
@@ -239,8 +243,8 @@ export function SettingsPage() {
             <div className={styles.contentBody}>
               <div className={styles.preferenceRow}>
                 <div className={styles.preferenceInfo}>
-                  <div className={styles.preferenceTitle}>Remember me</div>
-                  <div className={styles.preferenceText}>Managed at sign-in and stored locally on this browser.</div>
+                  <div className={styles.preferenceTitle}>{t('settings.preferences.rememberMeTitle')}</div>
+                  <div className={styles.preferenceText}>{t('settings.preferences.rememberMeText')}</div>
                 </div>
                 <Switch
                   className={styles.preferenceSwitch}
@@ -248,6 +252,22 @@ export function SettingsPage() {
                   checkedChildren="On"
                   unCheckedChildren="Off"
                   onChange={updateRememberSession}
+                />
+              </div>
+
+              <div className={styles.preferenceRow}>
+                <div className={styles.preferenceInfo}>
+                  <div className={styles.preferenceTitle}>{t('settings.preferences.languageTitle')}</div>
+                  <div className={styles.preferenceText}>{t('settings.preferences.languageText')}</div>
+                </div>
+                <Select
+                  className={styles.preferenceSwitch}
+                  value={language}
+                  onChange={setLanguage}
+                  options={[
+                    { value: 'en', label: t('settings.preferences.languageEnglish') },
+                    { value: 'pt', label: t('settings.preferences.languagePortuguese') },
+                  ]}
                 />
               </div>
             </div>

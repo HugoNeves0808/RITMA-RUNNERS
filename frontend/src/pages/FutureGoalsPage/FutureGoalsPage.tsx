@@ -1,48 +1,53 @@
 import { faBolt, faChartLine, faCompassDrafting, faFlagCheckered, faLink, faRobot } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { Button, Tabs, Typography } from 'antd'
+import { Button, Select, Tabs, Typography } from 'antd'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ROUTES } from '../../constants/routes'
+import { useLanguage } from '../../contexts/LanguageContext'
 import styles from './FutureGoalsPage.module.css'
 
 const { Paragraph } = Typography
 
 export function FutureGoalsPage() {
+  const { t } = useTranslation()
+  const { language, setLanguage } = useLanguage()
+  const languageOptions = [
+    { value: 'en', label: <span>🇬🇧 {t('settings.preferences.languageEnglish')}</span> },
+    { value: 'pt', label: <span>🇵🇹 {t('settings.preferences.languagePortuguese')}</span> },
+  ] as const
   const items = [
     {
       key: 'what-is-ritma',
-      label: 'What is RITMA?',
+      label: t('futureGoals.tabs.whatIsRitma'),
       children: (
         <div className={styles.tabContent}>
           <Paragraph className={styles.paragraph}>
-            RITMA RUNNERS is a web application built to help runners organize races in a clear and
-            structured way.
+            {t('futureGoals.whatIs.paragraph1')}
           </Paragraph>
           <Paragraph className={styles.paragraph}>
-            It is still intentionally minimalist, but the direction is clear: a practical digital
-            companion for runners who want better structure, continuity, and clarity around their
-            racing journey.
+            {t('futureGoals.whatIs.paragraph2')}
           </Paragraph>
           <div className={styles.futureGrid}>
             <div className={styles.futureCard}>
               <FontAwesomeIcon icon={faFlagCheckered} className={styles.futureIcon} />
               <div>
-                <strong>Race-focused organization</strong>
-                <p>Keep track of races with a clearer workflow.</p>
+                <strong>{t('futureGoals.whatIs.cards.raceFocused.title')}</strong>
+                <p>{t('futureGoals.whatIs.cards.raceFocused.description')}</p>
               </div>
             </div>
             <div className={styles.futureCard}>
               <FontAwesomeIcon icon={faChartLine} className={styles.futureIcon} />
               <div>
-                <strong>Clear performance history</strong>
-                <p>Build a consistent record of results and progress.</p>
+                <strong>{t('futureGoals.whatIs.cards.performanceHistory.title')}</strong>
+                <p>{t('futureGoals.whatIs.cards.performanceHistory.description')}</p>
               </div>
             </div>
             <div className={styles.futureCard}>
               <FontAwesomeIcon icon={faCompassDrafting} className={styles.futureIcon} />
               <div>
-                <strong>Structured runner journey</strong>
-                <p>Create a stronger long-term view of your journey.</p>
+                <strong>{t('futureGoals.whatIs.cards.runnerJourney.title')}</strong>
+                <p>{t('futureGoals.whatIs.cards.runnerJourney.description')}</p>
               </div>
             </div>
           </div>
@@ -51,54 +56,53 @@ export function FutureGoalsPage() {
     },
     {
       key: 'future-plans',
-      label: 'Future Plans',
+      label: t('futureGoals.tabs.futurePlans'),
       children: (
         <div className={styles.tabContent}>
           <Paragraph className={styles.paragraph}>
-            RITMA will expand step by step into a more complete platform for planning, analysis,
-            and long-term runner support.
+            {t('futureGoals.plans.paragraph1')}
           </Paragraph>
           <div className={styles.futureGrid}>
             <div className={styles.futureCard}>
               <FontAwesomeIcon icon={faBolt} className={styles.futureIcon} />
               <div>
-                <strong>Training planning</strong>
-                <p>Plan training with more structure around your race calendar.</p>
+                <strong>{t('futureGoals.plans.cards.trainingPlanning.title')}</strong>
+                <p>{t('futureGoals.plans.cards.trainingPlanning.description')}</p>
               </div>
             </div>
             <div className={styles.futureCard}>
               <FontAwesomeIcon icon={faLink} className={styles.futureIcon} />
               <div>
-                <strong>Platform sync</strong>
-                <p>Connect RITMA with Strava, Garmin, and other running tools.</p>
+                <strong>{t('futureGoals.plans.cards.platformSync.title')}</strong>
+                <p>{t('futureGoals.plans.cards.platformSync.description')}</p>
               </div>
             </div>
             <div className={styles.futureCard}>
               <FontAwesomeIcon icon={faRobot} className={styles.futureIcon} />
               <div>
-                <strong>Smarter support</strong>
-                <p>Use AI-assisted guidance and stronger decision support over time.</p>
+                <strong>{t('futureGoals.plans.cards.smarterSupport.title')}</strong>
+                <p>{t('futureGoals.plans.cards.smarterSupport.description')}</p>
               </div>
             </div>
             <div className={styles.futureCard}>
               <FontAwesomeIcon icon={faChartLine} className={styles.futureIcon} />
               <div>
-                <strong>Advanced statistics</strong>
-                <p>Expand race and training analysis with deeper performance insights.</p>
+                <strong>{t('futureGoals.plans.cards.advancedStats.title')}</strong>
+                <p>{t('futureGoals.plans.cards.advancedStats.description')}</p>
               </div>
             </div>
             <div className={styles.futureCard}>
               <FontAwesomeIcon icon={faFlagCheckered} className={styles.futureIcon} />
               <div>
-                <strong>Progression analysis</strong>
-                <p>Understand consistency, progression, and preparation over longer cycles.</p>
+                <strong>{t('futureGoals.plans.cards.progressionAnalysis.title')}</strong>
+                <p>{t('futureGoals.plans.cards.progressionAnalysis.description')}</p>
               </div>
             </div>
             <div className={styles.futureCard}>
               <FontAwesomeIcon icon={faCompassDrafting} className={styles.futureIcon} />
               <div>
-                <strong>Preparation tools</strong>
-                <p>Support better planning and decision-making before key races.</p>
+                <strong>{t('futureGoals.plans.cards.preparationTools.title')}</strong>
+                <p>{t('futureGoals.plans.cards.preparationTools.description')}</p>
               </div>
             </div>
           </div>
@@ -109,9 +113,18 @@ export function FutureGoalsPage() {
 
   return (
     <div className={styles.page}>
+      <div className={styles.fixedLanguage}>
+        <Select
+          aria-label={t('common.language')}
+          className={styles.languageSelect}
+          value={language}
+          onChange={setLanguage}
+          options={[...languageOptions]}
+        />
+      </div>
       <div className={styles.fixedAction}>
         <Button className={styles.primaryButton} type="primary">
-          <Link to={ROUTES.login}>Back to login</Link>
+          <Link to={ROUTES.login}>{t('futureGoals.backToLogin')}</Link>
         </Button>
       </div>
       <div className={styles.content}>

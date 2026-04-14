@@ -3,9 +3,11 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Button, Card, Checkbox, Empty, Input, Space, Spin, Table, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../features/auth'
 import { fetchAdminUsers, type AdminUserListItem } from '../../features/admin'
 import { STORAGE_KEYS } from '../../constants/storage'
+import { useLanguage } from '../../contexts/LanguageContext'
 import styles from './UserListPage.module.css'
 
 const { Title } = Typography
@@ -47,6 +49,7 @@ type CheckboxFilterSectionProps = {
   count: number
   isOpen: boolean
   onToggle: () => void
+  toggleLabel: string
   children: React.ReactNode
 }
 
@@ -55,6 +58,7 @@ function CheckboxFilterSection({
   count,
   isOpen,
   onToggle,
+  toggleLabel,
   children,
 }: CheckboxFilterSectionProps) {
   return (
@@ -69,7 +73,7 @@ function CheckboxFilterSection({
           className={styles.checkboxSectionToggle}
           onClick={onToggle}
           aria-expanded={isOpen}
-          aria-label={isOpen ? `Collapse ${title}` : `Expand ${title}`}
+          aria-label={toggleLabel}
         >
           <FontAwesomeIcon icon={isOpen ? faAngleUp : faAngleDown} className={styles.checkboxSectionIcon} />
         </button>
@@ -80,9 +84,9 @@ function CheckboxFilterSection({
   )
 }
 
-function formatLastLogin(value: string | null) {
+function formatLastLogin(value: string | null, locale: string, t: (key: string) => string) {
   if (!value) {
-    return 'Never'
+    return t('userList.lastLogin.never')
   }
 
   const lastLoginAt = new Date(value)
@@ -90,7 +94,7 @@ function formatLastLogin(value: string | null) {
   const diffMs = now.getTime() - lastLoginAt.getTime()
 
   if (Number.isNaN(lastLoginAt.getTime()) || diffMs < 0) {
-    return '-'
+    return t('userList.lastLogin.invalid')
   }
 
   const minuteMs = 60 * 1000
@@ -99,29 +103,30 @@ function formatLastLogin(value: string | null) {
   const monthMs = 30 * dayMs
   const yearMs = 365 * dayMs
 
+  const formatter = new Intl.RelativeTimeFormat(locale, { numeric: 'always' })
+
+  if (diffMs < hourMs) {
+    const minutes = Math.max(Math.floor(diffMs / minuteMs), 1)
+    return formatter.format(-minutes, 'minute')
+  }
+
   if (diffMs < dayMs) {
-    const hours = Math.floor(diffMs / hourMs)
-    const minutes = Math.floor((diffMs % hourMs) / minuteMs)
-
-    if (hours <= 0) {
-      return `${Math.max(minutes, 1)} min ago`
-    }
-
-    return `${hours}h ${minutes}min ago`
+    const hours = Math.max(Math.floor(diffMs / hourMs), 1)
+    return formatter.format(-hours, 'hour')
   }
 
   if (diffMs < monthMs) {
     const days = Math.floor(diffMs / dayMs)
-    return `${days} day${days === 1 ? '' : 's'} ago`
+    return formatter.format(-Math.max(days, 1), 'day')
   }
 
   if (diffMs < yearMs) {
     const months = Math.floor(diffMs / monthMs)
-    return `${months} month${months === 1 ? '' : 's'} ago`
+    return formatter.format(-Math.max(months, 1), 'month')
   }
 
   const years = Math.floor(diffMs / yearMs)
-  return `${years} year${years === 1 ? '' : 's'} ago`
+  return formatter.format(-Math.max(years, 1), 'year')
 }
 
 function isLastLoginStale(value: string | null) {
@@ -142,6 +147,8 @@ function isLastLoginStale(value: string | null) {
 }
 
 export function UserListPage() {
+  const { t } = useTranslation()
+  const { language } = useLanguage()
   const { token } = useAuth()
   const persistedFilters = useMemo(() => readPersistedUserListFilters(), [])
   const isPageRefreshRef = useRef(false)
@@ -182,14 +189,14 @@ export function UserListPage() {
         setUsers(data)
         setError(null)
       } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : 'Unknown error')
+        setError(loadError instanceof Error ? loadError.message : t('userList.errors.unknown'))
       } finally {
         setIsLoading(false)
       }
     }
 
     void loadUsers()
-  }, [token, deferredSearch, onlyAdmins, staleOnly])
+  }, [token, deferredSearch, onlyAdmins, staleOnly, t])
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -225,14 +232,16 @@ export function UserListPage() {
     }
   }, [])
 
+  const dateTimeLocale = language === 'pt' ? 'pt-PT' : 'en-GB'
+
   const columns: ColumnsType<AdminUserListItem> = [
     {
-      title: 'Email',
+      title: t('userList.table.email'),
       dataIndex: 'email',
       key: 'email',
     },
     {
-      title: 'Role',
+      title: t('userList.table.role'),
       dataIndex: 'role',
       key: 'role',
       render: (value: AdminUserListItem['role']) => (
@@ -242,17 +251,17 @@ export function UserListPage() {
       ),
     },
     {
-      title: 'Last login',
+      title: t('userList.table.lastLogin'),
       dataIndex: 'lastLoginAt',
       key: 'lastLoginAt',
       render: (value: string | null) => (
         <span className={styles.lastLoginCell}>
-          {formatLastLogin(value)}
+          {formatLastLogin(value, dateTimeLocale, t)}
           {isLastLoginStale(value) ? (
             <FontAwesomeIcon
               icon={faTriangleExclamation}
               className={styles.lastLoginWarning}
-              title="Last login is older than one year"
+              title={t('userList.table.lastLoginStaleHint')}
             />
           ) : null}
         </span>
@@ -264,11 +273,11 @@ export function UserListPage() {
     <div className={styles.page}>
       <div className={styles.pageHeader}>
         <div>
-          <Title level={1} className={styles.pageTitle}>Users</Title>
+          <Title level={1} className={styles.pageTitle}>{t('userList.title')}</Title>
         </div>
 
         <div className={styles.summaryBadge}>
-          <span className={styles.summaryLabel}>Users</span>
+          <span className={styles.summaryLabel}>{t('userList.summaryLabel')}</span>
           <span className={styles.summaryValue}>{filteredUsers.length}</span>
         </div>
       </div>
@@ -278,14 +287,14 @@ export function UserListPage() {
           <div className={styles.loadingState}>
             <Space size="middle">
               <Spin />
-              <span className={styles.loadingText}>Loading users</span>
+              <span className={styles.loadingText}>{t('userList.loading')}</span>
             </Space>
           </div>
         </Card>
       ) : null}
 
       {error ? (
-        <Alert type="error" showIcon message="Could not load users" description={error} />
+        <Alert type="error" showIcon message={t('userList.errorTitle')} description={error} />
       ) : null}
 
       {!isLoading ? (
@@ -294,7 +303,7 @@ export function UserListPage() {
             <Card className={styles.pageCard} variant="borderless">
               {filteredUsers.length === 0 ? (
                 <div className={styles.emptyWrap}>
-                  <Empty description={users.length === 0 ? 'No active users.' : 'No users match the current filters.'} />
+                  <Empty description={users.length === 0 ? t('userList.empty.noActive') : t('userList.empty.noMatches')} />
                 </div>
               ) : (
                 <Table
@@ -314,14 +323,14 @@ export function UserListPage() {
           <aside className={styles.sidebar}>
             <div className={styles.sidebarCard}>
               <div className={styles.sidebarHeader}>
-                <h3 className={styles.sidebarTitle}>Filters</h3>
+                <h3 className={styles.sidebarTitle}>{t('userList.filters.title')}</h3>
                 {shouldShowClearFiltersButton ? (
                   <Button
                     type="text"
                     className={styles.clearButton}
                     icon={<FontAwesomeIcon icon={faBroom} />}
-                    title="Clear filters"
-                    aria-label="Clear filters"
+                    title={t('userList.filters.clear')}
+                    aria-label={t('userList.filters.clear')}
                     onClick={() => {
                       setSearch('')
                       setOnlyAdmins(false)
@@ -334,41 +343,43 @@ export function UserListPage() {
               <div className={styles.sidebarDivider} />
 
               <label className={styles.filterField}>
-                <span className={styles.filterLabel}>Email</span>
+                <span className={styles.filterLabel}>{t('userList.filters.emailLabel')}</span>
                 <Input
                   allowClear
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search by email"
+                  placeholder={t('userList.filters.emailPlaceholder')}
                   className={styles.searchInput}
                   suffix={<FontAwesomeIcon icon={faMagnifyingGlass} />}
                 />
               </label>
 
               <CheckboxFilterSection
-                title="Role"
+                title={t('userList.filters.roleTitle')}
                 count={onlyAdmins ? 1 : 0}
                 isOpen={isRoleOpen}
                 onToggle={() => setIsRoleOpen((current) => !current)}
+                toggleLabel={t(isRoleOpen ? 'userList.filters.toggle.collapse' : 'userList.filters.toggle.expand', { section: t('userList.filters.roleTitle') })}
               >
                 <div className={styles.checkboxList}>
                   <label className={styles.checkboxOption}>
                     <Checkbox checked={onlyAdmins} onChange={(event) => setOnlyAdmins(event.target.checked)} />
-                    <span className={styles.checkboxOptionLabel}>Only admins</span>
+                    <span className={styles.checkboxOptionLabel}>{t('userList.filters.onlyAdmins')}</span>
                   </label>
                 </div>
               </CheckboxFilterSection>
 
               <CheckboxFilterSection
-                title="Activity"
+                title={t('userList.filters.activityTitle')}
                 count={staleOnly ? 1 : 0}
                 isOpen={isActivityOpen}
                 onToggle={() => setIsActivityOpen((current) => !current)}
+                toggleLabel={t(isActivityOpen ? 'userList.filters.toggle.collapse' : 'userList.filters.toggle.expand', { section: t('userList.filters.activityTitle') })}
               >
                 <div className={styles.checkboxList}>
                   <label className={styles.checkboxOption}>
                     <Checkbox checked={staleOnly} onChange={(event) => setStaleOnly(event.target.checked)} />
-                    <span className={styles.checkboxOptionLabel}>Inactive for over 1 year</span>
+                    <span className={styles.checkboxOptionLabel}>{t('userList.filters.staleOnly')}</span>
                   </label>
                 </div>
               </CheckboxFilterSection>
