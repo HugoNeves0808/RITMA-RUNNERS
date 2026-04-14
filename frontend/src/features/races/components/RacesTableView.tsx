@@ -1118,12 +1118,12 @@ export function RacesTableView({
                           </div>
 
                           <div className={styles.raceTopMeta}>
-                            {renderPastRaceStatusWarning(race, now, (selectedRace) => {
-                              void handleOpenEdit(selectedRace)
-                            }, t)}
                             <span className={`${styles.raceStatusBadge} ${getRaceStatusClassName(race.raceStatus)}`.trim()}>
                               {getRaceStatusLabelText(race.raceStatus, t)}
                             </span>
+                            {renderPastRaceStatusWarning(race, now, (selectedRace) => {
+                              void handleOpenEdit(selectedRace)
+                            }, t)}
                             <Dropdown
                               menu={getRaceActionsMenu(race)}
                               trigger={['click']}
@@ -1218,12 +1218,12 @@ export function RacesTableView({
                               </div>
 
                               <div className={styles.raceTopMeta}>
-                                {renderPastRaceStatusWarning(race, now, (selectedRace) => {
-                                  void handleOpenEdit(selectedRace)
-                                }, t)}
                                 <span className={`${styles.raceStatusBadge} ${getRaceStatusClassName(race.raceStatus)}`.trim()}>
                                   {getRaceStatusLabelText(race.raceStatus, t)}
                                 </span>
+                                {renderPastRaceStatusWarning(race, now, (selectedRace) => {
+                                  void handleOpenEdit(selectedRace)
+                                }, t)}
                                 <Dropdown
                                   menu={getRaceActionsMenu(race)}
                                   trigger={['click']}
@@ -1603,12 +1603,12 @@ export function RacesTableView({
                     </div>
 
                     <div className={styles.raceTopMeta}>
-                      {renderPastRaceStatusWarning(race, now, (selectedRace) => {
-                        void handleOpenEdit(selectedRace)
-                      }, t)}
                       <span className={`${styles.raceStatusBadge} ${getRaceStatusClassName(race.raceStatus)}`.trim()}>
                         {getRaceStatusLabelText(race.raceStatus, t)}
                       </span>
+                      {renderPastRaceStatusWarning(race, now, (selectedRace) => {
+                        void handleOpenEdit(selectedRace)
+                      }, t)}
                       <Dropdown
                         menu={getRaceActionsMenu(race)}
                         trigger={['click']}

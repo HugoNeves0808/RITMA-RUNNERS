@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Alert, Card, Col, Empty, Row, Spin, Typography } from 'antd'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../features/auth'
 import { fetchProfileSummary } from '../../features/profile/services/profileService'
 import type { ProfileSummary } from '../../features/profile/types/profile'
@@ -22,6 +23,7 @@ function SummaryMetric({ label, value }: SummaryMetricProps) {
 }
 
 export function ProfilePage() {
+  const { t } = useTranslation()
   const { token } = useAuth()
   const [summary, setSummary] = useState<ProfileSummary | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -40,26 +42,26 @@ export function ProfilePage() {
         setError(null)
         setSummary(await fetchProfileSummary(token))
       } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : 'Could not load profile summary right now.')
+        setError(loadError instanceof Error ? loadError.message : t('profile.errors.loadSummary'))
       } finally {
         setIsLoading(false)
       }
     }
 
     void loadSummary()
-  }, [token])
+  }, [t, token])
 
   return (
     <div className={styles.page}>
       <div className={styles.header}>
-        <Title level={1} className={styles.title}>Profile</Title>
+        <Title level={1} className={styles.title}>{t('profile.title')}</Title>
       </div>
 
       {error ? (
         <Alert
           type="error"
           showIcon
-          message="Could not load profile"
+          message={t('profile.errorTitle')}
           description={error}
         />
       ) : null}
@@ -75,10 +77,10 @@ export function ProfilePage() {
           <Col xs={24}>
             <Card className={styles.card} bordered={false}>
               <div className={styles.metricsGrid}>
-                <SummaryMetric label="Total races" value={summary.totalRaces} />
-                <SummaryMetric label="Completed races" value={summary.completedRaces} />
-                <SummaryMetric label="Favorite race type" value={summary.favoriteRaceType ?? '-'} />
-                <SummaryMetric label="Podiums" value={summary.podiums} />
+                <SummaryMetric label={t('profile.metrics.totalRaces')} value={summary.totalRaces} />
+                <SummaryMetric label={t('profile.metrics.completedRaces')} value={summary.completedRaces} />
+                <SummaryMetric label={t('profile.metrics.favoriteRaceType')} value={summary.favoriteRaceType ?? '-'} />
+                <SummaryMetric label={t('profile.metrics.podiums')} value={summary.podiums} />
               </div>
             </Card>
           </Col>
@@ -87,7 +89,7 @@ export function ProfilePage() {
             <Card className={styles.card} bordered={false}>
               {summary.topRaceTypes.length === 0 ? (
                 <div className={styles.emptyState}>
-                  <Empty description="No race type data yet." />
+                  <Empty description={t('profile.empty.noRaceTypeData')} />
                 </div>
               ) : (
                 <div className={styles.raceTypeList}>
@@ -95,11 +97,11 @@ export function ProfilePage() {
                     <div key={item.raceTypeName} className={styles.raceTypeRow}>
                       <div className={styles.raceTypeMain}>
                         <span className={styles.raceTypeName}>{item.raceTypeName}</span>
-                        <span className={styles.raceTypeMeta}>{item.raceCount} races</span>
+                        <span className={styles.raceTypeMeta}>{t('profile.raceTypes.raceCount', { count: item.raceCount })}</span>
                       </div>
                       <div className={styles.raceTypeBadge}>
                         <span className={styles.raceTypeBadgeValue}>{item.bestEffortsTracked}</span>
-                        <span className={styles.raceTypeBadgeLabel}>Best efforts tracked</span>
+                        <span className={styles.raceTypeBadgeLabel}>{t('profile.raceTypes.bestEffortsTracked')}</span>
                       </div>
                     </div>
                   ))}

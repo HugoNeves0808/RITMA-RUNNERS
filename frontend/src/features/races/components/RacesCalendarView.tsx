@@ -1,17 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Drawer, Tooltip } from 'antd'
+import { Drawer, Modal, Tooltip } from 'antd'
 import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
 import { faTriangleExclamation } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { useAuth } from '../../auth'
 import { fetchRaceCalendarMonth, fetchRaceCalendarYear } from '../services/racesCalendarService'
-import { fetchRaceDetail } from '../services/racesTableService'
+import { deleteRace, fetchRaceCreateOptions, fetchRaceDetail } from '../services/racesTableService'
 import type { RaceFilters } from '../types/raceFilters'
 import { getRaceStatusLabel as getRaceStatusLabelFromOptions } from '../types/raceFilters'
 import type { RaceCalendarItem, RaceCalendarMonthPayload, RaceCalendarYearPayload } from '../types/racesCalendar'
-import type { RaceDetailResponse } from '../types/racesTable'
+import type { RaceCreateOptions, RaceDetailResponse } from '../types/racesTable'
 import type { RacesCalendarMode } from '../types/racesCalendarMode'
+import { AddRaceDrawer } from './AddRaceDrawer'
 import { RaceDetailsDrawer } from './RaceDetailsDrawer'
 import { RacesCalendarMonthlyView } from './RacesCalendarMonthlyView'
 import { RacesCalendarYearlyView } from './RacesCalendarYearlyView'
@@ -174,11 +175,50 @@ export function RacesCalendarView({ selectedMode, filters, refreshKey = 0 }: Rac
   const [isDetailsLoading, setIsDetailsLoading] = useState(false)
   const [detailsError, setDetailsError] = useState<string | null>(null)
   const [raceDetails, setRaceDetails] = useState<RaceDetailResponse | null>(null)
+  const [createOptions, setCreateOptions] = useState<RaceCreateOptions>({
+    raceTypes: [],
+    teams: [],
+    circuits: [],
+    shoes: [],
+  })
+  const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false)
+  const [editingRace, setEditingRace] = useState<RaceDetailResponse | null>(null)
+  const [isPreparingEdit, setIsPreparingEdit] = useState(false)
+  const [racePendingDelete, setRacePendingDelete] = useState<RaceDetailResponse | null>(null)
+  const [isDeletingRace, setIsDeletingRace] = useState(false)
+  const [reloadNonce, setReloadNonce] = useState(0)
 
   useEffect(() => {
     monthlyCalendarCacheRef.current.clear()
     yearlyCalendarCacheRef.current.clear()
-  }, [refreshKey, token])
+  }, [refreshKey, reloadNonce, token])
+
+  useEffect(() => {
+    if (!token) {
+      setCreateOptions({
+        raceTypes: [],
+        teams: [],
+        circuits: [],
+        shoes: [],
+      })
+      return
+    }
+
+    const loadCreateOptions = async () => {
+      try {
+        setCreateOptions(await fetchRaceCreateOptions(token))
+      } catch {
+        setCreateOptions({
+          raceTypes: [],
+          teams: [],
+          circuits: [],
+          shoes: [],
+        })
+      }
+    }
+
+    void loadCreateOptions()
+  }, [token])
 
   useEffect(() => {
     if (!token || selectedMode !== 'monthly') {
@@ -214,7 +254,7 @@ export function RacesCalendarView({ selectedMode, filters, refreshKey = 0 }: Rac
     }
 
     void loadMonthlyCalendar()
-  }, [selectedMode, serverFilters, serverFiltersKey, token, visibleMonth.month, visibleMonth.year])
+  }, [reloadNonce, selectedMode, serverFilters, serverFiltersKey, token, visibleMonth.month, visibleMonth.year])
 
   useEffect(() => {
     if (!token || selectedMode !== 'yearly') {
@@ -250,7 +290,7 @@ export function RacesCalendarView({ selectedMode, filters, refreshKey = 0 }: Rac
     }
 
     void loadYearlyCalendar()
-  }, [selectedMode, serverFilters, serverFiltersKey, token, visibleYear])
+  }, [reloadNonce, selectedMode, serverFilters, serverFiltersKey, token, visibleYear])
 
   useEffect(() => {
     setCalendarData(rawCalendarData ? filterCalendarMonthPayload(rawCalendarData, filters.search) : null)
@@ -303,6 +343,47 @@ export function RacesCalendarView({ selectedMode, filters, refreshKey = 0 }: Rac
       setDetailsError(loadError instanceof Error ? loadError.message : t('races.calendar.loadRaceErrorFallback'))
     } finally {
       setIsDetailsLoading(false)
+    }
+  }
+
+  const handleOpenEdit = async () => {
+    if (!raceDetails) {
+      return
+    }
+
+    setIsPreparingEdit(false)
+    setEditingRace(raceDetails)
+    setIsDetailsOpen(false)
+    setIsEditDrawerOpen(true)
+  }
+
+  const reloadVisibleCalendar = async () => {
+    monthlyCalendarCacheRef.current.clear()
+    yearlyCalendarCacheRef.current.clear()
+    raceDetailsCacheRef.current.clear()
+    setReloadNonce((current) => current + 1)
+  }
+
+  const handleDeleteRace = async () => {
+    if (!token || !racePendingDelete) {
+      return
+    }
+
+    try {
+      setIsDeletingRace(true)
+      await deleteRace(racePendingDelete.id, token)
+      setRacePendingDelete(null)
+      setIsDetailsOpen(false)
+      setRaceDetails(null)
+      setDetailsError(null)
+      setIsDayDrawerOpen(false)
+      setSelectedDay(null)
+      await reloadVisibleCalendar()
+    } catch (deleteError) {
+      setDetailsError(deleteError instanceof Error ? deleteError.message : t('races.table.deleteErrorFallback'))
+      setIsDetailsOpen(true)
+    } finally {
+      setIsDeletingRace(false)
     }
   }
 
@@ -413,6 +494,17 @@ export function RacesCalendarView({ selectedMode, filters, refreshKey = 0 }: Rac
         race={raceDetails}
         isLoading={isDetailsLoading}
         error={detailsError}
+        onEdit={() => {
+          void handleOpenEdit()
+        }}
+        onDelete={() => {
+          if (!raceDetails) {
+            return
+          }
+
+          setRacePendingDelete(raceDetails)
+        }}
+        isDeleting={isDeletingRace}
         onClose={() => {
           setIsDetailsOpen(false)
           setRaceDetails(null)
@@ -422,6 +514,71 @@ export function RacesCalendarView({ selectedMode, filters, refreshKey = 0 }: Rac
           }
         }}
       />
+
+      <AddRaceDrawer
+        mode="edit"
+        open={isEditDrawerOpen}
+        raceId={editingRace?.id ?? null}
+        initialRace={editingRace}
+        isLoadingInitialRace={isPreparingEdit}
+        createOptions={createOptions}
+        onCreateOptionsChange={setCreateOptions}
+        onClose={() => {
+          setIsEditDrawerOpen(false)
+          setEditingRace(null)
+          if (raceDetails) {
+            setIsDetailsOpen(true)
+          }
+        }}
+        onCreated={async () => {
+          const editedRaceId = editingRace?.id ?? raceDetails?.id ?? null
+
+          setIsEditDrawerOpen(false)
+          setEditingRace(null)
+          await reloadVisibleCalendar()
+
+          if (!editedRaceId || !token) {
+            return
+          }
+
+          try {
+            setIsDetailsOpen(true)
+            setIsDetailsLoading(true)
+            const updatedDetails = await fetchRaceDetail(editedRaceId, token)
+            raceDetailsCacheRef.current.set(editedRaceId, updatedDetails)
+            setRaceDetails(updatedDetails)
+            setDetailsError(null)
+          } catch (loadError) {
+            setRaceDetails(null)
+            setDetailsError(loadError instanceof Error ? loadError.message : t('races.table.loadErrorTitle'))
+          } finally {
+            setIsDetailsLoading(false)
+          }
+        }}
+      />
+
+      <Modal
+        title={t('races.table.deleteRaceTitle')}
+        open={racePendingDelete != null}
+        okText={t('races.table.deleteOk')}
+        okButtonProps={{ danger: true }}
+        cancelText={t('races.table.deleteCancel')}
+        confirmLoading={isDeletingRace}
+        onOk={() => void handleDeleteRace()}
+        onCancel={() => {
+          if (isDeletingRace) {
+            return
+          }
+
+          setRacePendingDelete(null)
+        }}
+      >
+        <p>
+          {racePendingDelete
+            ? t('races.table.deleteHintWithName', { name: racePendingDelete.race.name })
+            : t('races.table.deleteHintGeneric')}
+        </p>
+      </Modal>
     </>
   )
 }

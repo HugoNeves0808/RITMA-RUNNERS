@@ -1,5 +1,6 @@
-import { faPenToSquare, faTrashCan } from '@fortawesome/free-solid-svg-icons'
+import { faPenToSquare, faTrashCan, faTriangleExclamation } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import dayjs from 'dayjs'
 import { Button, Drawer, Spin, Tabs, Tooltip } from 'antd'
 import type { TabsProps } from 'antd'
 import type { ReactNode } from 'react'
@@ -84,6 +85,21 @@ function getStatusClassName(status: string | null | undefined) {
   }
 }
 
+function isTerminalRaceStatus(status: string | null | undefined) {
+  return status === 'COMPLETED'
+    || status === 'DID_NOT_START'
+    || status === 'DID_NOT_FINISH'
+    || status === 'CANCELLED'
+}
+
+function shouldWarnAboutPastRaceStatus(race: RaceDetailResponse) {
+  if (!race.race.raceDate || isTerminalRaceStatus(race.race.raceStatus)) {
+    return false
+  }
+
+  return dayjs().startOf('day').isAfter(dayjs(race.race.raceDate).startOf('day'))
+}
+
 function renderField(label: string, value: ReactNode) {
   const tooltipTitle = typeof value === 'string' || typeof value === 'number' ? String(value) : undefined
 
@@ -118,6 +134,7 @@ export function RaceDetailsDrawer({
   onClose,
 }: RaceDetailsDrawerProps) {
   const { t } = useTranslation()
+  const shouldShowPastRaceAlert = race ? shouldWarnAboutPastRaceStatus(race) : false
 
   const items: TabsProps['items'] = [
     {
@@ -134,9 +151,24 @@ export function RaceDetailsDrawer({
                 </Tooltip>
               </div>
 
-              <span className={`${styles.statusBadge} ${getStatusClassName(race.race.raceStatus)}`.trim()}>
-                {race.race.raceStatus ? getRaceStatusLabel(race.race.raceStatus, t) : t('common.unknown')}
-              </span>
+              <div className={styles.overviewStatusGroup}>
+                {shouldShowPastRaceAlert ? (
+                  <Tooltip title={t('races.table.pastDateHint')}>
+                    <button
+                      type="button"
+                      className={styles.statusWarningBadge}
+                      onClick={onEdit}
+                    >
+                      <FontAwesomeIcon icon={faTriangleExclamation} className={styles.statusWarningIcon} />
+                      <span>{t('races.table.clickToUpdate')}</span>
+                    </button>
+                  </Tooltip>
+                ) : null}
+
+                <span className={`${styles.statusBadge} ${getStatusClassName(race.race.raceStatus)}`.trim()}>
+                  {race.race.raceStatus ? getRaceStatusLabel(race.race.raceStatus, t) : t('common.unknown')}
+                </span>
+              </div>
             </div>
 
             <div className={styles.summaryRow}>

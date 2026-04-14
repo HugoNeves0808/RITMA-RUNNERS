@@ -118,6 +118,27 @@ export const pt = {
       languagePortuguese: 'Português',
     },
   },
+  profile: {
+    title: 'Perfil',
+    errorTitle: 'Não foi possível carregar o perfil',
+    metrics: {
+      totalRaces: 'Total de corridas',
+      completedRaces: 'Corridas concluídas',
+      favoriteRaceType: 'Tipo de prova favorito',
+      podiums: 'Pódios',
+    },
+    raceTypes: {
+      raceCount_one: '{{count}} corrida',
+      raceCount_other: '{{count}} corridas',
+      bestEffortsTracked: 'Melhores tempos registados',
+    },
+    empty: {
+      noRaceTypeData: 'Ainda não existem dados de tipos de prova.',
+    },
+    errors: {
+      loadSummary: 'Não foi possível carregar o resumo do perfil agora.',
+    },
+  },
   modals: {
     logout: {
       title: 'Terminar sessão',
@@ -371,7 +392,7 @@ export const pt = {
       emptyNoRacesForSelectedYears: 'Sem corridas disponíveis para os anos selecionados.',
       emptyNoMatches: 'Nenhuma corrida corresponde aos filtros atuais.',
       pastDateHint: 'A data desta corrida já passou. Clica para rever e atualizar o estado final.',
-      clickToUpdate: 'Clicar para Atualizar',
+      clickToUpdate: 'Atualizar Estado',
       bucketListTitle: 'Corridas Futuras',
       bucketListUpdating: 'A atualizar lista de futuras',
       updatingInline: 'A atualizar...',

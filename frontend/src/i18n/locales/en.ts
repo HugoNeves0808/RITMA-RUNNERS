@@ -118,6 +118,27 @@ export const en = {
       languagePortuguese: 'Português',
     },
   },
+  profile: {
+    title: 'Profile',
+    errorTitle: 'Could not load profile',
+    metrics: {
+      totalRaces: 'Total races',
+      completedRaces: 'Completed races',
+      favoriteRaceType: 'Favorite race type',
+      podiums: 'Podiums',
+    },
+    raceTypes: {
+      raceCount_one: '{{count}} race',
+      raceCount_other: '{{count}} races',
+      bestEffortsTracked: 'Best efforts tracked',
+    },
+    empty: {
+      noRaceTypeData: 'No race type data yet.',
+    },
+    errors: {
+      loadSummary: 'Could not load profile summary right now.',
+    },
+  },
   modals: {
     logout: {
       title: 'Logout',
@@ -371,7 +392,7 @@ export const en = {
       emptyNoRacesForSelectedYears: 'No races available for the selected years.',
       emptyNoMatches: 'No races match the current filters.',
       pastDateHint: 'This race date has passed. Click to review and update the final race status.',
-      clickToUpdate: 'Click to Update',
+      clickToUpdate: 'Update Status',
       bucketListTitle: 'Future Races',
       bucketListUpdating: 'Updating bucket list',
       updatingInline: 'Updating...',
