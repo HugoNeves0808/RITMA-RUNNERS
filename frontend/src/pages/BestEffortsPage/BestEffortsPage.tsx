@@ -164,14 +164,6 @@ function formatDistance(value: number | null, locale: string) {
   return `${formattedValue} km`
 }
 
-function normalizeDecimalInput(value: string | number | undefined) {
-  if (value == null) {
-    return ''
-  }
-
-  return String(value).replace(',', '.')
-}
-
 function getMinimumAcceptedDistance(expectedDistanceKm: number | null) {
   if (expectedDistanceKm == null) {
     return null
