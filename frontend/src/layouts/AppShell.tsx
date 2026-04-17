@@ -32,10 +32,6 @@ function getDocumentTitle(pathname: string, t: (key: string) => string) {
     return `RITMA - ${t('pages.login')}`
   }
 
-  if (pathname === ROUTES.futureGoals) {
-    return `RITMA - ${t('pages.futureGoals')}`
-  }
-
   if (pathname === ROUTES.profile) {
     return `RITMA - ${t('pages.profile')}`
   }
@@ -97,15 +93,14 @@ function getLanguageFlag(language: string) {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation()
-  const { language, setLanguage } = useLanguage()
+  const { language, setSessionLanguage } = useLanguage()
   const location = useLocation()
   const { isAuthenticated, isAdmin, logout, user } = useAuth()
   const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(false)
   const [isPersonalOptionsMenuOpen, setIsPersonalOptionsMenuOpen] = useState(false)
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false)
   const isLoginPage = location.pathname === ROUTES.login
-  const isPublicPage = location.pathname === ROUTES.login || location.pathname === ROUTES.futureGoals
-  const isFutureGoalsPage = location.pathname === ROUTES.futureGoals
+  const isPublicPage = location.pathname === ROUTES.login
   const isAuthenticatedArea = isAuthenticated && !isPublicPage
   const isInAdminArea =
     location.pathname === ROUTES.adminRitmaOverview
@@ -330,7 +325,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 placement="topLeft"
                 menu={{
                   items: [...languageMenuItems],
-                  onClick: ({ key }) => setLanguage(key === 'pt' ? 'pt' : 'en'),
+                  onClick: ({ key }) => setSessionLanguage(key === 'pt' ? 'pt' : 'en'),
                 }}
                 trigger={['click']}
               >
@@ -383,10 +378,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <Layout className={isFutureGoalsPage ? `${styles.appShell} ${styles.appShellPlain}` : styles.appShell}>
+    <Layout className={styles.appShell}>
       <Content
         className={
-          isLoginPage || isFutureGoalsPage
+          isLoginPage
             ? `${styles.appContent} ${styles.appContentAuth}`
             : styles.appContent
         }

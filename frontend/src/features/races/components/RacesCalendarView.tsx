@@ -16,6 +16,7 @@ import { AddRaceDrawer } from './AddRaceDrawer'
 import { RaceDetailsDrawer } from './RaceDetailsDrawer'
 import { RacesCalendarMonthlyView } from './RacesCalendarMonthlyView'
 import { RacesCalendarYearlyView } from './RacesCalendarYearlyView'
+import { translateRaceTypeName } from '../../../utils/raceTypeLocalization'
 import styles from './RacesCalendarView.module.css'
 import { useLanguage } from '../../../contexts/LanguageContext'
 
@@ -476,8 +477,8 @@ export function RacesCalendarView({ selectedMode, filters, refreshKey = 0 }: Rac
                     </div>
                     <div className={styles.dayRaceMetaItem}>
                       <span className={styles.dayRaceMetaLabel}>{t('races.calendar.raceTypeLabel')}</span>
-                      <Tooltip title={race.raceTypeName ?? '-'}>
-                        <span className={styles.dayRaceMetaValue}>{race.raceTypeName ?? '-'}</span>
+                      <Tooltip title={translateRaceTypeName(race.raceTypeName, t) ?? '-'}>
+                        <span className={styles.dayRaceMetaValue}>{translateRaceTypeName(race.raceTypeName, t) ?? '-'}</span>
                       </Tooltip>
                     </div>
                   </div>

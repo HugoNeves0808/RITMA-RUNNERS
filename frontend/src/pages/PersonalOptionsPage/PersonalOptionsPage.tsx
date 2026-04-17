@@ -16,6 +16,7 @@ import {
   type RaceOptionUsage,
   type RaceTypeOption,
 } from '../../features/races'
+import { translateRaceTypeName } from '../../utils/raceTypeLocalization'
 import styles from './PersonalOptionsPage.module.css'
 
 const { Title } = Typography
@@ -91,6 +92,10 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
   const deferredSearch = useDeferredValue(search)
   const visibleOptions = useMemo(
     () => options.filter((option) => {
+      const searchableName = activeType === 'race-types'
+        ? (translateRaceTypeName(option.name, t) ?? option.name)
+        : option.name
+
       if (!showArchived && option.archived) {
         return false
       }
@@ -100,12 +105,12 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
       }
 
       if (deferredSearch.trim()) {
-        return option.name.toLowerCase().includes(deferredSearch.trim().toLowerCase())
+        return searchableName.toLowerCase().includes(deferredSearch.trim().toLowerCase())
       }
 
       return true
     }),
-    [deferredSearch, options, showArchived, showDefaultFromRitma],
+    [activeType, deferredSearch, options, showArchived, showDefaultFromRitma, t],
   )
 
   const hasActiveFilters = search.trim().length > 0 || showArchived || !showDefaultFromRitma
@@ -387,7 +392,9 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
                   >
                     <div className={styles.optionInfo}>
                       <div className={styles.optionNameRow}>
-                        <span className={styles.optionName}>{option.name}</span>
+                        <span className={styles.optionName}>
+                          {activeType === 'race-types' ? translateRaceTypeName(option.name, t) : option.name}
+                        </span>
                         {option.archived ? <span className={styles.archivedBadge}>{t('personalOptions.badges.archived')}</span> : null}
                       </div>
                       {activeType === 'race-types' ? (

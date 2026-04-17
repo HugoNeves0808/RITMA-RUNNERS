@@ -48,14 +48,14 @@ export function AuthenticatedShell({
     () => [
       {
         key: 'races',
-        label: 'Races',
+        label: 'Corridas',
         icon: 'flag-checkered',
         isActive: currentRoute === routes.home || currentRoute === routes.races,
         onPress: () => onNavigate(routes.races),
       },
       {
         key: 'best-efforts',
-        label: 'Best Efforts',
+        label: 'Melhores Tempos',
         icon: 'ranking-star',
         isActive: currentRoute === routes.bestEfforts,
         onPress: () => onNavigate(routes.bestEfforts),
@@ -69,7 +69,7 @@ export function AuthenticatedShell({
       ...mainItems,
       {
         key: 'profile',
-        label: 'Profile',
+        label: 'Perfil',
         icon: 'user',
         isActive: currentRoute === routes.profile,
         onPress: () => onNavigate(routes.profile),
@@ -82,21 +82,21 @@ export function AuthenticatedShell({
     () => [
       {
         key: 'profile',
-        label: 'Profile',
+        label: 'Perfil',
         icon: 'user',
         isActive: currentRoute === routes.profile,
         onPress: () => onNavigate(routes.profile),
       },
       {
         key: 'settings',
-        label: 'Settings',
+        label: 'Definições',
         icon: 'gear',
         isActive: currentRoute === routes.settings,
         onPress: () => onNavigate(routes.settings),
       },
       {
         key: 'logout',
-        label: 'Logout',
+        label: 'Terminar sessão',
         icon: 'right-from-bracket',
         isActive: false,
         onPress: onLogout,
@@ -109,21 +109,21 @@ export function AuthenticatedShell({
     () => [
       {
         key: 'admin-ritma-overview',
-        label: 'Overview',
+        label: 'Visão Geral',
         icon: 'map',
         isActive: currentRoute === routes.adminRitmaOverview,
         onPress: () => onNavigate(routes.adminRitmaOverview),
       },
       {
         key: 'admin-user-list',
-        label: 'Users',
+        label: 'Utilizadores',
         icon: 'users',
         isActive: currentRoute === routes.adminUserList,
         onPress: () => onNavigate(routes.adminUserList),
       },
       {
         key: 'admin-pending-approvals',
-        label: 'Pending Approvals',
+        label: 'Aprovações Pendentes',
         icon: 'hourglass-half',
         isActive: currentRoute === routes.adminPendingApprovals,
         onPress: () => onNavigate(routes.adminPendingApprovals),
@@ -147,7 +147,7 @@ export function AuthenticatedShell({
           style={styles.topButton}
           onPress={() => setIsMenuOpen(true)}
           accessibilityRole="button"
-          accessibilityLabel="Open navigation menu"
+          accessibilityLabel="Abrir menu de navegação"
         >
           <FontAwesome6 name="bars" size={22} color={colors.textPrimary} />
         </Pressable>
@@ -164,7 +164,7 @@ export function AuthenticatedShell({
           style={[styles.topButton, currentRoute === routes.settings ? styles.topButtonActive : null]}
           onPress={() => onNavigate(routes.settings)}
           accessibilityRole="button"
-          accessibilityLabel="Open settings"
+          accessibilityLabel="Abrir definições"
         >
           <FontAwesome6 name="gear" size={22} color={colors.textPrimary} />
         </Pressable>

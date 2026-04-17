@@ -1,7 +1,7 @@
 import { faAngleDown, faKey, faUserGear } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { useMemo, useState } from 'react'
-import { Alert, Button, Card, Form, Input, Select, Switch, Typography } from 'antd'
+import { Alert, Button, Card, Form, Input, Select, Typography } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { isApiError } from '../../services/apiClient'
 import { useAuth } from '../../features/auth'
@@ -20,8 +20,8 @@ type SettingsSectionKey = 'password' | 'preferences'
 
 export function SettingsPage() {
   const { t } = useTranslation()
-  const { submitPasswordChange, rememberSession, updateRememberSession } = useAuth()
-  const { language, setLanguage } = useLanguage()
+  const { submitPasswordChange } = useAuth()
+  const { preferredLanguage, setPreferredLanguage } = useLanguage()
   const [form] = Form.useForm<ChangePasswordFormValues>()
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null)
@@ -243,27 +243,12 @@ export function SettingsPage() {
             <div className={styles.contentBody}>
               <div className={styles.preferenceRow}>
                 <div className={styles.preferenceInfo}>
-                  <div className={styles.preferenceTitle}>{t('settings.preferences.rememberMeTitle')}</div>
-                  <div className={styles.preferenceText}>{t('settings.preferences.rememberMeText')}</div>
-                </div>
-                <Switch
-                  className={styles.preferenceSwitch}
-                  checked={rememberSession}
-                  checkedChildren="On"
-                  unCheckedChildren="Off"
-                  onChange={updateRememberSession}
-                />
-              </div>
-
-              <div className={styles.preferenceRow}>
-                <div className={styles.preferenceInfo}>
                   <div className={styles.preferenceTitle}>{t('settings.preferences.languageTitle')}</div>
-                  <div className={styles.preferenceText}>{t('settings.preferences.languageText')}</div>
                 </div>
                 <Select
                   className={styles.preferenceSwitch}
-                  value={language}
-                  onChange={setLanguage}
+                  value={preferredLanguage}
+                  onChange={setPreferredLanguage}
                   options={[
                     { value: 'en', label: t('settings.preferences.languageEnglish') },
                     { value: 'pt', label: t('settings.preferences.languagePortuguese') },

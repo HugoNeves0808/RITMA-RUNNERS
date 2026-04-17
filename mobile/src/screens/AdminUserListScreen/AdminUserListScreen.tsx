@@ -22,7 +22,7 @@ const PAGE_SIZE = 10
 
 function formatLastLogin(value: string | null) {
   if (!value) {
-    return 'Never'
+    return 'Nunca'
   }
 
   const lastLoginAt = new Date(value)
@@ -44,24 +44,24 @@ function formatLastLogin(value: string | null) {
     const minutes = Math.floor((diffMs % hourMs) / minuteMs)
 
     if (hours <= 0) {
-      return `${Math.max(minutes, 1)} min ago`
+      return `há ${Math.max(minutes, 1)} min`
     }
 
-    return `${hours}h ${minutes}min ago`
+    return `há ${hours}h ${minutes}min`
   }
 
   if (diffMs < monthMs) {
     const days = Math.floor(diffMs / dayMs)
-    return `${days} day${days === 1 ? '' : 's'} ago`
+    return days === 1 ? 'há 1 dia' : `há ${days} dias`
   }
 
   if (diffMs < yearMs) {
     const months = Math.floor(diffMs / monthMs)
-    return `${months} month${months === 1 ? '' : 's'} ago`
+    return months === 1 ? 'há 1 mês' : `há ${months} meses`
   }
 
   const years = Math.floor(diffMs / yearMs)
-  return `${years} year${years === 1 ? '' : 's'} ago`
+  return years === 1 ? 'há 1 ano' : `há ${years} anos`
 }
 
 function isLastLoginStale(value: string | null) {
@@ -128,7 +128,7 @@ export function AdminUserListScreen({ token }: AdminUserListScreenProps) {
         setUsers(data)
         setError(null)
       } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : 'Unknown error')
+        setError(loadError instanceof Error ? loadError.message : 'Erro desconhecido')
       } finally {
         setIsLoading(false)
       }
@@ -148,7 +148,7 @@ export function AdminUserListScreen({ token }: AdminUserListScreenProps) {
       setUsers(data)
       setError(null)
     } catch (refreshError) {
-      setError(refreshError instanceof Error ? refreshError.message : 'Unknown error')
+      setError(refreshError instanceof Error ? refreshError.message : 'Erro desconhecido')
     } finally {
       setIsRefreshing(false)
     }
@@ -162,9 +162,9 @@ export function AdminUserListScreen({ token }: AdminUserListScreenProps) {
     >
       <View style={styles.card}>
         <View style={styles.header}>
-          <Text style={styles.title}>Users</Text>
+          <Text style={styles.title}>Utilizadores</Text>
           <View style={styles.summaryBadge}>
-            <Text style={styles.summaryLabel}>USERS</Text>
+            <Text style={styles.summaryLabel}>UTILIZADORES</Text>
             <Text style={styles.summaryValue}>{filteredUsers.length}</Text>
           </View>
         </View>
@@ -180,7 +180,7 @@ export function AdminUserListScreen({ token }: AdminUserListScreenProps) {
               color={areFiltersVisible ? colors.primaryButtonText : colors.textSecondary}
             />
             <Text style={[styles.filterToggleText, areFiltersVisible ? styles.filterToggleTextActive : null]}>
-              Filters
+              Filtros
             </Text>
           </Pressable>
 
@@ -194,7 +194,7 @@ export function AdminUserListScreen({ token }: AdminUserListScreenProps) {
               }}
             >
               <FontAwesome6 name="rotate-left" size={14} color={colors.textSecondary} />
-              <Text style={styles.clearFiltersText}>Reset</Text>
+              <Text style={styles.clearFiltersText}>Limpar</Text>
             </Pressable>
           ) : null}
         </View>
@@ -206,7 +206,7 @@ export function AdminUserListScreen({ token }: AdminUserListScreenProps) {
               <TextInput
                 value={search}
                 onChangeText={setSearch}
-                placeholder="Search by email"
+                placeholder="Pesquisar por email"
                 placeholderTextColor="#98a2b3"
                 autoCapitalize="none"
                 keyboardType="email-address"
@@ -220,7 +220,7 @@ export function AdminUserListScreen({ token }: AdminUserListScreenProps) {
                 size={18}
                 color={onlyAdmins ? colors.teal : '#98a2b3'}
               />
-              <Text style={styles.checkboxText}>Only admins</Text>
+              <Text style={styles.checkboxText}>Apenas admins</Text>
             </Pressable>
 
             <Pressable style={styles.checkboxRow} onPress={() => setStaleOnly((currentValue) => !currentValue)}>
@@ -229,7 +229,7 @@ export function AdminUserListScreen({ token }: AdminUserListScreenProps) {
                 size={18}
                 color={staleOnly ? colors.teal : '#98a2b3'}
               />
-              <Text style={styles.checkboxText}>Inactive for over 1 year</Text>
+              <Text style={styles.checkboxText}>Inativo há mais de 1 ano</Text>
             </Pressable>
           </View>
         ) : null}
@@ -237,20 +237,20 @@ export function AdminUserListScreen({ token }: AdminUserListScreenProps) {
         {isLoading ? (
           <View style={styles.loadingRow}>
             <ActivityIndicator size="small" color={colors.teal} />
-            <Text style={styles.loadingText}>Loading users</Text>
+            <Text style={styles.loadingText}>A carregar utilizadores</Text>
           </View>
         ) : null}
 
         {error ? (
           <View style={styles.errorBox}>
-            <Text style={styles.errorTitle}>Could not load users</Text>
+            <Text style={styles.errorTitle}>Não foi possível carregar utilizadores</Text>
             <Text style={styles.errorText}>{error}</Text>
           </View>
         ) : null}
 
         {!isLoading && visibleUsers.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>No active users.</Text>
+            <Text style={styles.emptyTitle}>Sem utilizadores ativos.</Text>
           </View>
         ) : null}
 
@@ -264,7 +264,7 @@ export function AdminUserListScreen({ token }: AdminUserListScreenProps) {
                 </View>
 
                 <View style={styles.metaRow}>
-                  <Text style={styles.metaLabel}>Role</Text>
+                  <Text style={styles.metaLabel}>Perfil</Text>
                   <View style={[styles.roleTag, user.role === 'USER' ? styles.roleTagUser : null]}>
                     <Text style={[styles.roleText, user.role === 'USER' ? styles.roleTextUser : null]}>
                       {user.role}
@@ -273,7 +273,7 @@ export function AdminUserListScreen({ token }: AdminUserListScreenProps) {
                 </View>
 
                 <View style={styles.metaRow}>
-                  <Text style={styles.metaLabel}>Last login</Text>
+                  <Text style={styles.metaLabel}>Último login</Text>
                   <View style={styles.lastLoginRow}>
                     <Text style={styles.metaValue}>{formatLastLogin(user.lastLoginAt)}</Text>
                     {isLastLoginStale(user.lastLoginAt) ? (

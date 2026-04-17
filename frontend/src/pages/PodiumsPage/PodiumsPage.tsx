@@ -14,6 +14,7 @@ import {
   type RaceCreateOptions,
   type RaceDetailResponse,
 } from '../../features/races'
+import { translateRaceTypeName } from '../../utils/raceTypeLocalization'
 import styles from './PodiumsPage.module.css'
 
 const { Title } = Typography
@@ -229,7 +230,7 @@ export function PodiumsPage() {
 
       const searchableFields = [
         item.raceName,
-        item.raceTypeName,
+        translateRaceTypeName(item.raceTypeName, t),
         formatRaceDate(item.raceDate, locale, t('podiums.format.noDate')),
         getPodiumTypeLabel(item.podiumType, t),
       ]
@@ -413,7 +414,7 @@ export function PodiumsPage() {
                               </span>
                               <span className={styles.inlineMeta}>
                                 <FontAwesomeIcon icon={faFlagCheckered} className={styles.metaIcon} />
-                                {item.raceTypeName ?? '-'}
+                                {translateRaceTypeName(item.raceTypeName, t) ?? '-'}
                               </span>
                             </div>
 
@@ -493,13 +494,16 @@ export function PodiumsPage() {
             </div>
 
             <div className={styles.filterField}>
-              <span className={styles.filterLabel}>{t('podiums.filters.typeLabel')}</span>
+              <span className={styles.filterLabel}>
+                {t('podiums.filters.typeLabel')}
+                {selectedTypes.length > 0 ? <span className={styles.filterCount}>{selectedTypes.length}</span> : null}
+              </span>
               <div className={styles.checkboxList}>
                 {([
-                  { label: t('podiums.filters.typeGeneral'), value: 'GENERAL', count: summary.general },
-                  { label: t('podiums.filters.typeAgeGroup'), value: 'AGE_GROUP', count: summary.ageGroup },
-                  { label: t('podiums.filters.typeTeam'), value: 'TEAM', count: summary.team },
-                ] as Array<{ label: string; value: PodiumType; count: number }>).map((option) => (
+                  { label: t('podiums.filters.typeGeneral'), value: 'GENERAL' },
+                  { label: t('podiums.filters.typeAgeGroup'), value: 'AGE_GROUP' },
+                  { label: t('podiums.filters.typeTeam'), value: 'TEAM' },
+                ] as Array<{ label: string; value: PodiumType }>).map((option) => (
                   <label key={option.value} className={styles.checkboxOption}>
                     <Checkbox
                       checked={selectedTypes.includes(option.value)}
@@ -511,7 +515,6 @@ export function PodiumsPage() {
                     />
                     <span className={styles.checkboxOptionLabel}>
                       {option.label}
-                      <span className={styles.filterCount}>{option.count}</span>
                     </span>
                   </label>
                 ))}

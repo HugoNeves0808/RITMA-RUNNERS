@@ -59,12 +59,12 @@ export function RequestAccountModal({ visible, onClose, onSuccessNotice }: Reque
     const normalizedEmail = email.trim().toLowerCase()
 
     if (!normalizedEmail) {
-      setFieldError('Email is required.')
+      setFieldError('O email é obrigatório.')
       return
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-      setFieldError('Enter a valid email address.')
+      setFieldError('Introduz um endereço de email válido.')
       return
     }
 
@@ -77,7 +77,7 @@ export function RequestAccountModal({ visible, onClose, onSuccessNotice }: Reque
       onSuccessNotice?.(response.message)
       onClose()
     } catch (requestError) {
-      const message = requestError instanceof Error ? requestError.message : 'Unable to submit request.'
+      const message = requestError instanceof Error ? requestError.message : 'Não foi possível submeter o pedido.'
       setNotice({ tone: getNoticeTone(message), message })
     } finally {
       setIsSubmitting(false)
@@ -133,10 +133,10 @@ export function RequestAccountModal({ visible, onClose, onSuccessNotice }: Reque
                       ]}
                     >
                       {notice.tone === 'success'
-                        ? 'Request submitted'
+                        ? 'Pedido submetido'
                         : notice.tone === 'warning'
-                          ? 'Already pending'
-                          : 'Request failed'}
+                          ? 'Já pendente'
+                          : 'Pedido falhou'}
                     </Text>
                     <Text style={styles.noticeText}>
                       {notice.message}
@@ -169,14 +169,14 @@ export function RequestAccountModal({ visible, onClose, onSuccessNotice }: Reque
         ) : null}
 
         <View style={styles.card}>
-          <Text style={styles.title}>Request Account</Text>
+          <Text style={styles.title}>Pedir conta</Text>
           <Text style={styles.description}>
-            Request access to RITMA and wait for approval before signing in.
+            Pede acesso à RITMA e aguarda aprovação antes de entrares.
           </Text>
 
           <TextInputField
             label="Email"
-            placeholder="Enter your email"
+            placeholder="Introduz o teu email"
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -186,10 +186,10 @@ export function RequestAccountModal({ visible, onClose, onSuccessNotice }: Reque
 
           <View style={styles.actions}>
             <Pressable onPress={handleClose}>
-              <Text style={styles.cancel}>Cancel</Text>
+              <Text style={styles.cancel}>Cancelar</Text>
             </Pressable>
             <PrimaryButton
-              label={isSubmitting ? 'Submitting...' : 'Submit'}
+              label={isSubmitting ? 'A submeter...' : 'Submeter'}
               onPress={handleSubmit}
               disabled={isSubmitting}
             />

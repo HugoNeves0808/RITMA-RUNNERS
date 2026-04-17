@@ -1,4 +1,10 @@
 export const pt = {
+  defaultRaceTypes: {
+    '10k': 'Corrida 10 km',
+    '15k': 'Corrida 15 km',
+    halfMarathon: 'Meia Maratona',
+    marathon: 'Maratona',
+  },
   common: {
     cancel: 'Cancelar',
     submit: 'Submeter',
@@ -27,7 +33,6 @@ export const pt = {
   },
   pages: {
     login: 'Login',
-    futureGoals: 'Objetivos Futuros',
     profile: 'Perfil',
     settings: 'Definições',
     raceTypes: 'Tipos de Prova',
@@ -68,6 +73,7 @@ export const pt = {
     title: 'Pedir Conta',
     cancel: 'Cancelar',
     submit: 'Submeter',
+    success: 'O teu pedido foi submetido. Um administrador tem de aprovar a conta antes de entrares.',
     alertTitle: 'Pedido falhou',
     emailLabel: 'Email',
     emailRequired: 'O email é obrigatório',
@@ -110,10 +116,7 @@ export const pt = {
       localPreferences: 'Preferências locais',
     },
     preferences: {
-      rememberMeTitle: 'Lembrar-me',
-      rememberMeText: 'Gerido no login e guardado localmente neste browser.',
       languageTitle: 'Idioma',
-      languageText: 'Usado em etiquetas, menus e mensagens do sistema.',
       languageEnglish: 'English',
       languagePortuguese: 'Português',
     },
@@ -416,7 +419,7 @@ export const pt = {
       card: {
         location: 'Local',
         raceType: 'Tipo de prova',
-        circuit: 'Percurso',
+        circuit: 'Circuito',
         time: 'Hora',
         chipTime: 'Tempo chip',
         pacePerKm: 'Ritmo por km',
@@ -476,7 +479,7 @@ export const pt = {
         location: 'Local',
         raceType: 'Tipo de prova',
         team: 'Equipa',
-        circuit: 'Percurso',
+        circuit: 'Circuito',
         painInjuries: 'Dores / lesões',
         analysisNotes: 'Notas de análise',
         officialTime: 'Tempo oficial',
@@ -496,7 +499,7 @@ export const pt = {
         raceTime: 'Hora de partida (opcional). Deixa em branco se ainda não estiver confirmada.',
         raceType: 'Usa o tipo de prova para agrupar corridas comparáveis, criar categorias de Melhores Tempos e manter distâncias consistentes.',
         team: 'Equipa opcional associada a esta corrida.',
-        circuit: 'Percurso ou campeonato opcional ao qual esta corrida pertence.',
+        circuit: 'Circuito ou campeonato opcional ao qual esta corrida pertence.',
         officialTime: 'Tempo final oficial publicado pela organização do evento.',
         chipTime: 'Tempo líquido desde a passagem na partida até à meta.',
         realKm: 'Distância real em quilómetros, com casas decimais quando necessário.',
@@ -514,7 +517,7 @@ export const pt = {
       selectPlaceholders: {
         raceType: 'Selecionar tipo de prova',
         team: 'Selecionar equipa',
-        circuit: 'Selecionar percurso',
+        circuit: 'Selecionar circuito',
         shoe: 'Selecionar sapatilhas',
       },
       analysisScale: {
@@ -554,7 +557,7 @@ export const pt = {
         labels: {
           raceType: 'tipo de prova',
           team: 'equipa',
-          circuit: 'percurso',
+          circuit: 'circuito',
           shoe: 'sapatilhas',
         },
         empty: {
@@ -643,7 +646,7 @@ export const pt = {
       fields: {
         location: 'Local',
         team: 'Equipa',
-        circuit: 'Percurso',
+        circuit: 'Circuito',
         realKm: 'KM reais',
         elevation: 'Desnível',
         validForRanking: 'Válida para ranking de escalão',

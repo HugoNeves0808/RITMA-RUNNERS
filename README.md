@@ -1,16 +1,16 @@
 # RITMA RUNNERS
 
-`Release 2.0.0` is the latest completed release, and `3.0.0` is now being prepared as the next project milestone.
+`Release 3.0.0` is the latest completed release, and `4.0.0` is now being prepared as the next project milestone.
 
 RITMA RUNNERS is now a working multi-client platform for managing running races, reviewing best efforts, and supporting admin approval flows across web, mobile, and backend layers.
 
 ## Release Status
 
-- Latest completed release: `2.0.0`
-- Current milestone in preparation: `3.0.0`
-- Latest completed release date: `2026-04-13`
+- Latest completed release: `3.0.0`
+- Current milestone in preparation: `4.0.0`
+- Latest completed release date: `2026-04-17`
 - Current milestone target date: `TBD`
-- Phase status: release 1 and release 2 completed, release 3 in preparation
+- Phase status: release 1, release 2, and release 3 completed, release 4 in preparation
 - Scope covered: backend API, web client, mobile client, PostgreSQL persistence, authentication, race management, best efforts, and admin flows
 
 ## Product Scope In Release 1.0.0
@@ -213,7 +213,8 @@ cd backend
 
 - See `docs/README.md` for the documentation index.
 - See `docs/changelog/README.md` for the release-organized changelog.
-- See `docs/changelog/releases/3.0.0.md` for the release 3 notes in preparation.
+- See `docs/changelog/releases/4.0.0.md` for the release 4 notes in preparation.
+- See `docs/changelog/releases/3.0.0.md` for the release 3 notes.
 - See `docs/changelog/releases/2.0.0.md` for the release 2 notes.
 - See `docs/changelog/releases/1.0.0.md` for the release 1 notes.
 - See `docs/api/README.md` for the API documentation index.
@@ -222,4 +223,4 @@ cd backend
 
 ## Release Summary
 
-Release `1.0.0` established the first complete usable platform slice of RITMA RUNNERS. Release `2.0.0` expanded that foundation with additional web polish, race management refinements, and podium history. The project is now moving through the `3.0.0` preparation cycle.
+Release `1.0.0` established the first complete usable platform slice of RITMA RUNNERS. Release `2.0.0` expanded that foundation with additional web polish, race management refinements, and podium history. Release `3.0.0` completed the next localization and UI-consistency phase, and the project is now moving through the `4.0.0` preparation cycle.

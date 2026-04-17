@@ -45,23 +45,23 @@ export function ForcePasswordChangeModal({
     let hasError = false
 
     if (!currentPassword) {
-      setCurrentPasswordError('Current password is required.')
+      setCurrentPasswordError('A palavra-passe atual é obrigatória.')
       hasError = true
     }
 
     if (!newPassword) {
-      setNewPasswordError('New password is required.')
+      setNewPasswordError('A nova palavra-passe é obrigatória.')
       hasError = true
     } else if (!isStrongPassword(newPassword)) {
-      setNewPasswordError('Use at least 8 characters, including uppercase, lowercase, a number, and a symbol.')
+      setNewPasswordError('Usa pelo menos 8 caracteres, incluindo maiúsculas, minúsculas, um número e um símbolo.')
       hasError = true
     }
 
     if (!confirmPassword) {
-      setConfirmPasswordError('Please confirm the new password.')
+      setConfirmPasswordError('Confirma a nova palavra-passe.')
       hasError = true
     } else if (confirmPassword !== newPassword) {
-      setConfirmPasswordError('The new passwords do not match.')
+      setConfirmPasswordError('As novas palavras-passe não coincidem.')
       hasError = true
     }
 
@@ -76,7 +76,7 @@ export function ForcePasswordChangeModal({
     } catch (submitError) {
       if (submitError instanceof Error) {
         if (submitError.message === 'Current password is incorrect') {
-          setError('Current password is incorrect.')
+          setError('A palavra-passe atual está incorreta.')
           return
         }
 
@@ -84,15 +84,15 @@ export function ForcePasswordChangeModal({
           submitError.message === 'Choose a stronger password.'
           || submitError.message === 'Use at least 8 characters, including uppercase, lowercase, a number, and a symbol.'
         ) {
-          setError('Use at least 8 characters, including uppercase, lowercase, a number, and a symbol.')
+          setError('Usa pelo menos 8 caracteres, incluindo maiúsculas, minúsculas, um número e um símbolo.')
           return
         }
 
-        setError(submitError.message || 'Unable to change password right now. Please try again.')
+        setError(submitError.message || 'Não foi possível alterar a palavra-passe agora. Tenta novamente.')
         return
       }
 
-      setError('Unable to change password right now. Please try again.')
+      setError('Não foi possível alterar a palavra-passe agora. Tenta novamente.')
     } finally {
       setIsSubmitting(false)
     }
@@ -102,16 +102,16 @@ export function ForcePasswordChangeModal({
     <Modal visible={visible} animationType="fade" transparent onRequestClose={() => undefined}>
       <View style={styles.overlay}>
         <View style={styles.card}>
-          <Text style={styles.title}>Change password</Text>
+          <Text style={styles.title}>Alterar palavra-passe</Text>
           <Text style={styles.description}>
-            You must update your password before continuing in RITMA.
+            Tens de atualizar a tua palavra-passe antes de continuar na RITMA.
           </Text>
 
           {error ? <Text style={styles.errorBanner}>{error}</Text> : null}
 
           <TextInputField
-            label="Current password"
-            placeholder="Enter your current password"
+            label="Palavra-passe atual"
+            placeholder="Introduz a tua palavra-passe atual"
             value={currentPassword}
             onChangeText={setCurrentPassword}
             secureTextEntry
@@ -120,8 +120,8 @@ export function ForcePasswordChangeModal({
           />
 
           <TextInputField
-            label="New password"
-            placeholder="Enter your new password"
+            label="Nova palavra-passe"
+            placeholder="Introduz a tua nova palavra-passe"
             value={newPassword}
             onChangeText={setNewPassword}
             secureTextEntry
@@ -130,8 +130,8 @@ export function ForcePasswordChangeModal({
           />
 
           <TextInputField
-            label="Confirm new password"
-            placeholder="Confirm your new password"
+            label="Confirmar nova palavra-passe"
+            placeholder="Confirma a tua nova palavra-passe"
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             secureTextEntry
@@ -142,10 +142,10 @@ export function ForcePasswordChangeModal({
           <View style={styles.actions}>
             <Pressable style={styles.logoutAction} onPress={onLogout}>
               <FontAwesome6 name="right-from-bracket" size={15} color={colors.warning} />
-              <Text style={styles.logoutLink}>Sign out</Text>
+              <Text style={styles.logoutLink}>Sair</Text>
             </Pressable>
             <PrimaryButton
-              label={isSubmitting ? 'Updating...' : 'Update password'}
+              label={isSubmitting ? 'A atualizar...' : 'Atualizar palavra-passe'}
               onPress={handleSubmit}
               disabled={isSubmitting}
               iconName="key"

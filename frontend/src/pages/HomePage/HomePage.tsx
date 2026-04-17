@@ -25,6 +25,7 @@ import {
   type CreateRacePayload,
 } from '../../features/races'
 import { STORAGE_KEYS } from '../../constants/storage'
+import { translateRaceTypeName } from '../../utils/raceTypeLocalization'
 import styles from './HomePage.module.css'
 
 const { Title } = Typography
@@ -186,8 +187,11 @@ export function HomePage() {
   }), [deferredSearch, filters])
 
   const raceTypeOptions = useMemo(
-    () => filterOptions.raceTypes.map((raceType) => ({ value: raceType.id, label: raceType.name })),
-    [filterOptions.raceTypes],
+    () => filterOptions.raceTypes.map((raceType) => ({
+      value: raceType.id,
+      label: translateRaceTypeName(raceType.name, t) ?? raceType.name,
+    })),
+    [filterOptions.raceTypes, t],
   )
 
   const availableAdditionalYears = useMemo(

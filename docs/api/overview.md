@@ -6,11 +6,11 @@ It also includes a short summary of the current account-access flow because the 
 
 ## Release Context
 
-- Latest completed release: `2.0.0`
-- Current milestone in preparation: `3.0.0`
-- Latest completed release date: `2026-04-13`
+- Latest completed release: `3.0.0`
+- Current milestone in preparation: `4.0.0`
+- Latest completed release date: `2026-04-17`
 - Current milestone target date: `TBD`
-- Phase status: release 1 and release 2 completed, release 3 in preparation
+- Phase status: release 1, release 2, and release 3 completed, release 4 in preparation
 - API scope: authenticated race management, best efforts, authentication, and admin flows used by both the web and mobile clients
 
 ## Base URL
@@ -77,8 +77,6 @@ These are not backend API endpoints, but they are relevant to the current user f
 - `/best-efforts`
   Authenticated web section for best efforts.
   The page now uses a header-level `Top 3` / `Top 5` / `All races` view switcher, a right-side collapsible `Race types` filter with inline race-type management, category counters for `valid`, `below target`, `excluded`, and `total`, filtered race-list modals, and the shared race-details drawer with working `Edit` / `Delete` actions.
-- `/future-goals`
-  Public product/roadmap page linked from the login screen.
 - `/admin-area/ritma-overview`
   Admin-only web overview dashboard with admin metrics and a pending-approvals preview.
 - `/admin-area/user-list`

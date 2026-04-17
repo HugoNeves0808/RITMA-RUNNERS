@@ -6,6 +6,7 @@ import type { TabsProps } from 'antd'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { RaceDetailResponse } from '../types/racesTable'
+import { translateRaceTypeName } from '../../../utils/raceTypeLocalization'
 import { getRaceStatusLabel } from '../types/raceFilters'
 import styles from './RaceDetailsDrawer.module.css'
 
@@ -186,8 +187,8 @@ export function RaceDetailsDrawer({
               </div>
               <div className={styles.summaryItem}>
                 <span className={styles.summaryLabel}>{t('races.details.summary.type')}</span>
-                <Tooltip title={race.race.raceTypeName ?? '-'}>
-                  <span className={styles.summaryValue}>{race.race.raceTypeName ?? '-'}</span>
+                <Tooltip title={translateRaceTypeName(race.race.raceTypeName, t) ?? '-'}>
+                  <span className={styles.summaryValue}>{translateRaceTypeName(race.race.raceTypeName, t) ?? '-'}</span>
                 </Tooltip>
               </div>
             </div>

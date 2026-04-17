@@ -4,7 +4,7 @@ import { colors } from '../../theme/colors'
 export function ProfileScreen() {
   return (
     <View style={styles.page}>
-      <Text style={styles.title}>Profile</Text>
+      <Text style={styles.title}>Perfil</Text>
     </View>
   )
 }

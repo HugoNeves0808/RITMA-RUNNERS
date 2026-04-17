@@ -38,6 +38,7 @@ import {
   getRaceStatusLabel,
   RACE_STATUS_OPTIONS,
 } from '../types/raceFilters'
+import { translateRaceTypeName } from '../../../utils/raceTypeLocalization'
 import type {
   ManagedRaceOptionType,
   RaceCreateOptions,
@@ -1170,7 +1171,7 @@ export function AddRaceDrawer({
                 )}
                 options={options.map((option) => ({
                   value: option.id,
-                  label: option.name,
+                  label: optionType === 'race-types' ? translateRaceTypeName(option.name, t) : option.name,
                 }))}
               />
             </Form.Item>
@@ -1879,7 +1880,9 @@ export function AddRaceDrawer({
                 getOptionsForType(managedOptionType).map((option) => (
                   <div key={option.id} className={styles.manageOptionRow}>
                     <div className={styles.manageOptionInfo}>
-                      <span className={styles.manageOptionName}>{option.name}</span>
+                      <span className={styles.manageOptionName}>
+                        {managedOptionType === 'race-types' ? translateRaceTypeName(option.name, t) : option.name}
+                      </span>
                       {managedOptionType === 'race-types' ? (
                         <div className={styles.manageOptionMetaRow}>
                           <span className={styles.manageOptionMeta}>

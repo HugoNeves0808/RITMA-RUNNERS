@@ -11,6 +11,7 @@ import {
   getRaceStatusLabel,
   RACE_STATUS_OPTIONS,
 } from '../types/raceFilters'
+import { translateRaceTypeName } from '../../../utils/raceTypeLocalization'
 import styles from './RacesFiltersButton.module.css'
 
 type RacesFiltersButtonProps = {
@@ -31,8 +32,11 @@ export function RacesFiltersButton({
   const activeFiltersCount = countActiveRaceFilters(filters)
 
   const raceTypeOptions = useMemo(
-    () => options.raceTypes.map((raceType) => ({ value: raceType.id, label: raceType.name })),
-    [options.raceTypes],
+    () => options.raceTypes.map((raceType) => ({
+      value: raceType.id,
+      label: translateRaceTypeName(raceType.name, t) ?? raceType.name,
+    })),
+    [options.raceTypes, t],
   )
 
   return (

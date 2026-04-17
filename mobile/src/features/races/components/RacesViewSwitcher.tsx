@@ -13,8 +13,8 @@ const VIEW_OPTIONS: Array<{
   label: string
   icon: React.ComponentProps<typeof FontAwesome6>['name']
 }> = [
-  { value: 'calendar', label: 'Calendar view', icon: 'calendar-days' },
-  { value: 'table', label: 'List view', icon: 'table-cells-large' },
+  { value: 'calendar', label: 'Vista de calendário', icon: 'calendar-days' },
+  { value: 'table', label: 'Vista de lista', icon: 'table-cells-large' },
 ]
 
 export function RacesViewSwitcher({ selectedView, onViewChange }: RacesViewSwitcherProps) {

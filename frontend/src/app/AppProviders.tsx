@@ -5,9 +5,9 @@ import { LanguageProvider } from '../contexts/LanguageContext'
 export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
     <BrowserRouter>
-      <LanguageProvider>
-        <AuthProvider>{children}</AuthProvider>
-      </LanguageProvider>
+      <AuthProvider>
+        <LanguageProvider>{children}</LanguageProvider>
+      </AuthProvider>
     </BrowserRouter>
   )
 }

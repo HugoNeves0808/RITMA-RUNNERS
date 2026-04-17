@@ -1,0 +1,18 @@
+.submitButton:global(.ant-btn-primary) {
+  background: #101828;
+  border-color: #101828;
+  box-shadow: none;
+}
+
+.submitButton:global(.ant-btn-primary):hover,
+.submitButton:global(.ant-btn-primary):focus {
+  background: #374151 !important;
+  border-color: #374151 !important;
+  box-shadow: none;
+}
+
+.submitButton:global(.ant-btn-primary) span,
+.submitButton:global(.ant-btn-primary):hover span,
+.submitButton:global(.ant-btn-primary):focus span {
+  color: #ffffff !important;
+}

@@ -45,24 +45,24 @@ function formatRequestedAt(value: string) {
     const minutes = Math.floor((diffMs % hourMs) / minuteMs)
 
     if (hours <= 0) {
-      return `${Math.max(minutes, 1)} min ago`
+      return `há ${Math.max(minutes, 1)} min`
     }
 
-    return `${hours}h ${minutes}min ago`
+    return `há ${hours}h ${minutes}min`
   }
 
   if (diffMs < monthMs) {
     const days = Math.floor(diffMs / dayMs)
-    return `${days} day${days === 1 ? '' : 's'} ago`
+    return days === 1 ? 'há 1 dia' : `há ${days} dias`
   }
 
   if (diffMs < yearMs) {
     const months = Math.floor(diffMs / monthMs)
-    return `${months} month${months === 1 ? '' : 's'} ago`
+    return months === 1 ? 'há 1 mês' : `há ${months} meses`
   }
 
   const years = Math.floor(diffMs / yearMs)
-  return `${years} year${years === 1 ? '' : 's'} ago`
+  return years === 1 ? 'há 1 ano' : `há ${years} anos`
 }
 
 function isRequestStale(value: string) {
@@ -122,7 +122,7 @@ export function AdminPendingApprovalsScreen({ token }: AdminPendingApprovalsScre
         setApprovals(data)
         setError(null)
       } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : 'Unknown error')
+        setError(loadError instanceof Error ? loadError.message : 'Erro desconhecido')
       } finally {
         setIsLoading(false)
       }
@@ -138,7 +138,7 @@ export function AdminPendingApprovalsScreen({ token }: AdminPendingApprovalsScre
       setApprovals(data)
       setError(null)
     } catch (refreshError) {
-      setError(refreshError instanceof Error ? refreshError.message : 'Unknown error')
+      setError(refreshError instanceof Error ? refreshError.message : 'Erro desconhecido')
     } finally {
       setIsRefreshing(false)
     }
@@ -151,7 +151,7 @@ export function AdminPendingApprovalsScreen({ token }: AdminPendingApprovalsScre
       await approvePendingApproval(userId, token)
       setApprovals((currentValue) => currentValue.filter((approval) => approval.id !== userId))
     } catch (actionError) {
-      setError(actionError instanceof Error ? actionError.message : 'Unknown error')
+      setError(actionError instanceof Error ? actionError.message : 'Erro desconhecido')
     } finally {
       setProcessingId(null)
     }
@@ -159,12 +159,12 @@ export function AdminPendingApprovalsScreen({ token }: AdminPendingApprovalsScre
 
   const confirmReject = (userId: string) => {
     Alert.alert(
-      'Reject request',
-      'This will delete the pending account request.',
+      'Rejeitar pedido',
+      'Isto vai eliminar o pedido de conta pendente.',
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'Cancelar', style: 'cancel' },
         {
-          text: 'Reject',
+          text: 'Rejeitar',
           style: 'destructive',
           onPress: async () => {
             try {
@@ -173,7 +173,7 @@ export function AdminPendingApprovalsScreen({ token }: AdminPendingApprovalsScre
               await rejectPendingApproval(userId, token)
               setApprovals((currentValue) => currentValue.filter((approval) => approval.id !== userId))
             } catch (actionError) {
-              setError(actionError instanceof Error ? actionError.message : 'Unknown error')
+              setError(actionError instanceof Error ? actionError.message : 'Erro desconhecido')
             } finally {
               setProcessingId(null)
             }
@@ -191,9 +191,9 @@ export function AdminPendingApprovalsScreen({ token }: AdminPendingApprovalsScre
     >
       <View style={styles.card}>
         <View style={styles.header}>
-          <Text style={styles.title}>Pending Approvals</Text>
+          <Text style={styles.title}>Aprovações Pendentes</Text>
           <View style={styles.summaryBadge}>
-            <Text style={styles.summaryLabel}>PENDING</Text>
+            <Text style={styles.summaryLabel}>PENDENTES</Text>
             <Text style={styles.summaryValue}>{filteredApprovals.length}</Text>
           </View>
         </View>
@@ -209,7 +209,7 @@ export function AdminPendingApprovalsScreen({ token }: AdminPendingApprovalsScre
               color={areFiltersVisible ? colors.primaryButtonText : colors.textSecondary}
             />
             <Text style={[styles.filterToggleText, areFiltersVisible ? styles.filterToggleTextActive : null]}>
-              Filters
+              Filtros
             </Text>
           </Pressable>
 
@@ -222,7 +222,7 @@ export function AdminPendingApprovalsScreen({ token }: AdminPendingApprovalsScre
               }}
             >
               <FontAwesome6 name="rotate-left" size={14} color={colors.textSecondary} />
-              <Text style={styles.clearFiltersText}>Reset</Text>
+              <Text style={styles.clearFiltersText}>Limpar</Text>
             </Pressable>
           ) : null}
         </View>
@@ -234,7 +234,7 @@ export function AdminPendingApprovalsScreen({ token }: AdminPendingApprovalsScre
               <TextInput
                 value={search}
                 onChangeText={setSearch}
-                placeholder="Search by email"
+                placeholder="Pesquisar por email"
                 placeholderTextColor="#98a2b3"
                 autoCapitalize="none"
                 keyboardType="email-address"
@@ -251,7 +251,7 @@ export function AdminPendingApprovalsScreen({ token }: AdminPendingApprovalsScre
                 size={18}
                 color={olderThanThreeDays ? colors.warning : '#98a2b3'}
               />
-              <Text style={styles.checkboxText}>Waiting for over 3 days</Text>
+              <Text style={styles.checkboxText}>À espera há mais de 3 dias</Text>
             </Pressable>
           </View>
         ) : null}
@@ -259,20 +259,20 @@ export function AdminPendingApprovalsScreen({ token }: AdminPendingApprovalsScre
         {isLoading ? (
           <View style={styles.loadingRow}>
             <ActivityIndicator size="small" color={colors.warning} />
-            <Text style={styles.loadingText}>Loading pending approvals</Text>
+            <Text style={styles.loadingText}>A carregar aprovações pendentes</Text>
           </View>
         ) : null}
 
         {error ? (
           <View style={styles.errorBox}>
-            <Text style={styles.errorTitle}>Could not process pending approvals</Text>
+            <Text style={styles.errorTitle}>Não foi possível processar aprovações pendentes</Text>
             <Text style={styles.errorText}>{error}</Text>
           </View>
         ) : null}
 
         {!isLoading && visibleApprovals.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>No pending approvals.</Text>
+            <Text style={styles.emptyTitle}>Sem aprovações pendentes.</Text>
           </View>
         ) : null}
 
@@ -289,7 +289,7 @@ export function AdminPendingApprovalsScreen({ token }: AdminPendingApprovalsScre
                   </View>
 
                   <View style={styles.metaRow}>
-                    <Text style={styles.metaLabel}>Requested at</Text>
+                  <Text style={styles.metaLabel}>Pedido em</Text>
                     <View style={styles.requestedAtRow}>
                       <Text style={styles.metaValue}>{formatRequestedAt(approval.requestedAt)}</Text>
                       {isRequestStale(approval.requestedAt) ? (
@@ -304,7 +304,7 @@ export function AdminPendingApprovalsScreen({ token }: AdminPendingApprovalsScre
                       onPress={() => void handleApprove(approval.id)}
                       disabled={isProcessing}
                     >
-                      <Text style={styles.approveButtonText}>{isProcessing ? 'Working...' : 'Approve'}</Text>
+                      <Text style={styles.approveButtonText}>{isProcessing ? 'A processar...' : 'Aprovar'}</Text>
                     </Pressable>
 
                     <Pressable
@@ -312,7 +312,7 @@ export function AdminPendingApprovalsScreen({ token }: AdminPendingApprovalsScre
                       onPress={() => confirmReject(approval.id)}
                       disabled={isProcessing}
                     >
-                      <Text style={styles.rejectButtonText}>Reject</Text>
+                      <Text style={styles.rejectButtonText}>Rejeitar</Text>
                     </Pressable>
                   </View>
                 </View>

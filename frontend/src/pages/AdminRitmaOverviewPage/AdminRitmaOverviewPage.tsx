@@ -33,18 +33,6 @@ function formatRequestDate(value: string, locale: string) {
   }).format(date)
 }
 
-function formatRequestTime(value: string, locale: string) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return '-'
-  }
-
-  return new Intl.DateTimeFormat(locale, {
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(date)
-}
-
 export function AdminRitmaOverviewPage() {
   const { t } = useTranslation()
   const { language } = useLanguage()
@@ -201,12 +189,6 @@ export function AdminRitmaOverviewPage() {
       dataIndex: 'requestedAt',
       key: 'requestDate',
       render: (value: string) => formatRequestDate(value, dateTimeLocale),
-    },
-    {
-      title: t('adminOverview.table.requestTime'),
-      dataIndex: 'requestedAt',
-      key: 'requestTime',
-      render: (value: string) => formatRequestTime(value, dateTimeLocale),
     },
     {
       title: t('adminOverview.table.actions'),

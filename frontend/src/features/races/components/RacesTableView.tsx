@@ -39,6 +39,7 @@ import type {
   RaceTableYearGroup,
   TableYearSelection,
 } from '../types/racesTable'
+import { translateRaceTypeName } from '../../../utils/raceTypeLocalization'
 import { AddRaceDrawer } from './AddRaceDrawer'
 import { RaceDetailsDrawer } from './RaceDetailsDrawer'
 import styles from './RacesTableView.module.css'
@@ -346,7 +347,7 @@ function renderRaceMetrics(
         <span className={styles.inlineMetaValue}>{race.location ?? '-'}</span>
         <span className={styles.inlineMetaDivider}>•</span>
         <span className={styles.inlineMetaLabel}>{t('races.table.card.raceType')}</span>
-        <span className={styles.inlineMetaValue}>{race.raceTypeName ?? '-'}</span>
+        <span className={styles.inlineMetaValue}>{translateRaceTypeName(race.raceTypeName, t) ?? '-'}</span>
       </div>
     )
   }
@@ -364,8 +365,8 @@ function renderRaceMetrics(
       <div className={styles.metricItem}>
         <span className={styles.metricLabel}>{t('races.table.card.raceType')}</span>
         {renderMetricValueWithTooltip(
-          race.raceTypeName ?? <span className={styles.emptyValue}>-</span>,
-          race.raceTypeName ?? '-',
+          translateRaceTypeName(race.raceTypeName, t) ?? <span className={styles.emptyValue}>-</span>,
+          translateRaceTypeName(race.raceTypeName, t) ?? '-',
         )}
       </div>
 
@@ -428,7 +429,7 @@ function renderCompactInlineMeta(
       <span className={styles.compactInlineMetaValue}>{race.location ?? '-'}</span>
       <span className={styles.compactInlineMetaDivider}>•</span>
       <span className={styles.compactInlineMetaLabel}>{t('races.table.card.raceType')}</span>
-      <span className={styles.compactInlineMetaValue}>{race.raceTypeName ?? '-'}</span>
+      <span className={styles.compactInlineMetaValue}>{translateRaceTypeName(race.raceTypeName, t) ?? '-'}</span>
     </div>
   )
 }
@@ -1470,7 +1471,7 @@ export function RacesTableView({
                                   {race.name}
                                 </OverflowTooltip>
                                 <span className={`${styles.raceStatusBadge} ${getRaceStatusClassName(race.raceStatus)}`.trim()}>
-                                  {race.raceTypeName ?? '-'}
+                                  {translateRaceTypeName(race.raceTypeName, t) ?? '-'}
                                 </span>
                               </div>
                               <div className={styles.inListModalSubtitle}>

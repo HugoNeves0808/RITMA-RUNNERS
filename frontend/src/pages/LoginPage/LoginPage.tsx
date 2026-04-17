@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { faBuffer } from '@fortawesome/free-brands-svg-icons'
-import { faArrowTrendUp, faRankingStar, faRightToBracket, faWrench } from '@fortawesome/free-solid-svg-icons'
+import { faArrowTrendUp, faRankingStar, faRightToBracket } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { Alert, Button, Card, Checkbox, Form, Input, Select, Typography } from 'antd'
-import { Link as RouterLink, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ROUTES } from '../../constants/routes'
 import { useLanguage } from '../../contexts/LanguageContext'
@@ -170,15 +170,6 @@ export function LoginPage() {
                   {t('login.sideBestPerformances')}
                 </Paragraph>
               </div>
-            </div>
-            <div className={styles.sideDevelopment}>
-              <FontAwesomeIcon icon={faWrench} className={styles.sideDevelopmentIcon} />
-              <Paragraph className={styles.sideDevelopmentCopy}>
-                {t('login.sideDevelopmentPrefix')}{' '}
-                <RouterLink to={ROUTES.futureGoals} className={styles.sideDevelopmentLink}>
-                  {t('login.sideDevelopmentLink')}
-                </RouterLink>
-              </Paragraph>
             </div>
           </div>
         </div>

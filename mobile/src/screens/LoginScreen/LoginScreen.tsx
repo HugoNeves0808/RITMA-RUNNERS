@@ -46,12 +46,12 @@ export function LoginScreen({ onOpenFutureGoals, onLoginSuccess }: LoginScreenPr
     setStatusMessage(null)
 
     if (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-      setEmailError('Enter a valid email address.')
+      setEmailError('Introduz um endereço de email válido.')
       hasError = true
     }
 
     if (!password) {
-      setPasswordError('Password is required.')
+      setPasswordError('A palavra-passe é obrigatória.')
       hasError = true
     }
 
@@ -73,10 +73,10 @@ export function LoginScreen({ onOpenFutureGoals, onLoginSuccess }: LoginScreenPr
     } catch (loginError) {
       const message =
         isApiError(loginError) && loginError.status === 401
-          ? 'Invalid email or password.'
+          ? 'Email ou palavra-passe inválidos.'
           : loginError instanceof Error
             ? loginError.message
-            : 'Unable to sign in right now.'
+            : 'Não foi possível iniciar sessão agora.'
 
       setStatusMessage(message)
     } finally {
@@ -94,7 +94,7 @@ export function LoginScreen({ onOpenFutureGoals, onLoginSuccess }: LoginScreenPr
               <View style={styles.noticeHeader}>
                 <FontAwesome6 name="circle-check" size={18} color={colors.teal} />
                 <View style={styles.noticeCopy}>
-                  <Text style={styles.noticeTitle}>Request submitted</Text>
+                  <Text style={styles.noticeTitle}>Pedido submetido</Text>
                   <Text style={styles.noticeText}>{requestAccountNotice}</Text>
                 </View>
               </View>
@@ -118,7 +118,7 @@ export function LoginScreen({ onOpenFutureGoals, onLoginSuccess }: LoginScreenPr
         <View style={styles.formCard}>
           <TextInputField
             label="Email"
-            placeholder="Enter your email"
+            placeholder="Introduz o teu email"
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -126,8 +126,8 @@ export function LoginScreen({ onOpenFutureGoals, onLoginSuccess }: LoginScreenPr
             error={emailError}
           />
           <TextInputField
-            label="Password"
-            placeholder="Enter your password"
+            label="Palavra-passe"
+            placeholder="Introduz a tua palavra-passe"
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -140,16 +140,16 @@ export function LoginScreen({ onOpenFutureGoals, onLoginSuccess }: LoginScreenPr
               <View style={[styles.checkbox, rememberPassword ? styles.checkboxChecked : null]}>
                 {rememberPassword ? <View style={styles.checkboxInner} /> : null}
               </View>
-              <Text style={styles.rememberText}>Remember password</Text>
+              <Text style={styles.rememberText}>Lembrar palavra-passe</Text>
             </Pressable>
 
             <Pressable hitSlop={8} onPress={() => setIsRequestAccountOpen(true)}>
-              <Text style={styles.secondaryLink}>Request account</Text>
+              <Text style={styles.secondaryLink}>Pedir conta</Text>
             </Pressable>
           </View>
 
           <PrimaryButton
-            label={isSubmitting ? 'Signing in...' : 'Sign in'}
+            label={isSubmitting ? 'A entrar...' : 'Entrar'}
             onPress={handleLogin}
             disabled={isSubmitting}
             iconName="right-to-bracket"
@@ -162,8 +162,8 @@ export function LoginScreen({ onOpenFutureGoals, onLoginSuccess }: LoginScreenPr
           <Pressable style={styles.developmentCard} onPress={onOpenFutureGoals}>
             <FontAwesome6 name="wrench" size={18} color={colors.purple} />
             <Text style={styles.developmentText}>
-              RITMA is still in development.{' '}
-              <Text style={styles.developmentLink}>See what is planned next.</Text>
+              A RITMA ainda está em desenvolvimento.{' '}
+              <Text style={styles.developmentLink}>Vê o que está planeado a seguir.</Text>
             </Text>
           </Pressable>
         </View>

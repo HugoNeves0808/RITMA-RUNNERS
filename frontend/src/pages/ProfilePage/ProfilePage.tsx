@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../features/auth'
 import { fetchProfileSummary } from '../../features/profile/services/profileService'
 import type { ProfileSummary } from '../../features/profile/types/profile'
+import { translateRaceTypeName } from '../../utils/raceTypeLocalization'
 import styles from './ProfilePage.module.css'
 
 const { Title } = Typography
@@ -79,7 +80,10 @@ export function ProfilePage() {
               <div className={styles.metricsGrid}>
                 <SummaryMetric label={t('profile.metrics.totalRaces')} value={summary.totalRaces} />
                 <SummaryMetric label={t('profile.metrics.completedRaces')} value={summary.completedRaces} />
-                <SummaryMetric label={t('profile.metrics.favoriteRaceType')} value={summary.favoriteRaceType ?? '-'} />
+                <SummaryMetric
+                  label={t('profile.metrics.favoriteRaceType')}
+                  value={translateRaceTypeName(summary.favoriteRaceType, t) ?? '-'}
+                />
                 <SummaryMetric label={t('profile.metrics.podiums')} value={summary.podiums} />
               </div>
             </Card>
@@ -96,7 +100,7 @@ export function ProfilePage() {
                   {summary.topRaceTypes.map((item) => (
                     <div key={item.raceTypeName} className={styles.raceTypeRow}>
                       <div className={styles.raceTypeMain}>
-                        <span className={styles.raceTypeName}>{item.raceTypeName}</span>
+                        <span className={styles.raceTypeName}>{translateRaceTypeName(item.raceTypeName, t) ?? item.raceTypeName}</span>
                         <span className={styles.raceTypeMeta}>{t('profile.raceTypes.raceCount', { count: item.raceCount })}</span>
                       </div>
                       <div className={styles.raceTypeBadge}>

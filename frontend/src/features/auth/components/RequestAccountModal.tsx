@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Alert, Button, Form, Input, Modal, message } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { requestAccount } from '../services/authService'
+import styles from './RequestAccountModal.module.css'
 
 type RequestAccountModalProps = {
   open: boolean
@@ -34,8 +35,8 @@ export function RequestAccountModal({ open, onCancel }: RequestAccountModalProps
     try {
       const values = await form.validateFields()
       setIsSubmitting(true)
-      const response = await requestAccount(values)
-      await messageApi.success(response.message)
+      await requestAccount(values)
+      await messageApi.success(t('requestAccount.success'))
       form.resetFields()
       onCancel()
     } catch (requestError) {
@@ -74,7 +75,13 @@ export function RequestAccountModal({ open, onCancel }: RequestAccountModalProps
           <Button key="cancel" onClick={onCancel} disabled={isSubmitting}>
             {t('requestAccount.cancel')}
           </Button>,
-          <Button key="submit" type="primary" loading={isSubmitting} onClick={handleSubmit}>
+          <Button
+            key="submit"
+            className={styles.submitButton}
+            type="primary"
+            loading={isSubmitting}
+            onClick={handleSubmit}
+          >
             {t('requestAccount.submit')}
           </Button>,
         ]}

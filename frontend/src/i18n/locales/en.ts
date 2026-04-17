@@ -1,4 +1,10 @@
 export const en = {
+  defaultRaceTypes: {
+    '10k': '10 km Race',
+    '15k': '15 km Race',
+    halfMarathon: 'Half Marathon',
+    marathon: 'Marathon',
+  },
   common: {
     cancel: 'Cancel',
     submit: 'Submit',
@@ -27,7 +33,6 @@ export const en = {
   },
   pages: {
     login: 'Login',
-    futureGoals: 'Future Goals',
     profile: 'Profile',
     settings: 'Settings',
     raceTypes: 'Race Types',
@@ -68,6 +73,7 @@ export const en = {
     title: 'Request Account',
     cancel: 'Cancel',
     submit: 'Submit',
+    success: 'Your request has been submitted. An admin must approve the account before sign-in.',
     alertTitle: 'Request failed',
     emailLabel: 'Email',
     emailRequired: 'Email is required',
@@ -110,10 +116,7 @@ export const en = {
       localPreferences: 'Local preferences',
     },
     preferences: {
-      rememberMeTitle: 'Remember me',
-      rememberMeText: 'Managed at sign-in and stored locally on this browser.',
       languageTitle: 'Language',
-      languageText: 'Used for labels, menus, and system messages.',
       languageEnglish: 'English',
       languagePortuguese: 'Português',
     },
@@ -145,63 +148,6 @@ export const en = {
       confirm: 'Are you sure you want to logout?',
       ok: 'Logout',
       cancel: 'Cancel',
-    },
-  },
-  futureGoals: {
-    backToLogin: 'Back to login',
-    tabs: {
-      whatIsRitma: 'What is RITMA?',
-      futurePlans: 'Future Plans',
-    },
-    whatIs: {
-      paragraph1:
-        'RITMA RUNNERS is a web application built to help runners organize races in a clear and structured way.',
-      paragraph2:
-        'It is still intentionally minimalist, but the direction is clear: a practical digital companion for runners who want better structure, continuity, and clarity around their racing journey.',
-      cards: {
-        raceFocused: {
-          title: 'Race-focused organization',
-          description: 'Keep track of races with a clearer workflow.',
-        },
-        performanceHistory: {
-          title: 'Clear performance history',
-          description: 'Build a consistent record of results and progress.',
-        },
-        runnerJourney: {
-          title: 'Structured runner journey',
-          description: 'Create a stronger long-term view of your journey.',
-        },
-      },
-    },
-    plans: {
-      paragraph1:
-        'RITMA will expand step by step into a more complete platform for planning, analysis, and long-term runner support.',
-      cards: {
-        trainingPlanning: {
-          title: 'Training planning',
-          description: 'Plan training with more structure around your race calendar.',
-        },
-        platformSync: {
-          title: 'Platform sync',
-          description: 'Connect RITMA with Strava, Garmin, and other running tools.',
-        },
-        smarterSupport: {
-          title: 'Smarter support',
-          description: 'Use AI-assisted guidance and stronger decision support over time.',
-        },
-        advancedStats: {
-          title: 'Advanced statistics',
-          description: 'Expand race and training analysis with deeper performance insights.',
-        },
-        progressionAnalysis: {
-          title: 'Progression analysis',
-          description: 'Understand consistency, progression, and preparation over longer cycles.',
-        },
-        preparationTools: {
-          title: 'Preparation tools',
-          description: 'Support better planning and decision-making before key races.',
-        },
-      },
     },
   },
   adminOverview: {

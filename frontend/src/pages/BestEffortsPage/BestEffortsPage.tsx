@@ -31,6 +31,7 @@ import {
   type BestEffortItem,
   type BestEffortsViewMode,
 } from '../../features/best-efforts'
+import { translateRaceTypeName } from '../../utils/raceTypeLocalization'
 import styles from './BestEffortsPage.module.css'
 
 const { Title } = Typography
@@ -558,7 +559,7 @@ export function BestEffortsPage() {
 
   const featuredLimit = viewMode === 'top-3' ? 3 : 5
   const raceTypeOptions = raceTypes.map((raceType) => ({
-    label: raceType.name,
+    label: translateRaceTypeName(raceType.name, t) ?? raceType.name,
     value: raceType.name,
   }))
 
@@ -1010,7 +1011,7 @@ export function BestEffortsPage() {
                     <div className={styles.entrySubtitle}>
                       <span>{formatRaceDate(item.raceDate, locale, t('bestEfforts.format.noDate'))}</span>
                       <span>{formatDistance(item.realKm, locale)}</span>
-                      <span>{item.raceTypeName}</span>
+                      <span>{translateRaceTypeName(item.raceTypeName, t) ?? item.raceTypeName}</span>
                     </div>
                   </div>
                 </div>

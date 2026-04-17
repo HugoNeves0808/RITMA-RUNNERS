@@ -4,7 +4,7 @@ import { colors } from '../../theme/colors'
 export function SettingsScreen() {
   return (
     <View style={styles.page}>
-      <Text style={styles.title}>Settings</Text>
+      <Text style={styles.title}>Definições</Text>
     </View>
   )
 }

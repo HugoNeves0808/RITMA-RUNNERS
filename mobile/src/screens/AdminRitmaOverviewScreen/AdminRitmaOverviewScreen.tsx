@@ -42,14 +42,14 @@ function formatRequestedAt(value: string) {
     const minutes = Math.floor((diffMs % hourMs) / minuteMs)
 
     if (hours <= 0) {
-      return `${Math.max(minutes, 1)} min ago`
+      return `há ${Math.max(minutes, 1)} min`
     }
 
-    return `${hours}h ${minutes}min ago`
+    return `há ${hours}h ${minutes}min`
   }
 
   const days = Math.floor(diffMs / dayMs)
-  return `${days} day${days === 1 ? '' : 's'} ago`
+  return days === 1 ? 'há 1 dia' : `há ${days} dias`
 }
 
 export function AdminRitmaOverviewScreen({ token, onOpenPendingApprovals }: AdminRitmaOverviewScreenProps) {
@@ -74,7 +74,7 @@ export function AdminRitmaOverviewScreen({ token, onOpenPendingApprovals }: Admi
         setError(null)
         setPendingError(null)
       } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : 'Unable to load overview right now.')
+        setError(loadError instanceof Error ? loadError.message : 'Não foi possível carregar a visão geral agora.')
       } finally {
         setIsLoading(false)
       }
@@ -95,18 +95,18 @@ export function AdminRitmaOverviewScreen({ token, onOpenPendingApprovals }: Admi
       setError(null)
       setPendingError(null)
     } catch (refreshError) {
-      setError(refreshError instanceof Error ? refreshError.message : 'Unable to load overview right now.')
+      setError(refreshError instanceof Error ? refreshError.message : 'Não foi possível carregar a visão geral agora.')
     } finally {
       setIsRefreshing(false)
     }
   }
 
   const statCards = overview ? [
-    { label: 'Pending approvals', value: String(pendingApprovals.length), hint: 'Accounts waiting for review', highlighted: true },
-    { label: 'Total users', value: String(overview.totalUsers), hint: 'Active accounts' },
-    { label: 'Total admins', value: String(overview.totalAdmins), hint: 'Admin accounts' },
-    { label: 'Active users today', value: String(overview.activeUsersToday), hint: 'Unique website users today' },
-    { label: 'New registrations', value: String(overview.newRegistrationsLast7Days), hint: 'Created in the last 7 days' },
+    { label: 'Aprovações pendentes', value: String(pendingApprovals.length), hint: 'Contas à espera de revisão', highlighted: true },
+    { label: 'Total de utilizadores', value: String(overview.totalUsers), hint: 'Contas ativas' },
+    { label: 'Total de admins', value: String(overview.totalAdmins), hint: 'Contas de administração' },
+    { label: 'Utilizadores ativos hoje', value: String(overview.activeUsersToday), hint: 'Utilizadores únicos no site hoje' },
+    { label: 'Novos registos', value: String(overview.newRegistrationsLast7Days), hint: 'Criados nos últimos 7 dias' },
   ] : []
 
   const previewApprovals = useMemo(() => pendingApprovals.slice(0, 5), [pendingApprovals])
@@ -118,7 +118,7 @@ export function AdminRitmaOverviewScreen({ token, onOpenPendingApprovals }: Admi
       await approvePendingApproval(userId, token)
       await refreshOverview()
     } catch (actionError) {
-      setPendingError(actionError instanceof Error ? actionError.message : 'Unable to approve account.')
+      setPendingError(actionError instanceof Error ? actionError.message : 'Não foi possível aprovar a conta.')
     } finally {
       setProcessingId(null)
     }
@@ -126,12 +126,12 @@ export function AdminRitmaOverviewScreen({ token, onOpenPendingApprovals }: Admi
 
   const confirmReject = (userId: string) => {
     Alert.alert(
-      'Reject request',
-      'This will delete the pending account request.',
+      'Rejeitar pedido',
+      'Isto vai eliminar o pedido de conta pendente.',
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'Cancelar', style: 'cancel' },
         {
-          text: 'Reject',
+          text: 'Rejeitar',
           style: 'destructive',
           onPress: async () => {
             try {
@@ -140,7 +140,7 @@ export function AdminRitmaOverviewScreen({ token, onOpenPendingApprovals }: Admi
               await rejectPendingApproval(userId, token)
               await refreshOverview()
             } catch (actionError) {
-              setPendingError(actionError instanceof Error ? actionError.message : 'Unable to reject account.')
+              setPendingError(actionError instanceof Error ? actionError.message : 'Não foi possível rejeitar a conta.')
             } finally {
               setProcessingId(null)
             }
@@ -158,12 +158,12 @@ export function AdminRitmaOverviewScreen({ token, onOpenPendingApprovals }: Admi
     >
       <View style={styles.heroCard}>
         <View style={styles.header}>
-          <Text style={styles.title}>Overview</Text>
+          <Text style={styles.title}>Visão Geral</Text>
           <Pressable
             style={styles.iconButton}
             onPress={() => void refreshOverview()}
             accessibilityRole="button"
-            accessibilityLabel="Refresh overview"
+            accessibilityLabel="Atualizar visão geral"
           >
             <FontAwesome6 name="rotate-left" size={16} color={colors.textPrimary} />
           </Pressable>
@@ -172,13 +172,13 @@ export function AdminRitmaOverviewScreen({ token, onOpenPendingApprovals }: Admi
         {isLoading ? (
           <View style={styles.loadingRow}>
             <ActivityIndicator size="small" color={colors.teal} />
-            <Text style={styles.loadingText}>Loading overview</Text>
+            <Text style={styles.loadingText}>A carregar visão geral</Text>
           </View>
         ) : null}
 
         {error ? (
           <View style={styles.errorBox}>
-            <Text style={styles.errorTitle}>Could not load overview</Text>
+            <Text style={styles.errorTitle}>Não foi possível carregar a visão geral</Text>
             <Text style={styles.errorText}>{error}</Text>
           </View>
         ) : null}
@@ -196,22 +196,22 @@ export function AdminRitmaOverviewScreen({ token, onOpenPendingApprovals }: Admi
 
       <View style={styles.pendingCard}>
         <View style={styles.pendingHeader}>
-          <Text style={styles.pendingTitle}>Pending approvals</Text>
+          <Text style={styles.pendingTitle}>Aprovações pendentes</Text>
           <Pressable style={styles.viewAllButton} onPress={onOpenPendingApprovals}>
-            <Text style={styles.viewAllButtonText}>View all</Text>
+            <Text style={styles.viewAllButtonText}>Ver todas</Text>
           </Pressable>
         </View>
 
         {pendingError ? (
           <View style={styles.errorBox}>
-            <Text style={styles.errorTitle}>Could not load pending approvals</Text>
+            <Text style={styles.errorTitle}>Não foi possível carregar as aprovações pendentes</Text>
             <Text style={styles.errorText}>{pendingError}</Text>
           </View>
         ) : null}
 
         {!pendingError && previewApprovals.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>There are no pending approvals right now.</Text>
+            <Text style={styles.emptyTitle}>Não existem aprovações pendentes neste momento.</Text>
           </View>
         ) : null}
 
@@ -233,7 +233,7 @@ export function AdminRitmaOverviewScreen({ token, onOpenPendingApprovals }: Admi
                       onPress={() => void handleApprove(approval.id)}
                       disabled={isProcessing}
                     >
-                      <Text style={styles.approveButtonText}>{isProcessing ? 'Working...' : 'Approve'}</Text>
+                      <Text style={styles.approveButtonText}>{isProcessing ? 'A processar...' : 'Aprovar'}</Text>
                     </Pressable>
 
                     <Pressable
@@ -241,7 +241,7 @@ export function AdminRitmaOverviewScreen({ token, onOpenPendingApprovals }: Admi
                       onPress={() => confirmReject(approval.id)}
                       disabled={isProcessing}
                     >
-                      <Text style={styles.rejectButtonText}>Reject</Text>
+                      <Text style={styles.rejectButtonText}>Rejeitar</Text>
                     </Pressable>
                   </View>
                 </View>
