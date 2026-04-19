@@ -16,6 +16,7 @@ The API documentation is now split into logical files for easier navigation.
 - [`system.md`](./system.md): health and technical system endpoints
 - [`auth.md`](./auth.md): authentication and account-access endpoints
 - [`races.md`](./races.md): races, calendars, create/edit flows, and managed race options
+- [`trainings.md`](./trainings.md): custom trainings, recurring series, completion, and training-type management
 - [`best-efforts.md`](./best-efforts.md): best-effort ranking endpoint
 - [`podiums.md`](./podiums.md): podium-history endpoint and test data notes
 - [`admin.md`](./admin.md): admin overview, users, and pending approvals

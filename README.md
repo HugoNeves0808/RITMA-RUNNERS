@@ -2,7 +2,7 @@
 
 `Release 3.0.0` is the latest completed release, and `4.0.0` is now being prepared as the next project milestone.
 
-RITMA RUNNERS is now a working multi-client platform for managing running races, reviewing best efforts, and supporting admin approval flows across web, mobile, and backend layers.
+RITMA RUNNERS is now a working multi-client platform for managing running races, planning custom trainings, reviewing best efforts, and supporting admin approval flows across web, mobile, and backend layers.
 
 ## Release Status
 
@@ -11,7 +11,7 @@ RITMA RUNNERS is now a working multi-client platform for managing running races,
 - Latest completed release date: `2026-04-17`
 - Current milestone target date: `TBD`
 - Phase status: release 1, release 2, and release 3 completed, release 4 in preparation
-- Scope covered: backend API, web client, mobile client, PostgreSQL persistence, authentication, race management, best efforts, and admin flows
+- Scope covered: backend API, web client, mobile client, PostgreSQL persistence, authentication, race management, custom trainings, best efforts, and admin flows
 
 ## Product Scope In Release 1.0.0
 

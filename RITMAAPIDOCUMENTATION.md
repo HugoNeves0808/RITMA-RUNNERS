@@ -7,6 +7,7 @@ Main sections:
 - `docs/api/overview.md`
 - `docs/api/auth.md`
 - `docs/api/races.md`
+- `docs/api/trainings.md`
 - `docs/api/best-efforts.md`
 - `docs/api/admin.md`
 - `docs/api/system.md`

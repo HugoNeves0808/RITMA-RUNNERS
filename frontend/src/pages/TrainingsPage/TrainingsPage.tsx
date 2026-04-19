@@ -1,0 +1,1117 @@
+import { faAngleDown, faAngleUp, faBroom, faCheck, faMagnifyingGlass, faPenToSquare, faPlus, faTrashCan, faTriangleExclamation } from '@fortawesome/free-solid-svg-icons'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import dayjs from 'dayjs'
+import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Alert, Button, Card, Checkbox, Collapse, DatePicker, Drawer, Empty, Input, InputNumber, Modal, Select, Space, Spin, Table, TimePicker, Tooltip, Typography } from 'antd'
+import type { ColumnsType } from 'antd/es/table'
+import { useAuth } from '../../features/auth'
+import {
+  createTraining,
+  createTrainingType,
+  deleteTraining,
+  deleteTrainingType,
+  EMPTY_TRAINING_FILTERS,
+  fetchTrainingCreateOptions,
+  fetchTrainingFilterOptions,
+  fetchTrainingTable,
+  updateTraining,
+  updateTrainingCompletion,
+  updateTrainingType,
+  type TrainingCreateOptions,
+  type TrainingFilters,
+  type TrainingRequest,
+  type TrainingStatus,
+  type TrainingTableItem,
+  type TrainingTypeOption,
+} from '../../features/trainings'
+import styles from './TrainingsPage.module.css'
+
+const { Title, Text } = Typography
+const { TextArea } = Input
+
+const STATUS_OPTIONS: Array<{ value: TrainingStatus; labelKey: string }> = [
+  { value: 'AGENDADO', labelKey: 'trainings.status.scheduled' },
+  { value: 'PLANEADO', labelKey: 'trainings.status.planned' },
+  { value: 'REALIZADO', labelKey: 'trainings.status.done' },
+]
+
+const WEEKDAY_OPTIONS = [
+  { value: 1, labelKey: 'trainings.weekdays.mon' },
+  { value: 2, labelKey: 'trainings.weekdays.tue' },
+  { value: 3, labelKey: 'trainings.weekdays.wed' },
+  { value: 4, labelKey: 'trainings.weekdays.thu' },
+  { value: 5, labelKey: 'trainings.weekdays.fri' },
+  { value: 6, labelKey: 'trainings.weekdays.sat' },
+  { value: 7, labelKey: 'trainings.weekdays.sun' },
+] as const
+
+type TrainingDraft = {
+  trainingDate: string
+  trainingTime: string | null
+  name: string
+  trainingTypeId: string | null
+  notes: string
+  recurrenceEnabled: boolean
+  recurrenceIntervalWeeks: number
+  recurrenceUntilDate: string | null
+  recurrenceDaysOfWeek: number[]
+}
+
+type CheckboxFilterSectionProps = {
+  title: string
+  count: number
+  isOpen: boolean
+  onToggle: () => void
+  toggleLabel: string
+  titleAction?: React.ReactNode
+  children: React.ReactNode
+}
+
+function CheckboxFilterSection({
+  title,
+  count,
+  isOpen,
+  onToggle,
+  toggleLabel,
+  titleAction,
+  children,
+}: CheckboxFilterSectionProps) {
+  return (
+    <div className={styles.filterField}>
+      <div className={styles.checkboxSectionHeader}>
+        <span className={styles.checkboxSectionTitleRow}>
+          <span className={styles.filterLabel}>{title}</span>
+          {count > 0 ? <span className={styles.filterCount}>{count}</span> : null}
+          {titleAction}
+        </span>
+        <button
+          type="button"
+          className={styles.checkboxSectionToggle}
+          onClick={onToggle}
+          aria-label={toggleLabel}
+          aria-expanded={isOpen}
+        >
+          <FontAwesomeIcon icon={isOpen ? faAngleUp : faAngleDown} />
+        </button>
+      </div>
+      {isOpen ? <div className={styles.checkboxSectionBody}>{children}</div> : null}
+    </div>
+  )
+}
+
+function getEmptyDraft(): TrainingDraft {
+  const today = dayjs().format('YYYY-MM-DD')
+  return {
+    trainingDate: today,
+    trainingTime: null,
+    name: '',
+    trainingTypeId: null,
+    notes: '',
+    recurrenceEnabled: false,
+    recurrenceIntervalWeeks: 1,
+    recurrenceUntilDate: today,
+    recurrenceDaysOfWeek: [],
+  }
+}
+
+function buildTrainingRequest(draft: TrainingDraft): TrainingRequest {
+  return {
+    trainingDate: draft.trainingDate,
+    trainingTime: draft.trainingTime,
+    name: draft.name.trim(),
+    trainingTypeId: draft.trainingTypeId ?? '',
+    notes: draft.notes.trim() || null,
+    associatedRaceId: null,
+    recurrence: draft.recurrenceEnabled
+      ? {
+        enabled: true,
+        intervalWeeks: draft.recurrenceIntervalWeeks,
+        untilDate: draft.recurrenceUntilDate,
+        daysOfWeek: draft.recurrenceDaysOfWeek,
+      }
+      : null,
+  }
+}
+
+function formatDate(value: string | null, locale: string) {
+  if (!value) {
+    return '-'
+  }
+
+  return new Intl.DateTimeFormat(locale, {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(new Date(`${value}T00:00:00`))
+}
+
+function formatTime(value: string | null) {
+  return value ? value.slice(0, 5) : '-'
+}
+
+function getStatusClass(status: TrainingStatus) {
+  if (status === 'REALIZADO') {
+    return styles.statusDone
+  }
+
+  if (status === 'PLANEADO') {
+    return styles.statusPlanned
+  }
+
+  return styles.statusScheduled
+}
+
+function isPastPlannedTraining(training: TrainingTableItem) {
+  return training.trainingStatus === 'PLANEADO' && dayjs(training.trainingDate).isBefore(dayjs(), 'day')
+}
+
+export function TrainingsPage() {
+  const { token } = useAuth()
+  const { t, i18n } = useTranslation()
+  const locale = i18n.resolvedLanguage === 'pt' ? 'pt-PT' : 'en-GB'
+  const [filters, setFilters] = useState<TrainingFilters>(EMPTY_TRAINING_FILTERS)
+  const [isStatusesOpen, setIsStatusesOpen] = useState(true)
+  const [isTypesOpen, setIsTypesOpen] = useState(true)
+  const [trainings, setTrainings] = useState<TrainingTableItem[]>([])
+  const [createOptions, setCreateOptions] = useState<TrainingCreateOptions>({ trainingTypes: [], races: [] })
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+  const [isTypeModalOpen, setIsTypeModalOpen] = useState(false)
+  const [draft, setDraft] = useState<TrainingDraft>(getEmptyDraft)
+  const [editingTrainingId, setEditingTrainingId] = useState<string | null>(null)
+  const [typeEditorValue, setTypeEditorValue] = useState('')
+  const [editingTypeId, setEditingTypeId] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<TrainingTableItem | null>(null)
+  const [isStaleTrainingsModalOpen, setIsStaleTrainingsModalOpen] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [typeError, setTypeError] = useState<string | null>(null)
+  const [isBulkUpdatingStaleTrainings, setIsBulkUpdatingStaleTrainings] = useState(false)
+
+  useEffect(() => {
+    const loadData = async () => {
+      if (!token) {
+        setTrainings([])
+        setCreateOptions({ trainingTypes: [], races: [] })
+        setIsLoading(false)
+        return
+      }
+
+      try {
+        setIsLoading(true)
+        setError(null)
+        const [tablePayload, createOptionsPayload, filterOptionsPayload] = await Promise.all([
+          fetchTrainingTable(token, filters),
+          fetchTrainingCreateOptions(token),
+          fetchTrainingFilterOptions(token),
+        ])
+
+        setTrainings(tablePayload.trainings)
+        setCreateOptions({
+          trainingTypes: filterOptionsPayload.trainingTypes.length > 0
+            ? filterOptionsPayload.trainingTypes
+            : createOptionsPayload.trainingTypes,
+          races: createOptionsPayload.races,
+        })
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : t('trainings.errors.load'))
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    void loadData()
+  }, [filters, t, token])
+
+  const raceSections = useMemo(() => {
+    const datedRaces = [...createOptions.races]
+      .filter((race) => Boolean(race.raceDate))
+      .sort((left, right) => dayjs(right.raceDate).valueOf() - dayjs(left.raceDate).valueOf())
+
+    if (datedRaces.length === 0) {
+      return []
+    }
+
+    const sections = datedRaces.map((race) => ({
+      key: race.id,
+      raceName: race.name,
+      raceDate: race.raceDate,
+      items: [] as TrainingTableItem[],
+      isPast: dayjs(race.raceDate).isBefore(dayjs(), 'day'),
+    }))
+
+    const sortedTrainings = [...trainings].sort((left, right) => {
+      const leftValue = dayjs(`${left.trainingDate}T${left.trainingTime ?? '00:00:00'}`).valueOf()
+      const rightValue = dayjs(`${right.trainingDate}T${right.trainingTime ?? '00:00:00'}`).valueOf()
+      return rightValue - leftValue
+    })
+
+    sortedTrainings.forEach((training) => {
+      const trainingDate = dayjs(training.trainingDate)
+      const sectionIndex = datedRaces.findIndex((_, index) => {
+        const nextRace = datedRaces[index + 1]
+        if (!nextRace?.raceDate) {
+          return true
+        }
+
+        return trainingDate.isAfter(dayjs(nextRace.raceDate), 'day')
+      })
+
+      sections[sectionIndex >= 0 ? sectionIndex : 0].items.push(training)
+    })
+
+    return sections.filter((section) => section.items.length > 0)
+  }, [createOptions.races, trainings])
+
+  const defaultOpenRaceSectionKeys = useMemo(() => {
+    const today = dayjs()
+    const currentWeekStart = today.startOf('day').subtract((today.day() + 6) % 7, 'day')
+    const currentWeekEnd = currentWeekStart.add(6, 'day').endOf('day')
+    const nextMonthStart = today.add(1, 'month').startOf('month')
+    const nextMonthEnd = nextMonthStart.endOf('month')
+
+    return raceSections
+      .filter((section) => {
+        const raceDate = dayjs(section.raceDate)
+        const isInCurrentWeek = raceDate.isSame(currentWeekStart, 'day')
+          || raceDate.isSame(currentWeekEnd, 'day')
+          || (raceDate.isAfter(currentWeekStart, 'day') && raceDate.isBefore(currentWeekEnd, 'day'))
+        const isInNextMonth = raceDate.isSame(nextMonthStart, 'day')
+          || raceDate.isSame(nextMonthEnd, 'day')
+          || (raceDate.isAfter(nextMonthStart, 'day') && raceDate.isBefore(nextMonthEnd, 'day'))
+
+        return isInCurrentWeek || isInNextMonth
+      })
+      .map((section) => section.key)
+  }, [raceSections])
+
+  const trainingTypeOptions = useMemo(
+    () => createOptions.trainingTypes.filter((option) => !option.archived),
+    [createOptions.trainingTypes],
+  )
+
+  const deleteSeriesPreview = useMemo(() => {
+    if (!deleteTarget?.seriesId) {
+      return []
+    }
+
+    return trainings
+      .filter((training) => training.seriesId === deleteTarget.seriesId)
+      .sort((left, right) => {
+        const leftValue = dayjs(`${left.trainingDate}T${left.trainingTime ?? '00:00:00'}`).valueOf()
+        const rightValue = dayjs(`${right.trainingDate}T${right.trainingTime ?? '00:00:00'}`).valueOf()
+        return leftValue - rightValue
+      })
+  }, [deleteTarget?.seriesId, trainings])
+
+  const stalePlannedTrainings = useMemo(
+    () => trainings.filter((training) => isPastPlannedTraining(training)),
+    [trainings],
+  )
+
+  const hasActiveFilters = filters.search.trim().length > 0
+    || filters.statuses.length > 0
+    || filters.trainingTypeIds.length > 0
+  const isTypeSaveDisabled = !typeEditorValue.trim()
+  const isTrainingSaveDisabled = !draft.trainingDate
+    || !draft.name.trim()
+    || !draft.trainingTypeId
+    || (draft.recurrenceEnabled && (
+      !draft.recurrenceUntilDate
+      || draft.recurrenceDaysOfWeek.length === 0
+      || draft.recurrenceIntervalWeeks < 1
+      || dayjs(draft.recurrenceUntilDate).isBefore(dayjs(draft.trainingDate), 'day')
+    ))
+
+  const handleToggleCompleted = async (training: TrainingTableItem, completed: boolean) => {
+    if (!token) {
+      return
+    }
+
+    try {
+      const updatedTraining = await updateTrainingCompletion(training.id, completed, token)
+      setTrainings((current) => current.map((item) => (item.id === updatedTraining.id ? updatedTraining : item)))
+    } catch (toggleError) {
+      setError(toggleError instanceof Error ? toggleError.message : t('trainings.errors.update'))
+    }
+  }
+
+  const handleEdit = (training: TrainingTableItem) => {
+    setEditingTrainingId(training.id)
+    setDraft({
+      trainingDate: training.trainingDate,
+      trainingTime: training.trainingTime,
+      name: training.name,
+      trainingTypeId: training.trainingTypeId,
+      notes: training.notes ?? '',
+      recurrenceEnabled: Boolean(training.seriesId && training.seriesDaysOfWeek.length > 0),
+      recurrenceIntervalWeeks: training.seriesIntervalWeeks ?? 1,
+      recurrenceUntilDate: training.seriesUntilDate,
+      recurrenceDaysOfWeek: training.seriesDaysOfWeek,
+    })
+    setIsDrawerOpen(true)
+  }
+
+  const handleSave = async () => {
+    if (!token || !draft.trainingTypeId || !draft.name.trim() || !draft.trainingDate) {
+      return
+    }
+
+    try {
+      setIsSaving(true)
+      setError(null)
+      const payload = buildTrainingRequest(draft)
+
+      if (editingTrainingId) {
+        const updatedTraining = await updateTraining(editingTrainingId, payload, token)
+        setTrainings((current) => current.map((item) => (item.id === updatedTraining.id ? updatedTraining : item)))
+      } else {
+        const createdTrainings = await createTraining(payload, token)
+        setTrainings((current) => [...current, ...createdTrainings])
+      }
+
+      setIsDrawerOpen(false)
+      setEditingTrainingId(null)
+      setDraft(getEmptyDraft())
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : t('trainings.errors.save'))
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleBulkUpdateStaleTrainings = async () => {
+    if (!token || stalePlannedTrainings.length === 0) {
+      return
+    }
+
+    try {
+      setIsBulkUpdatingStaleTrainings(true)
+      setError(null)
+      const updatedTrainings = await Promise.all(
+        stalePlannedTrainings.map((training) => updateTrainingCompletion(training.id, true, token)),
+      )
+
+      setTrainings((current) => current.map((training) => {
+        const updatedTraining = updatedTrainings.find((item) => item.id === training.id)
+        return updatedTraining ?? training
+      }))
+      setIsStaleTrainingsModalOpen(false)
+    } catch (bulkUpdateError) {
+      setError(bulkUpdateError instanceof Error ? bulkUpdateError.message : t('trainings.errors.update'))
+    } finally {
+      setIsBulkUpdatingStaleTrainings(false)
+    }
+  }
+
+  const handleDelete = async (scope: 'single' | 'series' = 'single') => {
+    if (!token || !deleteTarget) {
+      return
+    }
+
+    try {
+      await deleteTraining(deleteTarget.id, token, scope)
+      setTrainings((current) => current.filter((item) => (
+        scope === 'series' && deleteTarget.seriesId
+          ? item.seriesId !== deleteTarget.seriesId
+          : item.id !== deleteTarget.id
+      )))
+      setDeleteTarget(null)
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : t('trainings.errors.delete'))
+    }
+  }
+
+  const handleSaveType = async () => {
+    if (!token || !typeEditorValue.trim()) {
+      return
+    }
+
+    try {
+      setTypeError(null)
+      let nextType: TrainingTypeOption
+
+      if (editingTypeId) {
+        nextType = await updateTrainingType(editingTypeId, typeEditorValue.trim(), token)
+        setCreateOptions((current) => ({
+          ...current,
+          trainingTypes: current.trainingTypes.map((type) => (type.id === nextType.id ? nextType : type)),
+        }))
+      } else {
+        nextType = await createTrainingType(typeEditorValue.trim(), token)
+        setCreateOptions((current) => ({
+          ...current,
+          trainingTypes: [...current.trainingTypes, nextType].sort((left, right) => left.name.localeCompare(right.name)),
+        }))
+        setDraft((current) => ({
+          ...current,
+          trainingTypeId: nextType.id,
+        }))
+      }
+
+      setTypeEditorValue('')
+      setEditingTypeId(null)
+      setIsTypeModalOpen(false)
+    } catch (saveError) {
+      setTypeError(saveError instanceof Error ? saveError.message : t('trainings.errors.typeSave'))
+    }
+  }
+
+  const handleDeleteType = async (trainingTypeId: string) => {
+    if (!token) {
+      return
+    }
+
+    try {
+      setTypeError(null)
+      await deleteTrainingType(trainingTypeId, token)
+      setCreateOptions((current) => ({
+        ...current,
+        trainingTypes: current.trainingTypes.filter((type) => type.id !== trainingTypeId),
+      }))
+      setFilters((current) => ({
+        ...current,
+        trainingTypeIds: current.trainingTypeIds.filter((id) => id !== trainingTypeId),
+      }))
+      if (draft.trainingTypeId === trainingTypeId) {
+        setDraft((current) => ({ ...current, trainingTypeId: null }))
+      }
+    } catch (deleteError) {
+      setTypeError(deleteError instanceof Error ? deleteError.message : t('trainings.errors.typeDelete'))
+    }
+  }
+
+  const columns: ColumnsType<TrainingTableItem> = [
+    {
+      title: t('trainings.table.done'),
+      key: 'completed',
+      width: 90,
+      align: 'center',
+      render: (_, training) => (
+        <label className={styles.completeCheckbox}>
+          <Checkbox
+            checked={training.completed}
+            onChange={(event) => void handleToggleCompleted(training, event.target.checked)}
+          />
+        </label>
+      ),
+    },
+    {
+      title: t('trainings.table.dateTime'),
+      key: 'dateTime',
+      width: 160,
+      render: (_, training) => (
+        <div>
+          <div>{formatDate(training.trainingDate, locale)}</div>
+          <Text type="secondary">{formatTime(training.trainingTime)}</Text>
+        </div>
+      ),
+    },
+    {
+      title: t('trainings.table.name'),
+      dataIndex: 'name',
+      key: 'name',
+      width: 220,
+    },
+    {
+      title: t('trainings.table.type'),
+      dataIndex: 'trainingTypeName',
+      key: 'trainingTypeName',
+      width: 180,
+    },
+    {
+      title: t('trainings.table.status'),
+      dataIndex: 'trainingStatus',
+      key: 'trainingStatus',
+      width: 130,
+      render: (value: TrainingStatus, training) => (
+        <span className={styles.statusCell}>
+          <span className={`${styles.statusBadge} ${getStatusClass(value)}`}>
+            {t(`trainings.status.${value === 'AGENDADO' ? 'scheduled' : value === 'PLANEADO' ? 'planned' : 'done'}`)}
+          </span>
+          {isPastPlannedTraining(training) ? (
+            <Tooltip title={t('trainings.stale.rowHint')}>
+              <span className={styles.trainingRowWarningIcon} aria-label={t('trainings.stale.rowHint')}>
+                <FontAwesomeIcon icon={faTriangleExclamation} />
+              </span>
+            </Tooltip>
+          ) : null}
+        </span>
+      ),
+    },
+    {
+      title: t('trainings.table.actions'),
+      key: 'actions',
+      width: 110,
+      align: 'center',
+      render: (_, training) => (
+        <Space>
+          <Button
+            type="link"
+            icon={<FontAwesomeIcon icon={faPenToSquare} />}
+            aria-label={t('trainings.actions.edit')}
+            onClick={() => handleEdit(training)}
+          />
+          <Button
+            type="link"
+            danger
+            icon={<FontAwesomeIcon icon={faTrashCan} />}
+            aria-label={t('trainings.actions.delete')}
+            onClick={() => setDeleteTarget(training)}
+          />
+        </Space>
+      ),
+    },
+  ]
+
+  return (
+    <div className={styles.page}>
+      <div className={styles.pageHeader}>
+        <div className={styles.titleBlock}>
+          <div className={styles.pageTitleRow}>
+            <Title level={1} className={styles.pageTitle}>{t('trainings.title')}</Title>
+            {stalePlannedTrainings.length > 0 ? (
+              <Tooltip title={t('trainings.stale.headerHint')}>
+                <button
+                  type="button"
+                  className={styles.staleAlertBadge}
+                  onClick={() => setIsStaleTrainingsModalOpen(true)}
+                >
+                  <FontAwesomeIcon icon={faTriangleExclamation} className={styles.staleAlertBadgeIcon} />
+                  <span>{t('trainings.stale.headerCta', { count: stalePlannedTrainings.length })}</span>
+                </button>
+              </Tooltip>
+            ) : null}
+          </div>
+        </div>
+        <div className={styles.headerActions}>
+          <Button
+            type="primary"
+            className={styles.addButton}
+            icon={<FontAwesomeIcon icon={faPlus} />}
+            onClick={() => {
+              setEditingTrainingId(null)
+              setDraft(getEmptyDraft())
+              setIsDrawerOpen(true)
+            }}
+          >
+            {t('trainings.actions.add')}
+          </Button>
+        </div>
+      </div>
+
+      <div className={styles.contentLayout}>
+        <section className={styles.mainSection}>
+          <Card className={styles.tableCard} variant="borderless">
+            {error ? (
+              <Alert
+                type="error"
+                showIcon
+                message={t('trainings.errors.loadTitle')}
+                description={error}
+                style={{ marginBottom: 18 }}
+              />
+            ) : null}
+
+            {isLoading ? (
+              <div className={styles.loadingState}>
+                <Space size="middle">
+                  <Spin />
+                  <span>{t('trainings.loading')}</span>
+                </Space>
+              </div>
+            ) : trainings.length === 0 && raceSections.length === 0 ? (
+              <div className={styles.emptyWrap}>
+                <Empty description={hasActiveFilters ? t('trainings.empty.filtered') : t('trainings.empty.none')} />
+              </div>
+            ) : (
+              <>
+                {raceSections.length > 0 ? (
+                  <>
+                    <Collapse
+                      defaultActiveKey={defaultOpenRaceSectionKeys}
+                      items={raceSections.map((group) => ({
+                        key: group.key,
+                        className: group.isPast ? styles.raceCollapseItemPast : '',
+                        label: (
+                          <div className={`${styles.racePanelHeader} ${group.isPast ? styles.racePanelHeaderPast : ''}`}>
+                            <div className={styles.racePanelTitle}>
+                              <span className={`${styles.racePanelName} ${group.isPast ? styles.racePanelNamePast : ''}`}>
+                                {group.raceName}
+                              </span>
+                              <span className={`${styles.racePanelMeta} ${group.isPast ? styles.racePanelMetaPast : ''}`}>
+                                {formatDate(group.raceDate, locale)} - {t('trainings.table.itemsCount', { count: group.items.length })}
+                              </span>
+                            </div>
+                            {group.isPast ? (
+                              <span className={styles.racePanelStatusIcon} aria-label={t('trainings.status.done')}>
+                                <FontAwesomeIcon icon={faCheck} />
+                              </span>
+                            ) : null}
+                          </div>
+                        ),
+                        children: (
+                          <Table
+                            rowKey="id"
+                            columns={columns}
+                            dataSource={group.items}
+                            pagination={false}
+                            scroll={{ x: 1100 }}
+                          />
+                        ),
+                      }))}
+                    />
+                  </>
+                ) : null}
+
+                {trainings.length > 0 && raceSections.length === 0 ? (
+                  <>
+                    <h2 className={styles.sectionTitle}>{t('trainings.sections.list')}</h2>
+                    <Table
+                      rowKey="id"
+                      columns={columns}
+                      dataSource={trainings}
+                      pagination={false}
+                      scroll={{ x: 1100 }}
+                    />
+                  </>
+                ) : null}
+              </>
+            )}
+          </Card>
+        </section>
+
+        <aside>
+          <div className={styles.sidebarCard}>
+            <div className={styles.sidebarHeader}>
+              <h3 className={styles.sidebarTitle}>{t('trainings.filters.title')}</h3>
+              {hasActiveFilters ? (
+                <Button
+                  type="text"
+                  className={styles.clearButton}
+                  icon={<FontAwesomeIcon icon={faBroom} />}
+                  onClick={() => setFilters(EMPTY_TRAINING_FILTERS)}
+                />
+              ) : null}
+            </div>
+
+            <div className={styles.sidebarDivider} />
+
+            <label className={styles.filterField}>
+              <span className={styles.filterLabel}>{t('trainings.filters.search')}</span>
+              <Input
+                allowClear
+                className={styles.searchInput}
+                value={filters.search}
+                placeholder={t('trainings.filters.searchPlaceholder')}
+                suffix={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+                onChange={(event) => setFilters((current) => ({ ...current, search: event.target.value }))}
+              />
+            </label>
+
+            <CheckboxFilterSection
+              title={t('trainings.filters.status')}
+              count={filters.statuses.length}
+              isOpen={isStatusesOpen}
+              onToggle={() => setIsStatusesOpen((current) => !current)}
+              toggleLabel={t(isStatusesOpen ? 'trainings.filters.collapse' : 'trainings.filters.expand', { section: t('trainings.filters.status') })}
+            >
+              <div className={styles.checkboxList}>
+                {STATUS_OPTIONS.map((option) => (
+                  <label key={option.value} className={styles.checkboxOption}>
+                    <Checkbox
+                      checked={filters.statuses.includes(option.value)}
+                      onChange={(event) => setFilters((current) => ({
+                        ...current,
+                        statuses: event.target.checked
+                          ? [...current.statuses, option.value]
+                          : current.statuses.filter((status) => status !== option.value),
+                      }))}
+                    />
+                    <span className={styles.checkboxOptionLabel}>{t(option.labelKey)}</span>
+                  </label>
+                ))}
+              </div>
+            </CheckboxFilterSection>
+
+            <CheckboxFilterSection
+              title={t('trainings.filters.types')}
+              count={filters.trainingTypeIds.length}
+              isOpen={isTypesOpen}
+              onToggle={() => setIsTypesOpen((current) => !current)}
+              toggleLabel={t(isTypesOpen ? 'trainings.filters.collapse' : 'trainings.filters.expand', { section: t('trainings.filters.types') })}
+              titleAction={(
+                <button
+                  type="button"
+                  className={styles.filterManageButton}
+                  onClick={() => setIsTypeModalOpen(true)}
+                  aria-label={t('trainings.actions.manageTypes')}
+                >
+                  <FontAwesomeIcon icon={faPenToSquare} />
+                </button>
+              )}
+            >
+              <div className={styles.checkboxList}>
+                {trainingTypeOptions.map((option) => (
+                  <label key={option.id} className={styles.checkboxOption}>
+                    <Checkbox
+                      checked={filters.trainingTypeIds.includes(option.id)}
+                      onChange={(event) => setFilters((current) => ({
+                        ...current,
+                        trainingTypeIds: event.target.checked
+                          ? [...current.trainingTypeIds, option.id]
+                          : current.trainingTypeIds.filter((trainingTypeId) => trainingTypeId !== option.id),
+                      }))}
+                    />
+                    <span className={styles.checkboxOptionLabel}>{option.name}</span>
+                  </label>
+                ))}
+              </div>
+            </CheckboxFilterSection>
+
+          </div>
+        </aside>
+      </div>
+
+      <Drawer
+        title={editingTrainingId ? t('trainings.drawer.editTitle') : t('trainings.drawer.addTitle')}
+        placement="right"
+        width={560}
+        open={isDrawerOpen}
+        destroyOnHidden
+        onClose={() => setIsDrawerOpen(false)}
+        extra={(
+          <Space>
+            <Button onClick={() => setIsDrawerOpen(false)}>{t('common.cancel')}</Button>
+            <Button
+              type="primary"
+              className={styles.drawerSaveButton}
+              loading={isSaving}
+              disabled={isTrainingSaveDisabled}
+              onClick={() => void handleSave()}
+            >
+              {editingTrainingId ? t('trainings.actions.save') : t('trainings.actions.addShort')}
+            </Button>
+          </Space>
+        )}
+      >
+        <div className={styles.drawerForm}>
+          <div className={styles.dateTimeRow}>
+            <label className={styles.fieldGroup}>
+              <span className={styles.fieldLabel}>
+                <span className={styles.requiredMark}>*</span>
+                <span>{t('trainings.fields.date')}</span>
+              </span>
+              <DatePicker
+                value={draft.trainingDate ? dayjs(draft.trainingDate) : null}
+                format="DD/MM/YYYY"
+                onChange={(value) => setDraft((current) => ({
+                  ...current,
+                  trainingDate: value ? value.format('YYYY-MM-DD') : '',
+                  recurrenceUntilDate: current.recurrenceEnabled
+                    ? (
+                      !current.recurrenceUntilDate || dayjs(current.recurrenceUntilDate).isBefore(value, 'day')
+                        ? value?.format('YYYY-MM-DD') ?? null
+                        : current.recurrenceUntilDate
+                    )
+                    : current.recurrenceUntilDate,
+                }))}
+              />
+            </label>
+
+            <label className={styles.fieldGroup}>
+              <span className={styles.fieldLabel}>{t('trainings.fields.time')}</span>
+              <TimePicker
+                value={draft.trainingTime ? dayjs(draft.trainingTime, 'HH:mm:ss') : null}
+                format="HH:mm"
+                onChange={(value) => setDraft((current) => ({
+                  ...current,
+                  trainingTime: value ? value.format('HH:mm:ss') : null,
+                }))}
+              />
+            </label>
+          </div>
+
+          <label className={styles.fieldGroup}>
+            <span className={styles.fieldLabel}>
+              <span className={styles.requiredMark}>*</span>
+              <span>{t('trainings.fields.name')}</span>
+            </span>
+            <Input
+              value={draft.name}
+              maxLength={150}
+              placeholder={t('trainings.placeholders.name')}
+              onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
+            />
+          </label>
+
+          <div className={styles.typeRow}>
+            <label className={styles.fieldGroup}>
+              <span className={styles.fieldLabel}>
+                <span className={styles.requiredMark}>*</span>
+                <span>{t('trainings.fields.type')}</span>
+              </span>
+              <Select
+                allowClear
+                showSearch
+                optionFilterProp="label"
+                value={draft.trainingTypeId ?? undefined}
+                placeholder={t('trainings.placeholders.type')}
+                options={trainingTypeOptions.map((option) => ({ value: option.id, label: option.name }))}
+                onChange={(value) => setDraft((current) => ({ ...current, trainingTypeId: value ?? null }))}
+              />
+            </label>
+
+            <Tooltip title={t('trainings.actions.manageTypes')}>
+              <Button
+                icon={<FontAwesomeIcon icon={faPenToSquare} />}
+                onClick={() => setIsTypeModalOpen(true)}
+              />
+            </Tooltip>
+          </div>
+
+          <label className={styles.fieldGroup}>
+            <span className={styles.fieldLabel}>{t('trainings.fields.notes')}</span>
+            <TextArea
+              rows={4}
+              value={draft.notes}
+              placeholder={t('trainings.placeholders.notes')}
+              onChange={(event) => setDraft((current) => ({ ...current, notes: event.target.value }))}
+            />
+          </label>
+
+          <div className={styles.fieldGroup}>
+            <label className={styles.recurrenceToggle}>
+              <Checkbox
+                checked={draft.recurrenceEnabled}
+                onChange={(event) => setDraft((current) => ({
+                  ...current,
+                  recurrenceEnabled: event.target.checked,
+                  recurrenceUntilDate: event.target.checked
+                    ? (current.recurrenceUntilDate && !dayjs(current.recurrenceUntilDate).isBefore(dayjs(current.trainingDate), 'day')
+                      ? current.recurrenceUntilDate
+                      : current.trainingDate)
+                    : current.trainingDate,
+                  recurrenceDaysOfWeek: event.target.checked && current.recurrenceDaysOfWeek.length === 0
+                    ? [dayjs(current.trainingDate).day() === 0 ? 7 : dayjs(current.trainingDate).day()]
+                    : current.recurrenceDaysOfWeek,
+                }))}
+              />
+              <span>{t('trainings.fields.recurrence')}</span>
+            </label>
+
+            {draft.recurrenceEnabled ? (
+              <>
+                <div className={styles.recurrenceRow}>
+                  <label className={styles.fieldGroup}>
+                    <span className={styles.fieldLabel}>{t('trainings.fields.recurrenceInterval')}</span>
+                    <InputNumber
+                      min={1}
+                      max={52}
+                      value={draft.recurrenceIntervalWeeks}
+                      onChange={(value) => setDraft((current) => ({
+                        ...current,
+                        recurrenceIntervalWeeks: typeof value === 'number' ? value : 1,
+                      }))}
+                    />
+                  </label>
+
+                  <label className={styles.fieldGroup}>
+                    <span className={styles.fieldLabel}>{t('trainings.fields.recurrenceUntil')}</span>
+                    <DatePicker
+                      value={draft.recurrenceUntilDate ? dayjs(draft.recurrenceUntilDate) : null}
+                      format="DD/MM/YYYY"
+                      onChange={(value) => setDraft((current) => ({
+                        ...current,
+                        recurrenceUntilDate: value ? value.format('YYYY-MM-DD') : null,
+                      }))}
+                    />
+                  </label>
+                </div>
+
+                <div className={styles.fieldGroup}>
+                  <span className={styles.fieldLabel}>{t('trainings.fields.recurrenceDays')}</span>
+                  <div className={styles.weekdayGrid}>
+                    {WEEKDAY_OPTIONS.map((option) => (
+                      <label key={option.value} className={styles.weekdayOption}>
+                        <Checkbox
+                          checked={draft.recurrenceDaysOfWeek.includes(option.value)}
+                          onChange={(event) => setDraft((current) => ({
+                            ...current,
+                            recurrenceDaysOfWeek: event.target.checked
+                              ? [...current.recurrenceDaysOfWeek, option.value].sort((left, right) => left - right)
+                              : current.recurrenceDaysOfWeek.filter((dayOfWeek) => dayOfWeek !== option.value),
+                          }))}
+                        />
+                        <span>{t(option.labelKey)}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <span className={styles.drawerHint}>{t('trainings.drawer.recurrenceHint')}</span>
+              </>
+            ) : null}
+          </div>
+        </div>
+      </Drawer>
+
+      <Modal
+        title={t('trainings.stale.modalTitle')}
+        open={isStaleTrainingsModalOpen}
+        onCancel={() => setIsStaleTrainingsModalOpen(false)}
+        footer={[
+          <Button key="cancel" onClick={() => setIsStaleTrainingsModalOpen(false)}>
+            {t('common.cancel')}
+          </Button>,
+          <Button
+            key="update-all"
+            type="primary"
+            className={styles.bulkUpdateButton}
+            loading={isBulkUpdatingStaleTrainings}
+            onClick={() => void handleBulkUpdateStaleTrainings()}
+          >
+            {t('trainings.stale.updateAll', { count: stalePlannedTrainings.length })}
+          </Button>,
+        ]}
+      >
+        <div className={styles.staleModalBody}>
+          <Alert
+            type="warning"
+            showIcon
+            message={t('trainings.stale.modalMessage')}
+            description={t('trainings.stale.modalDescription')}
+            className={styles.staleModalAlert}
+          />
+
+          <div className={styles.staleTrainingList}>
+            {stalePlannedTrainings.map((training) => (
+              <div key={training.id} className={styles.staleTrainingRow}>
+                <div className={styles.staleTrainingRowMain}>
+                  <span className={styles.staleTrainingRowName}>{training.name}</span>
+                  <span className={styles.staleTrainingRowMeta}>
+                    {formatDate(training.trainingDate, locale)}
+                    {training.trainingTime ? ` - ${formatTime(training.trainingTime)}` : ''}
+                    {` - ${training.trainingTypeName}`}
+                  </span>
+                </div>
+                <span className={styles.staleTrainingRowStatus}>
+                  {t('trainings.status.planned')}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        title={t('trainings.types.title')}
+        open={isTypeModalOpen}
+        footer={null}
+        onCancel={() => {
+          setIsTypeModalOpen(false)
+          setTypeEditorValue('')
+          setEditingTypeId(null)
+          setTypeError(null)
+        }}
+      >
+        {typeError ? (
+          <Alert
+            type="error"
+            showIcon
+            message={t('trainings.errors.typeSaveTitle')}
+            description={typeError}
+            style={{ marginBottom: 16 }}
+          />
+        ) : null}
+
+        <div className={styles.typeEditor} style={{ marginBottom: 16 }}>
+          <Input
+            value={typeEditorValue}
+            placeholder={t('trainings.types.placeholder')}
+            onChange={(event) => setTypeEditorValue(event.target.value)}
+          />
+          <Button
+            type="primary"
+            className={styles.typeSaveButton}
+            disabled={isTypeSaveDisabled}
+            onClick={() => void handleSaveType()}
+          >
+            {editingTypeId ? t('trainings.actions.save') : t('trainings.actions.addShort')}
+          </Button>
+        </div>
+
+        <div className={styles.typeList}>
+          {trainingTypeOptions.map((type) => (
+            <div key={type.id} className={styles.typeItem}>
+              <span className={styles.typeName}>{type.name}</span>
+              <Space>
+                <Button
+                  type="text"
+                  onClick={() => {
+                    setEditingTypeId(type.id)
+                    setTypeEditorValue(type.name)
+                  }}
+                >
+                  {t('trainings.actions.edit')}
+                </Button>
+                <Button
+                  type="text"
+                  danger
+                  icon={<FontAwesomeIcon icon={faTrashCan} />}
+                  onClick={() => void handleDeleteType(type.id)}
+                >
+                  {t('trainings.actions.delete')}
+                </Button>
+              </Space>
+            </div>
+          ))}
+        </div>
+      </Modal>
+
+      <Modal
+        title={t('trainings.delete.title')}
+        open={deleteTarget != null}
+        footer={deleteTarget?.seriesId ? [
+          <Button key="cancel" onClick={() => setDeleteTarget(null)}>
+            {t('common.cancel')}
+          </Button>,
+          <Button key="single" danger onClick={() => void handleDelete('single')}>
+            {t('trainings.delete.deleteOnlyThis')}
+          </Button>,
+          <Button key="series" type="primary" danger onClick={() => void handleDelete('series')}>
+            {t('trainings.delete.deleteWholeSeries')}
+          </Button>,
+        ] : undefined}
+        okText={t('trainings.actions.delete')}
+        cancelText={t('common.cancel')}
+        okButtonProps={{ danger: true }}
+        onOk={() => void handleDelete('single')}
+        onCancel={() => setDeleteTarget(null)}
+      >
+        <p>
+          {deleteTarget?.seriesId
+            ? t('trainings.delete.bodySeries', { name: deleteTarget?.name ?? '' })
+            : t('trainings.delete.body', { name: deleteTarget?.name ?? '' })}
+        </p>
+        {deleteTarget?.seriesId ? (
+          <div className={styles.deleteSeriesPreview}>
+            {deleteSeriesPreview.slice(0, 3).map((training) => (
+              <div key={training.id} className={styles.deleteSeriesPreviewRow}>
+                <span className={styles.deleteSeriesPreviewName}>{training.name}</span>
+                <span className={styles.deleteSeriesPreviewMeta}>
+                  {formatDate(training.trainingDate, locale)}
+                  {training.trainingTime ? ` - ${formatTime(training.trainingTime)}` : ''}
+                </span>
+              </div>
+            ))}
+            {deleteSeriesPreview.length > 3 ? (
+              <div className={styles.deleteSeriesPreviewMore}>...</div>
+            ) : null}
+          </div>
+        ) : null}
+      </Modal>
+    </div>
+  )
+}

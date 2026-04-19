@@ -14,6 +14,7 @@ import {
   faShoePrints,
   faShieldHalved,
   faUsers,
+  faDumbbell,
 } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { Button, Dropdown, Layout, Modal } from 'antd'
@@ -58,6 +59,10 @@ function getDocumentTitle(pathname: string, t: (key: string) => string) {
 
   if (pathname === ROUTES.bestEfforts) {
     return `RITMA - ${t('pages.bestEfforts')}`
+  }
+
+  if (pathname === ROUTES.trainings) {
+    return `RITMA - ${t('pages.trainings')}`
   }
 
   if (pathname === ROUTES.podiums) {
@@ -135,6 +140,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       to: ROUTES.races,
       icon: faFlagCheckered,
       isActive: location.pathname === ROUTES.races,
+    },
+    {
+      key: 'trainings',
+      label: t('navigation.trainings'),
+      to: ROUTES.trainings,
+      icon: faDumbbell,
+      isActive: location.pathname === ROUTES.trainings,
     },
     {
       key: 'best-efforts',
