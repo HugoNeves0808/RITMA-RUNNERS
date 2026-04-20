@@ -57,7 +57,7 @@ public class TrainingRepository {
                     uct.series_until_date,
                     uct.series_days_of_week
                 FROM user_custom_trainings uct
-                INNER JOIN user_custom_training_types uctt ON uctt.id = uct.training_type_id
+                LEFT JOIN user_custom_training_types uctt ON uctt.id = uct.training_type_id
                 LEFT JOIN user_races ur ON ur.id = uct.associated_race_id
                 WHERE uct.user_id = ?
                 """);
@@ -124,7 +124,7 @@ public class TrainingRepository {
     public List<AssociatedRaceOptionResponse> findAssociatedRaceOptions(UUID userId) {
         return jdbcTemplate().query(
                 """
-                        SELECT id, name, race_date
+                        SELECT id, name, race_date, race_status
                         FROM user_races
                         WHERE user_id = ?
                         ORDER BY race_date DESC NULLS LAST, lower(name) ASC
@@ -132,7 +132,8 @@ public class TrainingRepository {
                 (rs, rowNum) -> new AssociatedRaceOptionResponse(
                         rs.getObject("id", UUID.class),
                         rs.getString("name"),
-                        rs.getObject("race_date", LocalDate.class)
+                        rs.getObject("race_date", LocalDate.class),
+                        rs.getString("race_status")
                 ),
                 userId
         );
@@ -330,7 +331,7 @@ public class TrainingRepository {
                             uct.series_until_date,
                             uct.series_days_of_week
                         FROM user_custom_trainings uct
-                        INNER JOIN user_custom_training_types uctt ON uctt.id = uct.training_type_id
+                LEFT JOIN user_custom_training_types uctt ON uctt.id = uct.training_type_id
                         LEFT JOIN user_races ur ON ur.id = uct.associated_race_id
                         WHERE uct.user_id = ?
                           AND uct.id = ?

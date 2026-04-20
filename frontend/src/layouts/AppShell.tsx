@@ -10,11 +10,11 @@ import {
   faRoad,
   faTrophy,
   faRankingStar,
+  faPersonRunning,
   faRightFromBracket,
   faShoePrints,
   faShieldHalved,
   faUsers,
-  faDumbbell,
 } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { Button, Dropdown, Layout, Modal } from 'antd'
@@ -145,7 +145,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       key: 'trainings',
       label: t('navigation.trainings'),
       to: ROUTES.trainings,
-      icon: faDumbbell,
+      icon: faPersonRunning,
       isActive: location.pathname === ROUTES.trainings,
     },
     {

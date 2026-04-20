@@ -6,6 +6,7 @@ import java.util.UUID;
 public record AssociatedRaceOptionResponse(
         UUID id,
         String name,
-        LocalDate raceDate
+        LocalDate raceDate,
+        String raceStatus
 ) {
 }

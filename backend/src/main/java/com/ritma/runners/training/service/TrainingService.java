@@ -32,7 +32,7 @@ import com.ritma.runners.training.repository.TrainingRepository;
 
 @Service
 public class TrainingService {
-    private static final int MAX_NAME_LENGTH = 150;
+    private static final int MAX_NAME_LENGTH = 50;
     private static final int MAX_TYPE_NAME_LENGTH = 100;
     private static final Set<String> ALLOWED_STATUSES = Set.of("AGENDADO", "PLANEADO", "REALIZADO");
     private static final Set<String> ALLOWED_ASSOCIATIONS = Set.of("associated", "individual");
@@ -283,10 +283,10 @@ public class TrainingService {
 
         String normalizedName = request.name().trim();
         if (normalizedName.length() > MAX_NAME_LENGTH) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Training name must have 150 characters or fewer.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Training name must have 50 characters or fewer.");
         }
 
-        if (request.trainingTypeId() == null || !trainingRepository.trainingTypeExists(userId, request.trainingTypeId())) {
+        if (request.trainingTypeId() != null && !trainingRepository.trainingTypeExists(userId, request.trainingTypeId())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid training type.");
         }
 

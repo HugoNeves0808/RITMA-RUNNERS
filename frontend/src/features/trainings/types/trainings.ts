@@ -5,8 +5,8 @@ export type TrainingTableItem = {
   trainingDate: string
   trainingTime: string | null
   name: string
-  trainingTypeId: string
-  trainingTypeName: string
+  trainingTypeId: string | null
+  trainingTypeName: string | null
   notes: string | null
   trainingStatus: TrainingStatus
   completed: boolean
@@ -33,6 +33,7 @@ export type AssociatedRaceOption = {
   id: string
   name: string
   raceDate: string | null
+  raceStatus: string | null
 }
 
 export type TrainingCreateOptions = {
@@ -55,7 +56,7 @@ export type TrainingRequest = {
   trainingDate: string
   trainingTime: string | null
   name: string
-  trainingTypeId: string
+  trainingTypeId: string | null
   notes: string | null
   associatedRaceId: string | null
   recurrence: {

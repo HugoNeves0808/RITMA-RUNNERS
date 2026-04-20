@@ -1,11 +1,11 @@
-import { faAngleDown, faAngleUp, faBroom, faCheck, faMagnifyingGlass, faPenToSquare, faPlus, faTrashCan, faTriangleExclamation } from '@fortawesome/free-solid-svg-icons'
+import { faAngleDown, faAngleUp, faBroom, faCalendarDays, faCheck, faClock, faMagnifyingGlass, faPenToSquare, faPlus, faTrashCan, faTriangleExclamation } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import dayjs from 'dayjs'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Alert, Button, Card, Checkbox, Collapse, DatePicker, Drawer, Empty, Input, InputNumber, Modal, Select, Space, Spin, Table, TimePicker, Tooltip, Typography } from 'antd'
-import type { ColumnsType } from 'antd/es/table'
+import { Alert, Button, Card, Checkbox, Collapse, DatePicker, Drawer, Empty, Input, InputNumber, Modal, Select, Space, Spin, TimePicker, Tooltip, Typography } from 'antd'
 import { useAuth } from '../../features/auth'
+import { EMPTY_RACE_FILTERS, fetchRaceTable, getRaceStatusColor, getRaceStatusLabel } from '../../features/races'
 import {
   createTraining,
   createTrainingType,
@@ -68,6 +68,21 @@ type CheckboxFilterSectionProps = {
   children: React.ReactNode
 }
 
+type TimelineItem = {
+  key: string
+  kind: 'training'
+  sortValue: number
+  training: TrainingTableItem
+}
+
+type RaceSection = {
+  key: string
+  raceName: string
+  raceDate: string
+  raceStatus: string | null
+  items: TrainingTableItem[]
+}
+
 function CheckboxFilterSection({
   title,
   count,
@@ -120,7 +135,7 @@ function buildTrainingRequest(draft: TrainingDraft): TrainingRequest {
     trainingDate: draft.trainingDate,
     trainingTime: draft.trainingTime,
     name: draft.name.trim(),
-    trainingTypeId: draft.trainingTypeId ?? '',
+    trainingTypeId: draft.trainingTypeId,
     notes: draft.notes.trim() || null,
     associatedRaceId: null,
     recurrence: draft.recurrenceEnabled
@@ -162,8 +177,44 @@ function getStatusClass(status: TrainingStatus) {
   return styles.statusScheduled
 }
 
+function getTimelineStatusIcon(status: TrainingStatus) {
+  if (status === 'REALIZADO') {
+    return faCheck
+  }
+
+  if (status === 'PLANEADO') {
+    return faCalendarDays
+  }
+
+  return faClock
+}
+
+function getTrainingStatusLabelKey(status: TrainingStatus) {
+  if (status === 'REALIZADO') {
+    return 'trainings.status.done'
+  }
+
+  if (status === 'PLANEADO') {
+    return 'trainings.status.planned'
+  }
+
+  return 'trainings.status.scheduled'
+}
+
 function isPastPlannedTraining(training: TrainingTableItem) {
   return training.trainingStatus === 'PLANEADO' && dayjs(training.trainingDate).isBefore(dayjs(), 'day')
+}
+
+function getTrainingSortValue(training: TrainingTableItem) {
+  return dayjs(`${training.trainingDate}T${training.trainingTime ?? '00:00:00'}`).valueOf()
+}
+
+function getResolvedRaceStatus(raceDate: string, raceStatus: string | null) {
+  if (dayjs(raceDate).isBefore(dayjs(), 'day')) {
+    return 'COMPLETED'
+  }
+
+  return raceStatus
 }
 
 export function TrainingsPage() {
@@ -201,18 +252,25 @@ export function TrainingsPage() {
       try {
         setIsLoading(true)
         setError(null)
-        const [tablePayload, createOptionsPayload, filterOptionsPayload] = await Promise.all([
+        const [tablePayload, createOptionsPayload, filterOptionsPayload, raceTablePayload] = await Promise.all([
           fetchTrainingTable(token, filters),
           fetchTrainingCreateOptions(token),
           fetchTrainingFilterOptions(token),
+          fetchRaceTable(token, EMPTY_RACE_FILTERS),
         ])
+        const raceStatusById = new Map(
+          [...raceTablePayload.years.flatMap((year) => year.races), ...raceTablePayload.undatedRaces].map((race) => [race.id, race.raceStatus ?? null]),
+        )
 
         setTrainings(tablePayload.trainings)
         setCreateOptions({
           trainingTypes: filterOptionsPayload.trainingTypes.length > 0
             ? filterOptionsPayload.trainingTypes
             : createOptionsPayload.trainingTypes,
-          races: createOptionsPayload.races,
+          races: createOptionsPayload.races.map((race) => ({
+            ...race,
+            raceStatus: raceStatusById.get(race.id) ?? race.raceStatus,
+          })),
         })
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : t('trainings.errors.load'))
@@ -233,23 +291,23 @@ export function TrainingsPage() {
       return []
     }
 
-    const sections = datedRaces.map((race) => ({
+    const sections: RaceSection[] = datedRaces.map((race) => ({
       key: race.id,
       raceName: race.name,
-      raceDate: race.raceDate,
+      raceDate: race.raceDate!,
+      raceStatus: race.raceStatus,
       items: [] as TrainingTableItem[],
-      isPast: dayjs(race.raceDate).isBefore(dayjs(), 'day'),
     }))
 
-    const sortedTrainings = [...trainings].sort((left, right) => {
-      const leftValue = dayjs(`${left.trainingDate}T${left.trainingTime ?? '00:00:00'}`).valueOf()
-      const rightValue = dayjs(`${right.trainingDate}T${right.trainingTime ?? '00:00:00'}`).valueOf()
-      return rightValue - leftValue
-    })
+    const sortedTrainings = [...trainings]
+      .sort((left, right) => getTrainingSortValue(right) - getTrainingSortValue(left))
 
     sortedTrainings.forEach((training) => {
       const trainingDate = dayjs(training.trainingDate)
-      const sectionIndex = datedRaces.findIndex((_, index) => {
+      const sectionIndex = datedRaces.findIndex((race, index) => {
+        if (trainingDate.isAfter(dayjs(race.raceDate), 'day')) {
+          return false
+        }
         const nextRace = datedRaces[index + 1]
         if (!nextRace?.raceDate) {
           return true
@@ -258,32 +316,40 @@ export function TrainingsPage() {
         return trainingDate.isAfter(dayjs(nextRace.raceDate), 'day')
       })
 
-      sections[sectionIndex >= 0 ? sectionIndex : 0].items.push(training)
+      if (sectionIndex >= 0) {
+        sections[sectionIndex].items.push(training)
+      }
     })
 
-    return sections.filter((section) => section.items.length > 0)
+    return sections
+  }, [createOptions.races, trainings])
+
+  const timelineItems = useMemo(() => {
+    const datedRaces = [...createOptions.races]
+      .filter((race) => Boolean(race.raceDate))
+      .sort((left, right) => dayjs(right.raceDate).valueOf() - dayjs(left.raceDate).valueOf())
+
+    const latestRaceDate = datedRaces.length > 0 ? dayjs(datedRaces[0].raceDate) : null
+
+    const trainingItems: TimelineItem[] = trainings
+      .filter((training) => latestRaceDate == null || dayjs(training.trainingDate).isAfter(latestRaceDate, 'day'))
+      .map((training) => ({
+        key: `training-${training.id}`,
+        kind: 'training',
+        sortValue: getTrainingSortValue(training),
+        training,
+      }))
+
+    return trainingItems.sort((left, right) => right.sortValue - left.sortValue)
   }, [createOptions.races, trainings])
 
   const defaultOpenRaceSectionKeys = useMemo(() => {
-    const today = dayjs()
-    const currentWeekStart = today.startOf('day').subtract((today.day() + 6) % 7, 'day')
-    const currentWeekEnd = currentWeekStart.add(6, 'day').endOf('day')
-    const nextMonthStart = today.add(1, 'month').startOf('month')
-    const nextMonthEnd = nextMonthStart.endOf('month')
+    const today = dayjs().startOf('day')
+    const currentRaceSection = [...raceSections]
+      .filter((section) => !dayjs(section.raceDate).isBefore(today, 'day'))
+      .sort((left, right) => dayjs(left.raceDate).valueOf() - dayjs(right.raceDate).valueOf())[0]
 
-    return raceSections
-      .filter((section) => {
-        const raceDate = dayjs(section.raceDate)
-        const isInCurrentWeek = raceDate.isSame(currentWeekStart, 'day')
-          || raceDate.isSame(currentWeekEnd, 'day')
-          || (raceDate.isAfter(currentWeekStart, 'day') && raceDate.isBefore(currentWeekEnd, 'day'))
-        const isInNextMonth = raceDate.isSame(nextMonthStart, 'day')
-          || raceDate.isSame(nextMonthEnd, 'day')
-          || (raceDate.isAfter(nextMonthStart, 'day') && raceDate.isBefore(nextMonthEnd, 'day'))
-
-        return isInCurrentWeek || isInNextMonth
-      })
-      .map((section) => section.key)
+    return currentRaceSection ? [currentRaceSection.key] : []
   }, [raceSections])
 
   const trainingTypeOptions = useMemo(
@@ -316,7 +382,6 @@ export function TrainingsPage() {
   const isTypeSaveDisabled = !typeEditorValue.trim()
   const isTrainingSaveDisabled = !draft.trainingDate
     || !draft.name.trim()
-    || !draft.trainingTypeId
     || (draft.recurrenceEnabled && (
       !draft.recurrenceUntilDate
       || draft.recurrenceDaysOfWeek.length === 0
@@ -354,7 +419,7 @@ export function TrainingsPage() {
   }
 
   const handleSave = async () => {
-    if (!token || !draft.trainingTypeId || !draft.name.trim() || !draft.trainingDate) {
+    if (!token || !draft.name.trim() || !draft.trainingDate) {
       return
     }
 
@@ -482,88 +547,75 @@ export function TrainingsPage() {
     }
   }
 
-  const columns: ColumnsType<TrainingTableItem> = [
-    {
-      title: t('trainings.table.done'),
-      key: 'completed',
-      width: 90,
-      align: 'center',
-      render: (_, training) => (
-        <label className={styles.completeCheckbox}>
-          <Checkbox
-            checked={training.completed}
-            onChange={(event) => void handleToggleCompleted(training, event.target.checked)}
-          />
-        </label>
-      ),
-    },
-    {
-      title: t('trainings.table.dateTime'),
-      key: 'dateTime',
-      width: 160,
-      render: (_, training) => (
-        <div>
+  const renderTrainingStatus = (training: TrainingTableItem) => {
+    const statusLabel = t(getTrainingStatusLabelKey(training.trainingStatus))
+    const isStaleTraining = isPastPlannedTraining(training)
+
+    return (
+      <span className={styles.statusCell}>
+        <Tooltip title={statusLabel}>
+          <span
+            className={`${styles.timelineStatusIcon} ${styles[getStatusClass(training.trainingStatus)]}`}
+            aria-label={statusLabel}
+          >
+            <FontAwesomeIcon icon={getTimelineStatusIcon(training.trainingStatus)} />
+          </span>
+        </Tooltip>
+        {isStaleTraining ? (
+          <Tooltip title={t('trainings.stale.rowHint')}>
+            <span className={styles.trainingRowWarningIcon} aria-label={t('trainings.stale.rowHint')}>
+              <FontAwesomeIcon icon={faTriangleExclamation} />
+            </span>
+          </Tooltip>
+        ) : null}
+      </span>
+    )
+  }
+
+  const renderTrainingRow = (training: TrainingTableItem, key: string) => (
+    <div key={key} className={styles.timelineRow}>
+      <div className={styles.timelineTrainingGrid}>
+        <div className={styles.timelineTrainingCellDone}>
+          <label className={`${styles.completeCheckbox} ${isPastPlannedTraining(training) ? styles.staleCompleteCheckbox : ''}`}>
+            <Checkbox
+              checked={training.completed}
+              onChange={(event) => void handleToggleCompleted(training, event.target.checked)}
+            />
+          </label>
+        </div>
+        <div className={styles.timelineTrainingCellDate}>
           <div>{formatDate(training.trainingDate, locale)}</div>
           <Text type="secondary">{formatTime(training.trainingTime)}</Text>
         </div>
-      ),
-    },
-    {
-      title: t('trainings.table.name'),
-      dataIndex: 'name',
-      key: 'name',
-      width: 220,
-    },
-    {
-      title: t('trainings.table.type'),
-      dataIndex: 'trainingTypeName',
-      key: 'trainingTypeName',
-      width: 180,
-    },
-    {
-      title: t('trainings.table.status'),
-      dataIndex: 'trainingStatus',
-      key: 'trainingStatus',
-      width: 130,
-      render: (value: TrainingStatus, training) => (
-        <span className={styles.statusCell}>
-          <span className={`${styles.statusBadge} ${getStatusClass(value)}`}>
-            {t(`trainings.status.${value === 'AGENDADO' ? 'scheduled' : value === 'PLANEADO' ? 'planned' : 'done'}`)}
-          </span>
-          {isPastPlannedTraining(training) ? (
-            <Tooltip title={t('trainings.stale.rowHint')}>
-              <span className={styles.trainingRowWarningIcon} aria-label={t('trainings.stale.rowHint')}>
-                <FontAwesomeIcon icon={faTriangleExclamation} />
-              </span>
-            </Tooltip>
-          ) : null}
-        </span>
-      ),
-    },
-    {
-      title: t('trainings.table.actions'),
-      key: 'actions',
-      width: 110,
-      align: 'center',
-      render: (_, training) => (
-        <Space>
-          <Button
-            type="link"
-            icon={<FontAwesomeIcon icon={faPenToSquare} />}
-            aria-label={t('trainings.actions.edit')}
-            onClick={() => handleEdit(training)}
-          />
-          <Button
-            type="link"
-            danger
-            icon={<FontAwesomeIcon icon={faTrashCan} />}
-            aria-label={t('trainings.actions.delete')}
-            onClick={() => setDeleteTarget(training)}
-          />
-        </Space>
-      ),
-    },
-  ]
+        <div className={styles.timelineTrainingCellName}>
+          <span className={styles.timelineRowName}>{training.name}</span>
+        </div>
+        <div className={styles.timelineTrainingCellType}>
+          {training.trainingTypeName ?? '-'}
+        </div>
+        <div className={styles.timelineTrainingCellStatus}>
+          {renderTrainingStatus(training)}
+        </div>
+        <div className={styles.timelineTrainingCellActions}>
+          <Space>
+            <Button
+              type="link"
+              icon={<FontAwesomeIcon icon={faPenToSquare} />}
+              aria-label={t('trainings.actions.edit')}
+              onClick={() => handleEdit(training)}
+            />
+            <Button
+              type="link"
+              danger
+              icon={<FontAwesomeIcon icon={faTrashCan} />}
+              aria-label={t('trainings.actions.delete')}
+              onClick={() => setDeleteTarget(training)}
+            />
+          </Space>
+        </div>
+      </div>
+    </div>
+  )
 
   return (
     <div className={styles.page}>
@@ -621,59 +673,64 @@ export function TrainingsPage() {
                   <span>{t('trainings.loading')}</span>
                 </Space>
               </div>
-            ) : trainings.length === 0 && raceSections.length === 0 ? (
+            ) : trainings.length === 0 && raceSections.length === 0 && timelineItems.length === 0 ? (
               <div className={styles.emptyWrap}>
                 <Empty description={hasActiveFilters ? t('trainings.empty.filtered') : t('trainings.empty.none')} />
               </div>
             ) : (
               <>
+                {timelineItems.length > 0 ? (
+                  <div className={`${styles.timelineList} ${raceSections.length > 0 ? styles.connectedTimelineList : ''}`}>
+                    {timelineItems.map((item) => (
+                      renderTrainingRow(item.training, item.key)
+                    ))}
+                  </div>
+                ) : null}
+
                 {raceSections.length > 0 ? (
                   <>
                     <Collapse
+                      className={timelineItems.length > 0 ? styles.connectedCollapse : undefined}
                       defaultActiveKey={defaultOpenRaceSectionKeys}
                       items={raceSections.map((group) => ({
                         key: group.key,
-                        className: group.isPast ? styles.raceCollapseItemPast : '',
+                        className: `${styles.raceCollapseItem} ${styles[`raceCollapseItem${getResolvedRaceStatus(group.raceDate, group.raceStatus) ?? 'Default'}`]}`,
                         label: (
-                          <div className={`${styles.racePanelHeader} ${group.isPast ? styles.racePanelHeaderPast : ''}`}>
-                            <div className={styles.racePanelTitle}>
-                              <span className={`${styles.racePanelName} ${group.isPast ? styles.racePanelNamePast : ''}`}>
-                                {group.raceName}
-                              </span>
-                              <span className={`${styles.racePanelMeta} ${group.isPast ? styles.racePanelMetaPast : ''}`}>
-                                {formatDate(group.raceDate, locale)} - {t('trainings.table.itemsCount', { count: group.items.length })}
-                              </span>
+                          <div className={`${styles.timelineRow} ${styles.timelineRaceRow} ${styles.raceCollapseHeader}`}>
+                            <div className={styles.timelineRowMain}>
+                              <span className={styles.timelineRowName}>{group.raceName}</span>
                             </div>
-                            {group.isPast ? (
-                              <span className={styles.racePanelStatusIcon} aria-label={t('trainings.status.done')}>
-                                <FontAwesomeIcon icon={faCheck} />
-                              </span>
-                            ) : null}
+                            <div className={styles.timelineRowMeta}>
+                              {getResolvedRaceStatus(group.raceDate, group.raceStatus) ? (
+                                <span
+                                  className={styles.timelineRaceStatusWrap}
+                                >
+                                  {dayjs(group.raceDate).isBefore(dayjs(), 'day') || getResolvedRaceStatus(group.raceDate, group.raceStatus) === 'COMPLETED' ? (
+                                    <span className={styles.racePanelStatusIcon} aria-label={t('races.status.completed')}>
+                                      <FontAwesomeIcon icon={faCheck} />
+                                    </span>
+                                  ) : (
+                                    <span
+                                      className={styles.timelineRaceStatus}
+                                      style={{
+                                        color: getRaceStatusColor(getResolvedRaceStatus(group.raceDate, group.raceStatus) ?? ''),
+                                      }}
+                                    >
+                                      {getRaceStatusLabel(getResolvedRaceStatus(group.raceDate, group.raceStatus) ?? '', t)}
+                                    </span>
+                                  )}
+                                </span>
+                              ) : null}
+                              <span>{formatDate(group.raceDate, locale)}</span>
+                            </div>
                           </div>
                         ),
                         children: (
-                          <Table
-                            rowKey="id"
-                            columns={columns}
-                            dataSource={group.items}
-                            pagination={false}
-                            scroll={{ x: 1100 }}
-                          />
+                          <div className={`${styles.timelineList} ${styles.collapseTrainingList}`}>
+                            {group.items.map((training) => renderTrainingRow(training, `${group.key}-${training.id}`))}
+                          </div>
                         ),
                       }))}
-                    />
-                  </>
-                ) : null}
-
-                {trainings.length > 0 && raceSections.length === 0 ? (
-                  <>
-                    <h2 className={styles.sectionTitle}>{t('trainings.sections.list')}</h2>
-                    <Table
-                      rowKey="id"
-                      columns={columns}
-                      dataSource={trainings}
-                      pagination={false}
-                      scroll={{ x: 1100 }}
                     />
                   </>
                 ) : null}
@@ -840,7 +897,7 @@ export function TrainingsPage() {
             </span>
             <Input
               value={draft.name}
-              maxLength={150}
+              maxLength={50}
               placeholder={t('trainings.placeholders.name')}
               onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
             />
@@ -849,7 +906,6 @@ export function TrainingsPage() {
           <div className={styles.typeRow}>
             <label className={styles.fieldGroup}>
               <span className={styles.fieldLabel}>
-                <span className={styles.requiredMark}>*</span>
                 <span>{t('trainings.fields.type')}</span>
               </span>
               <Select
@@ -993,7 +1049,7 @@ export function TrainingsPage() {
                   <span className={styles.staleTrainingRowMeta}>
                     {formatDate(training.trainingDate, locale)}
                     {training.trainingTime ? ` - ${formatTime(training.trainingTime)}` : ''}
-                    {` - ${training.trainingTypeName}`}
+                    {training.trainingTypeName ? ` - ${training.trainingTypeName}` : ''}
                   </span>
                 </div>
                 <span className={styles.staleTrainingRowStatus}>

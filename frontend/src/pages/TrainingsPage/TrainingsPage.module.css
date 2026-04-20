@@ -273,11 +273,43 @@
 }
 
 .tableCard {
-  border-radius: 14px !important;
+  border-radius: 0 !important;
+}
+
+.tableCard :global(.ant-collapse) {
+  overflow: hidden;
+  border: 1px solid #d0d5dd;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.tableCard :global(.ant-collapse > .ant-collapse-item) {
+  border-bottom: 1px solid #d0d5dd;
+  overflow: hidden;
+}
+
+.tableCard :global(.ant-collapse > .ant-collapse-item:last-child) {
+  border-bottom: none;
+}
+
+.tableCard :global(.ant-collapse > .ant-collapse-item:first-child) {
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+}
+
+.tableCard :global(.ant-collapse > .ant-collapse-item:first-child > .ant-collapse-header) {
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
 }
 
 .tableCard :global(.ant-collapse > .ant-collapse-item > .ant-collapse-header) {
-  align-items: center;
+  display: flex;
+  align-items: center !important;
+  padding: 0 !important;
+}
+
+.tableCard :global(.ant-collapse-header-text) {
+  flex: 1;
 }
 
 .tableCard :global(.ant-collapse-expand-icon) {
@@ -285,7 +317,12 @@
   align-items: center;
   justify-content: center;
   align-self: center;
-  min-height: 28px;
+  min-height: auto;
+  height: 100%;
+  margin-inline-end: 0 !important;
+  padding: 0 14px !important;
+  width: 54px;
+  flex: 0 0 54px;
 }
 
 .sectionTitle {
@@ -300,6 +337,248 @@
   display: grid;
   place-items: center;
   min-height: 240px;
+}
+
+.timelineList {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 18px;
+  border: 1px solid #d0d5dd;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.timelineList > .timelineRow:first-child {
+  border-top-left-radius: 14px;
+  border-top-right-radius: 14px;
+}
+
+.timelineList > .timelineRow:last-child {
+  border-bottom-left-radius: 14px;
+  border-bottom-right-radius: 14px;
+}
+
+.connectedTimelineList {
+  margin-bottom: 0;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-bottom: none;
+}
+
+.connectedTimelineList > .timelineRow:last-child {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.connectedCollapse {
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+}
+
+.connectedCollapse:global(.ant-collapse) {
+  border-top: none !important;
+}
+
+.collapseTrainingList {
+  margin-bottom: 0;
+  border: none;
+  border-radius: 0;
+}
+
+.collapseTrainingList > .timelineRow:first-child {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+.raceCollapseItem {
+  background: #ffffff;
+}
+
+.raceCollapseItem :global(.ant-collapse-header) {
+  background: inherit !important;
+}
+
+.raceCollapseItem :global(.ant-collapse-content-box) {
+  padding: 0 !important;
+  background: #ffffff;
+}
+
+.raceCollapseItemCompleted {
+  background: #dff7e8;
+}
+
+.raceCollapseItemREGISTERED {
+  background: rgba(251, 191, 36, 0.2);
+}
+
+.raceCollapseItemIN_LIST,
+.raceCollapseItemIN_LIST_WITHOUT_DATE {
+  background: rgba(245, 158, 11, 0.14);
+}
+
+.raceCollapseItemNOT_REGISTERED {
+  background: rgba(107, 114, 128, 0.14);
+}
+
+.raceCollapseItemCANCELLED {
+  background: rgba(220, 38, 38, 0.12);
+}
+
+.raceCollapseItemDID_NOT_START {
+  background: rgba(190, 24, 93, 0.12);
+}
+
+.raceCollapseItemDID_NOT_FINISH {
+  background: rgba(124, 58, 237, 0.12);
+}
+
+.raceCollapseItemDefault {
+  background: rgba(16, 24, 40, 0.06);
+}
+
+.timelineRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0;
+  border-bottom: 1px solid #e4e7ec;
+}
+
+.timelineRow:last-child {
+  border-bottom: none;
+}
+
+.timelineRaceRow {
+  padding: 8px 18px 8px 0;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.raceCollapseHeader {
+  border-bottom: none;
+}
+
+.timelineTrainingGrid {
+  display: grid;
+  grid-template-columns: 90px 160px minmax(220px, 1.6fr) minmax(160px, 1fr) 130px 110px;
+  align-items: center;
+  width: 100%;
+}
+
+.timelineTrainingGrid > div {
+  padding: 16px 12px;
+}
+
+.timelineTrainingGrid > div:first-child {
+  padding-left: 18px;
+}
+
+.timelineTrainingGrid > div:last-child {
+  padding-right: 18px;
+}
+
+.timelineTrainingCellDone,
+.timelineTrainingCellDate,
+.timelineTrainingCellName,
+.timelineTrainingCellType,
+.timelineTrainingCellStatus {
+  min-width: 0;
+}
+
+.timelineTrainingCellDone {
+  display: flex;
+  justify-content: center;
+}
+
+.timelineTrainingCellDate {
+  color: #101828;
+}
+
+.timelineTrainingCellName,
+.timelineTrainingCellType {
+  font-size: 14px;
+  color: #101828;
+  word-break: break-word;
+}
+
+.timelineTrainingCellType {
+  color: #344054;
+}
+
+.timelineTrainingCellStatus {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.timelineTrainingCellActions {
+  display: flex;
+  justify-content: center;
+}
+
+.timelineRowMain {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.timelineRowType,
+.timelineRaceType {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.timelineRowType {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.timelineRaceStatus {
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.timelineRaceStatusWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.timelineRowName {
+  font-size: 14px;
+  font-weight: 700;
+  color: #101828;
+  word-break: break-word;
+}
+
+.timelineRowMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  color: #667085;
+  font-size: 13px;
+}
+
+.timelineStatusIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  font-size: 13px;
 }
 
 .statusBadge {
@@ -346,76 +625,6 @@
   gap: 8px;
 }
 
-.completeCheckbox {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.completeCheckbox :global(.ant-checkbox-inner) {
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
-}
-
-.completeCheckbox :global(.ant-checkbox-checked .ant-checkbox-inner) {
-  background-color: #fed7aa;
-  border-color: #f97316;
-}
-
-.completeCheckbox :global(.ant-checkbox-checked .ant-checkbox-inner::after) {
-  border-color: #c2410c;
-}
-
-.racePanelHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  width: 100%;
-  padding-right: 12px;
-  padding: 6px 12px 6px 0;
-  border-radius: 10px;
-}
-
-.racePanelHeaderPast {
-  background: transparent;
-}
-
-.raceCollapseItemPast :global(.ant-collapse-header) {
-  background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
-}
-
-.raceCollapseItemPast :global(.ant-collapse-content-box) {
-  background: rgba(248, 250, 252, 0.9);
-}
-
-.racePanelTitle {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  min-width: 0;
-  flex-wrap: wrap;
-}
-
-.racePanelName {
-  font-size: 15px;
-  font-weight: 700;
-  color: #101828;
-}
-
-.racePanelNamePast {
-  color: #334155;
-}
-
-.racePanelMeta {
-  font-size: 12px;
-  color: #667085;
-}
-
-.racePanelMetaPast {
-  color: #64748b;
-}
 
 .racePanelStatusIcon {
   display: inline-flex;
@@ -427,6 +636,43 @@
   background: rgba(34, 197, 94, 0.14);
   color: #15803d;
   flex: 0 0 auto;
+}
+
+.completeCheckbox {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.staleCompleteCheckbox {
+  padding: 3px;
+}
+
+.completeCheckbox :global(.ant-checkbox-inner) {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+}
+
+.staleCompleteCheckbox :global(.ant-checkbox-inner) {
+  border-color: #3b82f6;
+  border-width: 2px;
+  background: #eff6ff;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+
+.staleCompleteCheckbox:hover :global(.ant-checkbox-inner) {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.18);
+}
+
+.completeCheckbox :global(.ant-checkbox-checked .ant-checkbox-inner) {
+  background-color: #fed7aa;
+  border-color: #f97316;
+}
+
+.completeCheckbox :global(.ant-checkbox-checked .ant-checkbox-inner::after) {
+  border-color: #c2410c;
 }
 
 .seriesText {
@@ -702,6 +948,37 @@
   .pageHeader {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .timelineRow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .timelineTrainingGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .timelineTrainingGrid > div {
+    padding: 0 18px 12px;
+  }
+
+  .timelineTrainingGrid > div:first-child {
+    padding-top: 16px;
+  }
+
+  .timelineTrainingGrid > div:last-child {
+    padding-bottom: 16px;
+  }
+
+  .timelineTrainingCellDone,
+  .timelineTrainingCellStatus,
+  .timelineTrainingCellActions {
+    justify-content: flex-start;
+  }
+
+  .timelineRowMeta {
+    justify-content: flex-start;
   }
 
   .dateTimeRow,

@@ -43,7 +43,7 @@ const trainingTranslationsEn = {
     trainings: 'Trainings',
   },
   trainings: {
-    title: 'Trainings (In development)',
+    title: 'Trainings',
     loading: 'Loading trainings',
     actions: {
       add: 'Add Training',
@@ -168,7 +168,7 @@ const trainingTranslationsPt = {
     trainings: 'Treinos',
   },
   trainings: {
-    title: 'Treinos (Em desenvolvimento)',
+    title: 'Treinos',
     loading: 'A carregar treinos',
     actions: {
       add: 'Adicionar Treino',
