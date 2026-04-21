@@ -1093,9 +1093,6 @@ export function TrainingsPage() {
               <DatePicker
                 value={draft.trainingDate ? dayjs(draft.trainingDate) : null}
                 format="DD/MM/YYYY"
-                disabledDate={editingTrainingId == null
-                  ? (current) => current != null && current.endOf('day').isBefore(dayjs().startOf('day'))
-                  : undefined}
                 onChange={(value) => setDraft((current) => ({
                   ...current,
                   trainingDate: value ? value.format('YYYY-MM-DD') : '',
