@@ -11,6 +11,8 @@ export {
   updateTrainingCompletion,
   updateTrainingType,
 } from './services/trainingsService'
+export { TrainingDetailsDrawer } from './components/TrainingDetailsDrawer'
+export { TrainingsCalendarView } from './components/TrainingsCalendarView'
 export { EMPTY_TRAINING_FILTERS } from './types/trainings'
 export type {
   AssociatedRaceOption,
@@ -22,3 +24,11 @@ export type {
   TrainingTableItem,
   TrainingTypeOption,
 } from './types/trainings'
+export type {
+  TrainingCalendarDay,
+  TrainingCalendarItem,
+  TrainingCalendarRaceItem,
+  TrainingCalendarTrainingItem,
+  TrainingCalendarYearMonth,
+} from './types/trainingsCalendar'
+export type { TrainingsCalendarMode, TrainingsCalendarViewMode } from './components/TrainingsCalendarView'

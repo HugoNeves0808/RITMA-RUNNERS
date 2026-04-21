@@ -1,0 +1,318 @@
+.cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 112px;
+  height: 112px;
+  padding: 10px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(16, 24, 40, 0.08);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.cellInteractive {
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.cellInteractive:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+  border-color: rgba(181, 71, 8, 0.2);
+}
+
+.cellInteractive:focus-visible {
+  outline: 2px solid rgba(181, 71, 8, 0.35);
+  outline-offset: 2px;
+}
+
+.cellMuted {
+  background: rgba(248, 250, 252, 0.84);
+}
+
+.cellToday {
+  background: linear-gradient(180deg, rgba(181, 71, 8, 0.09) 0%, rgba(255, 255, 255, 0.92) 100%);
+  box-shadow: 0 10px 24px rgba(181, 71, 8, 0.08);
+}
+
+.cellRace {
+  background: linear-gradient(180deg, rgba(254, 226, 226, 0.9) 0%, rgba(255, 255, 255, 0.96) 100%);
+  border-color: rgba(220, 38, 38, 0.22);
+}
+
+.dateRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dayNumber {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 999px;
+  color: #101828;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.dayNumberMuted {
+  color: #98a2b3;
+}
+
+.todayBadge {
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(181, 71, 8, 0.12);
+  color: #b54708;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.itemList {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 4px;
+  min-height: 0;
+}
+
+.itemCard {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 6px;
+  border-radius: 10px;
+  background: rgba(248, 250, 252, 0.9);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.itemCardRaceInList {
+  background: rgba(226, 232, 240, 0.95);
+  border: 1px solid rgba(100, 116, 139, 0.24);
+}
+
+.itemCardRaceInList .itemName {
+  color: #334155;
+}
+
+.itemCardRaceInList .itemMeta,
+.itemCardRaceInList .itemStatus {
+  color: #475467;
+}
+
+.itemCardRaceRegistered {
+  background: rgba(255, 237, 213, 0.95);
+  border: 1px solid rgba(249, 115, 22, 0.24);
+}
+
+.itemCardRaceRegistered .itemName {
+  color: #9a3412;
+}
+
+.itemCardRaceRegistered .itemMeta,
+.itemCardRaceRegistered .itemStatus {
+  color: #c2410c;
+}
+
+.itemCardRaceNotRegistered {
+  background: rgba(254, 249, 195, 0.95);
+  border: 1px solid rgba(202, 138, 4, 0.26);
+}
+
+.itemCardRaceNotRegistered .itemName {
+  color: #854d0e;
+}
+
+.itemCardRaceNotRegistered .itemMeta,
+.itemCardRaceNotRegistered .itemStatus {
+  color: #a16207;
+}
+
+.itemCardRaceCompleted {
+  background: rgba(220, 252, 231, 0.92);
+  border: 1px solid rgba(22, 163, 74, 0.24);
+}
+
+.itemCardRaceCompleted .itemName {
+  color: #166534;
+}
+
+.itemCardRaceCompleted .itemMeta,
+.itemCardRaceCompleted .itemStatus {
+  color: #15803d;
+}
+
+.itemCardRaceCancelled {
+  background: rgba(254, 226, 226, 0.95);
+  border: 1px solid rgba(220, 38, 38, 0.24);
+}
+
+.itemCardRaceCancelled .itemName {
+  color: #991b1b;
+}
+
+.itemCardRaceCancelled .itemMeta,
+.itemCardRaceCancelled .itemStatus {
+  color: #b91c1c;
+}
+
+.itemCardRaceDidNotFinish {
+  background: rgba(255, 237, 213, 0.95);
+  border: 1px solid rgba(234, 88, 12, 0.24);
+}
+
+.itemCardRaceDidNotFinish .itemName {
+  color: #9a3412;
+}
+
+.itemCardRaceDidNotFinish .itemMeta,
+.itemCardRaceDidNotFinish .itemStatus {
+  color: #c2410c;
+}
+
+.itemCardRaceDidNotStart {
+  background: rgba(243, 232, 255, 0.95);
+  border: 1px solid rgba(147, 51, 234, 0.22);
+}
+
+.itemCardRaceDidNotStart .itemName {
+  color: #6b21a8;
+}
+
+.itemCardRaceDidNotStart .itemMeta,
+.itemCardRaceDidNotStart .itemStatus {
+  color: #7e22ce;
+}
+
+.itemCardTrainingScheduled {
+  background: rgba(226, 232, 240, 0.95);
+}
+
+.itemCardTrainingPlanned {
+  background: rgba(255, 237, 213, 0.95);
+}
+
+.itemCardTrainingDone {
+  background: rgba(220, 252, 231, 0.9);
+}
+
+.itemName {
+  overflow: hidden;
+  color: #101828;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.itemMeta {
+  overflow: hidden;
+  color: #667085;
+  font-size: 9px;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.itemStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  color: #475467;
+  font-size: 8.5px;
+  font-weight: 700;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.statusDot {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #94a3b8;
+}
+
+.statusDotRaceInList {
+  background: #64748b;
+}
+
+.statusDotRaceRegistered {
+  background: #f97316;
+}
+
+.statusDotRaceNotRegistered {
+  background: #ca8a04;
+}
+
+.statusDotRaceCompleted {
+  background: #16a34a;
+}
+
+.statusDotRaceCancelled {
+  background: #dc2626;
+}
+
+.statusDotRaceDidNotFinish {
+  background: #ea580c;
+}
+
+.statusDotRaceDidNotStart {
+  background: #9333ea;
+}
+
+.statusDotTrainingScheduled {
+  background: #64748b;
+}
+
+.statusDotTrainingPlanned {
+  background: #f97316;
+}
+
+.statusDotTrainingDone {
+  background: #16a34a;
+}
+
+.moreLabel {
+  margin-top: auto;
+  color: #b54708;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .cell {
+    min-height: 96px;
+    height: 96px;
+    padding: 8px;
+  }
+
+  .itemName {
+    font-size: 10px;
+  }
+
+  .itemMeta {
+    font-size: 9px;
+  }
+
+  .itemStatus {
+    font-size: 8px;
+  }
+}

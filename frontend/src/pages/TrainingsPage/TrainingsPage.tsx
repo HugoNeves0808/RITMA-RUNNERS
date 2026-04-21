@@ -1,9 +1,9 @@
 import { faAngleDown, faAngleUp, faBroom, faCalendarDays, faCheck, faClock, faMagnifyingGlass, faPenToSquare, faPlus, faTrashCan, faTriangleExclamation } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import dayjs from 'dayjs'
-import { useEffect, useMemo, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Alert, Button, Card, Checkbox, Collapse, DatePicker, Drawer, Empty, Input, InputNumber, Modal, Select, Space, Spin, TimePicker, Tooltip, Typography } from 'antd'
+import { Alert, Button, Card, Checkbox, Collapse, DatePicker, Drawer, Empty, Input, InputNumber, Modal, Segmented, Select, Space, Spin, TimePicker, Tooltip, Typography } from 'antd'
 import { useAuth } from '../../features/auth'
 import { EMPTY_RACE_FILTERS, fetchRaceTable, getRaceStatusColor, getRaceStatusLabel } from '../../features/races'
 import {
@@ -15,9 +15,13 @@ import {
   fetchTrainingCreateOptions,
   fetchTrainingFilterOptions,
   fetchTrainingTable,
+  TrainingDetailsDrawer,
+  TrainingsCalendarView,
   updateTraining,
   updateTrainingCompletion,
   updateTrainingType,
+  type TrainingsCalendarMode,
+  type TrainingsCalendarViewMode,
   type TrainingCreateOptions,
   type TrainingFilters,
   type TrainingRequest,
@@ -25,7 +29,10 @@ import {
   type TrainingTableItem,
   type TrainingTypeOption,
 } from '../../features/trainings'
+import { STORAGE_KEYS } from '../../constants/storage'
 import styles from './TrainingsPage.module.css'
+import viewSwitcherStyles from '../../features/races/components/RacesViewSwitcher.module.css'
+import calendarModeSwitcherStyles from '../../features/races/components/RacesCalendarModeSwitcher.module.css'
 
 const { Title, Text } = Typography
 const { TextArea } = Input
@@ -81,6 +88,54 @@ type RaceSection = {
   raceDate: string
   raceStatus: string | null
   items: TrainingTableItem[]
+}
+
+type TrainingsListEntry =
+  | {
+    key: string
+    year: number
+    sortValue: number
+    kind: 'training'
+    training: TrainingTableItem
+  }
+  | {
+    key: string
+    year: number
+    sortValue: number
+    kind: 'raceSection'
+    group: RaceSection
+  }
+
+type TrainingsListYearSection = {
+  year: number
+  entries: TrainingsListEntry[]
+}
+
+type PersistedTrainingsFiltersState = {
+  selectedView: TrainingsCalendarViewMode
+  selectedCalendarMode: TrainingsCalendarMode
+}
+
+function readPersistedTrainingsFilters(): PersistedTrainingsFiltersState | null {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  const rawValue = window.sessionStorage.getItem(STORAGE_KEYS.trainingsFilters)
+  if (!rawValue) {
+    return null
+  }
+
+  try {
+    const parsed = JSON.parse(rawValue) as Partial<PersistedTrainingsFiltersState>
+
+    return {
+      selectedView: parsed.selectedView === 'calendar' ? 'calendar' : 'table',
+      selectedCalendarMode: parsed.selectedCalendarMode === 'yearly' ? 'yearly' : 'monthly',
+    }
+  } catch {
+    return null
+  }
 }
 
 function CheckboxFilterSection({
@@ -205,6 +260,10 @@ function isPastPlannedTraining(training: TrainingTableItem) {
   return training.trainingStatus === 'PLANEADO' && dayjs(training.trainingDate).isBefore(dayjs(), 'day')
 }
 
+function isFutureTraining(training: Pick<TrainingTableItem, 'trainingDate'>) {
+  return dayjs(training.trainingDate).isAfter(dayjs(), 'day')
+}
+
 function getTrainingSortValue(training: TrainingTableItem) {
   return dayjs(`${training.trainingDate}T${training.trainingTime ?? '00:00:00'}`).valueOf()
 }
@@ -221,7 +280,11 @@ export function TrainingsPage() {
   const { token } = useAuth()
   const { t, i18n } = useTranslation()
   const locale = i18n.resolvedLanguage === 'pt' ? 'pt-PT' : 'en-GB'
+  const persistedState = useMemo(() => readPersistedTrainingsFilters(), [])
+  const [selectedView, setSelectedView] = useState<TrainingsCalendarViewMode>(persistedState?.selectedView ?? 'table')
+  const [selectedCalendarMode, setSelectedCalendarMode] = useState<TrainingsCalendarMode>(persistedState?.selectedCalendarMode ?? 'monthly')
   const [filters, setFilters] = useState<TrainingFilters>(EMPTY_TRAINING_FILTERS)
+  const deferredSearch = useDeferredValue(filters.search)
   const [isStatusesOpen, setIsStatusesOpen] = useState(true)
   const [isTypesOpen, setIsTypesOpen] = useState(true)
   const [trainings, setTrainings] = useState<TrainingTableItem[]>([])
@@ -232,6 +295,7 @@ export function TrainingsPage() {
   const [isTypeModalOpen, setIsTypeModalOpen] = useState(false)
   const [draft, setDraft] = useState<TrainingDraft>(getEmptyDraft)
   const [editingTrainingId, setEditingTrainingId] = useState<string | null>(null)
+  const [selectedTraining, setSelectedTraining] = useState<TrainingTableItem | null>(null)
   const [typeEditorValue, setTypeEditorValue] = useState('')
   const [editingTypeId, setEditingTypeId] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<TrainingTableItem | null>(null)
@@ -239,6 +303,14 @@ export function TrainingsPage() {
   const [error, setError] = useState<string | null>(null)
   const [typeError, setTypeError] = useState<string | null>(null)
   const [isBulkUpdatingStaleTrainings, setIsBulkUpdatingStaleTrainings] = useState(false)
+  const viewFilters = useMemo<TrainingFilters>(() => ({
+    ...filters,
+    search: deferredSearch,
+  }), [deferredSearch, filters])
+  const calendarServerFilters = useMemo<TrainingFilters>(() => ({
+    ...filters,
+    search: '',
+  }), [filters])
 
   useEffect(() => {
     const loadData = async () => {
@@ -253,7 +325,7 @@ export function TrainingsPage() {
         setIsLoading(true)
         setError(null)
         const [tablePayload, createOptionsPayload, filterOptionsPayload, raceTablePayload] = await Promise.all([
-          fetchTrainingTable(token, filters),
+          fetchTrainingTable(token, selectedView === 'calendar' ? calendarServerFilters : viewFilters),
           fetchTrainingCreateOptions(token),
           fetchTrainingFilterOptions(token),
           fetchRaceTable(token, EMPTY_RACE_FILTERS),
@@ -280,11 +352,25 @@ export function TrainingsPage() {
     }
 
     void loadData()
-  }, [filters, t, token])
+  }, [calendarServerFilters, selectedView, t, token, viewFilters])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    const stateToPersist: PersistedTrainingsFiltersState = {
+      selectedView,
+      selectedCalendarMode,
+    }
+
+    window.sessionStorage.setItem(STORAGE_KEYS.trainingsFilters, JSON.stringify(stateToPersist))
+  }, [selectedCalendarMode, selectedView])
 
   const raceSections = useMemo(() => {
+    const today = dayjs().startOf('day')
     const datedRaces = [...createOptions.races]
-      .filter((race) => Boolean(race.raceDate))
+      .filter((race) => Boolean(race.raceDate) && !dayjs(race.raceDate).isAfter(today, 'day'))
       .sort((left, right) => dayjs(right.raceDate).valueOf() - dayjs(left.raceDate).valueOf())
 
     if (datedRaces.length === 0) {
@@ -325,8 +411,9 @@ export function TrainingsPage() {
   }, [createOptions.races, trainings])
 
   const timelineItems = useMemo(() => {
+    const today = dayjs().startOf('day')
     const datedRaces = [...createOptions.races]
-      .filter((race) => Boolean(race.raceDate))
+      .filter((race) => Boolean(race.raceDate) && !dayjs(race.raceDate).isAfter(today, 'day'))
       .sort((left, right) => dayjs(right.raceDate).valueOf() - dayjs(left.raceDate).valueOf())
 
     const latestRaceDate = datedRaces.length > 0 ? dayjs(datedRaces[0].raceDate) : null
@@ -351,6 +438,39 @@ export function TrainingsPage() {
 
     return currentRaceSection ? [currentRaceSection.key] : []
   }, [raceSections])
+
+  const trainingsListYearSections = useMemo<TrainingsListYearSection[]>(() => {
+    const entries: TrainingsListEntry[] = [
+      ...timelineItems.map((item) => ({
+        key: item.key,
+        year: dayjs(item.training.trainingDate).year(),
+        sortValue: item.sortValue,
+        kind: 'training' as const,
+        training: item.training,
+      })),
+      ...raceSections.map((group) => ({
+        key: group.key,
+        year: dayjs(group.raceDate).year(),
+        sortValue: dayjs(group.raceDate).valueOf(),
+        kind: 'raceSection' as const,
+        group,
+      })),
+    ].sort((left, right) => right.sortValue - left.sortValue)
+
+    const sectionsByYear = new Map<number, TrainingsListEntry[]>()
+    entries.forEach((entry) => {
+      const current = sectionsByYear.get(entry.year) ?? []
+      current.push(entry)
+      sectionsByYear.set(entry.year, current)
+    })
+
+    return [...sectionsByYear.entries()]
+      .sort((left, right) => right[0] - left[0])
+      .map(([year, yearEntries]) => ({
+        year,
+        entries: yearEntries,
+      }))
+  }, [raceSections, timelineItems])
 
   const trainingTypeOptions = useMemo(
     () => createOptions.trainingTypes.filter((option) => !option.archived),
@@ -397,12 +517,14 @@ export function TrainingsPage() {
     try {
       const updatedTraining = await updateTrainingCompletion(training.id, completed, token)
       setTrainings((current) => current.map((item) => (item.id === updatedTraining.id ? updatedTraining : item)))
+      setSelectedTraining((current) => (current?.id === updatedTraining.id ? updatedTraining : current))
     } catch (toggleError) {
       setError(toggleError instanceof Error ? toggleError.message : t('trainings.errors.update'))
     }
   }
 
   const handleEdit = (training: TrainingTableItem) => {
+    setSelectedTraining(null)
     setEditingTrainingId(training.id)
     setDraft({
       trainingDate: training.trainingDate,
@@ -431,6 +553,7 @@ export function TrainingsPage() {
       if (editingTrainingId) {
         const updatedTraining = await updateTraining(editingTrainingId, payload, token)
         setTrainings((current) => current.map((item) => (item.id === updatedTraining.id ? updatedTraining : item)))
+        setSelectedTraining((current) => (current?.id === updatedTraining.id ? updatedTraining : current))
       } else {
         const createdTrainings = await createTraining(payload, token)
         setTrainings((current) => [...current, ...createdTrainings])
@@ -482,6 +605,17 @@ export function TrainingsPage() {
           ? item.seriesId !== deleteTarget.seriesId
           : item.id !== deleteTarget.id
       )))
+      setSelectedTraining((current) => {
+        if (!current) {
+          return current
+        }
+
+        if (scope === 'series' && deleteTarget.seriesId) {
+          return current.seriesId === deleteTarget.seriesId ? null : current
+        }
+
+        return current.id === deleteTarget.id ? null : current
+      })
       setDeleteTarget(null)
     } catch (deleteError) {
       setError(deleteError instanceof Error ? deleteError.message : t('trainings.errors.delete'))
@@ -573,12 +707,26 @@ export function TrainingsPage() {
   }
 
   const renderTrainingRow = (training: TrainingTableItem, key: string) => (
-    <div key={key} className={styles.timelineRow}>
+    <div
+      key={key}
+      className={`${styles.timelineRow} ${styles.timelineRowInteractive}`}
+      role="button"
+      tabIndex={0}
+      onClick={() => setSelectedTraining(training)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          setSelectedTraining(training)
+        }
+      }}
+    >
       <div className={styles.timelineTrainingGrid}>
         <div className={styles.timelineTrainingCellDone}>
           <label className={`${styles.completeCheckbox} ${isPastPlannedTraining(training) ? styles.staleCompleteCheckbox : ''}`}>
             <Checkbox
               checked={training.completed}
+              disabled={isFutureTraining(training) && !training.completed}
+              onClick={(event) => event.stopPropagation()}
               onChange={(event) => void handleToggleCompleted(training, event.target.checked)}
             />
           </label>
@@ -602,19 +750,84 @@ export function TrainingsPage() {
               type="link"
               icon={<FontAwesomeIcon icon={faPenToSquare} />}
               aria-label={t('trainings.actions.edit')}
-              onClick={() => handleEdit(training)}
+              onClick={(event) => {
+                event.stopPropagation()
+                handleEdit(training)
+              }}
             />
             <Button
               type="link"
               danger
               icon={<FontAwesomeIcon icon={faTrashCan} />}
               aria-label={t('trainings.actions.delete')}
-              onClick={() => setDeleteTarget(training)}
+              onClick={(event) => {
+                event.stopPropagation()
+                setSelectedTraining(null)
+                setDeleteTarget(training)
+              }}
             />
           </Space>
         </div>
       </div>
     </div>
+  )
+
+  const renderRaceSection = (group: RaceSection, isLastInSection = false) => (
+    <Collapse
+      key={group.key}
+      className={`${styles.yearSectionCollapse} ${isLastInSection ? styles.yearSectionCollapseLast : ''}`.trim()}
+      defaultActiveKey={defaultOpenRaceSectionKeys.includes(group.key) ? [group.key] : []}
+      items={[{
+        key: group.key,
+        showArrow: group.items.length > 0,
+        collapsible: group.items.length > 0 ? undefined : 'disabled',
+        className: [
+          styles.raceCollapseItem,
+          styles[`raceCollapseItem${getResolvedRaceStatus(group.raceDate, group.raceStatus) ?? 'Default'}`],
+          group.items.length === 0 ? styles.raceCollapseItemNoArrow : '',
+        ].filter(Boolean).join(' '),
+        label: (
+          <div className={`${styles.timelineRow} ${styles.timelineRaceRow} ${styles.raceCollapseHeader}`}>
+            <div className={`${styles.timelineRowMain} ${styles.timelineRaceHeaderMain}`}>
+              <span className={styles.timelineRowName}>{group.raceName}</span>
+              {group.items.length > 0 ? (
+                <span className={styles.timelineTrainingCountText}>
+                  {group.items.length} {t('trainings.list.trainingsCount')}
+                </span>
+              ) : null}
+            </div>
+            <div className={styles.timelineRowMeta}>
+              {getResolvedRaceStatus(group.raceDate, group.raceStatus) ? (
+                <span
+                  className={styles.timelineRaceStatusWrap}
+                >
+                  {dayjs(group.raceDate).isBefore(dayjs(), 'day') || getResolvedRaceStatus(group.raceDate, group.raceStatus) === 'COMPLETED' ? (
+                    <span className={styles.racePanelStatusIcon} aria-label={t('races.status.completed')}>
+                      <FontAwesomeIcon icon={faCheck} />
+                    </span>
+                  ) : (
+                    <span
+                      className={styles.timelineRaceStatus}
+                      style={{
+                        color: getRaceStatusColor(getResolvedRaceStatus(group.raceDate, group.raceStatus) ?? ''),
+                      }}
+                    >
+                      {getRaceStatusLabel(getResolvedRaceStatus(group.raceDate, group.raceStatus) ?? '', t)}
+                    </span>
+                  )}
+                </span>
+              ) : null}
+              <span>{formatDate(group.raceDate, locale)}</span>
+            </div>
+          </div>
+        ),
+        children: group.items.length > 0 ? (
+          <div className={`${styles.timelineList} ${styles.collapseTrainingList}`}>
+            {group.items.map((training) => renderTrainingRow(training, `${group.key}-${training.id}`))}
+          </div>
+        ) : null,
+      }]}
+    />
   )
 
   return (
@@ -638,6 +851,16 @@ export function TrainingsPage() {
           </div>
         </div>
         <div className={styles.headerActions}>
+          <Segmented<TrainingsCalendarViewMode>
+            value={selectedView}
+            onChange={setSelectedView}
+            options={[
+              { value: 'table', label: t('trainings.view.list') },
+              { value: 'calendar', label: t('trainings.view.calendar') },
+            ]}
+            className={viewSwitcherStyles.segmented}
+            aria-label={t('trainings.view.selectorAria')}
+          />
           <Button
             type="primary"
             className={styles.addButton}
@@ -655,88 +878,68 @@ export function TrainingsPage() {
 
       <div className={styles.contentLayout}>
         <section className={styles.mainSection}>
-          <Card className={styles.tableCard} variant="borderless">
-            {error ? (
-              <Alert
-                type="error"
-                showIcon
-                message={t('trainings.errors.loadTitle')}
-                description={error}
-                style={{ marginBottom: 18 }}
-              />
-            ) : null}
+          {error ? (
+            <Alert
+              type="error"
+              showIcon
+              message={t('trainings.errors.loadTitle')}
+              description={error}
+              style={{ marginBottom: 18 }}
+            />
+          ) : null}
 
-            {isLoading ? (
-              <div className={styles.loadingState}>
-                <Space size="middle">
-                  <Spin />
-                  <span>{t('trainings.loading')}</span>
-                </Space>
-              </div>
-            ) : trainings.length === 0 && raceSections.length === 0 && timelineItems.length === 0 ? (
-              <div className={styles.emptyWrap}>
-                <Empty description={hasActiveFilters ? t('trainings.empty.filtered') : t('trainings.empty.none')} />
-              </div>
+          {selectedView === 'calendar' ? (
+            isLoading ? (
+              <Card className={styles.tableCard} variant="borderless">
+                <div className={styles.loadingState}>
+                  <Space size="middle">
+                    <Spin />
+                    <span>{t('trainings.loading')}</span>
+                  </Space>
+                </div>
+              </Card>
             ) : (
-              <>
-                {timelineItems.length > 0 ? (
-                  <div className={`${styles.timelineList} ${raceSections.length > 0 ? styles.connectedTimelineList : ''}`}>
-                    {timelineItems.map((item) => (
-                      renderTrainingRow(item.training, item.key)
+              <TrainingsCalendarView
+                selectedMode={selectedCalendarMode}
+                trainings={trainings}
+                filters={filters}
+                onEditTraining={handleEdit}
+                onDeleteTraining={(training) => setDeleteTarget(training)}
+              />
+            )
+          ) : (
+            <Card className={styles.tableCard} variant="borderless">
+              {isLoading ? (
+                <div className={styles.loadingState}>
+                  <Space size="middle">
+                    <Spin />
+                    <span>{t('trainings.loading')}</span>
+                  </Space>
+                </div>
+              ) : trainings.length === 0 && raceSections.length === 0 && timelineItems.length === 0 ? (
+                <div className={styles.emptyWrap}>
+                  <Empty description={hasActiveFilters ? t('trainings.empty.filtered') : t('trainings.empty.none')} />
+                </div>
+              ) : (
+                <>
+                  <div className={styles.yearSections}>
+                    {trainingsListYearSections.map((section) => (
+                      <div key={section.year} className={styles.yearSection}>
+                        <div className={styles.yearDivider}>{section.year}</div>
+                        <div className={styles.yearSectionContent}>
+                          {section.entries.map((entry, index) => (
+                            entry.kind === 'training'
+                              ? renderTrainingRow(entry.training, entry.key)
+                              : renderRaceSection(entry.group, index === section.entries.length - 1)
+                          ))}
+                        </div>
+                      </div>
                     ))}
                   </div>
-                ) : null}
-
-                {raceSections.length > 0 ? (
-                  <>
-                    <Collapse
-                      className={timelineItems.length > 0 ? styles.connectedCollapse : undefined}
-                      defaultActiveKey={defaultOpenRaceSectionKeys}
-                      items={raceSections.map((group) => ({
-                        key: group.key,
-                        className: `${styles.raceCollapseItem} ${styles[`raceCollapseItem${getResolvedRaceStatus(group.raceDate, group.raceStatus) ?? 'Default'}`]}`,
-                        label: (
-                          <div className={`${styles.timelineRow} ${styles.timelineRaceRow} ${styles.raceCollapseHeader}`}>
-                            <div className={styles.timelineRowMain}>
-                              <span className={styles.timelineRowName}>{group.raceName}</span>
-                            </div>
-                            <div className={styles.timelineRowMeta}>
-                              {getResolvedRaceStatus(group.raceDate, group.raceStatus) ? (
-                                <span
-                                  className={styles.timelineRaceStatusWrap}
-                                >
-                                  {dayjs(group.raceDate).isBefore(dayjs(), 'day') || getResolvedRaceStatus(group.raceDate, group.raceStatus) === 'COMPLETED' ? (
-                                    <span className={styles.racePanelStatusIcon} aria-label={t('races.status.completed')}>
-                                      <FontAwesomeIcon icon={faCheck} />
-                                    </span>
-                                  ) : (
-                                    <span
-                                      className={styles.timelineRaceStatus}
-                                      style={{
-                                        color: getRaceStatusColor(getResolvedRaceStatus(group.raceDate, group.raceStatus) ?? ''),
-                                      }}
-                                    >
-                                      {getRaceStatusLabel(getResolvedRaceStatus(group.raceDate, group.raceStatus) ?? '', t)}
-                                    </span>
-                                  )}
-                                </span>
-                              ) : null}
-                              <span>{formatDate(group.raceDate, locale)}</span>
-                            </div>
-                          </div>
-                        ),
-                        children: (
-                          <div className={`${styles.timelineList} ${styles.collapseTrainingList}`}>
-                            {group.items.map((training) => renderTrainingRow(training, `${group.key}-${training.id}`))}
-                          </div>
-                        ),
-                      }))}
-                    />
-                  </>
-                ) : null}
-              </>
-            )}
-          </Card>
+                </>
+              )}
+            </Card>
+          )}
         </section>
 
         <aside>
@@ -754,6 +957,22 @@ export function TrainingsPage() {
             </div>
 
             <div className={styles.sidebarDivider} />
+
+            {selectedView === 'calendar' ? (
+              <label className={styles.filterField}>
+                <span className={styles.filterLabel}>{t('trainings.calendarMode.label')}</span>
+                <Segmented<TrainingsCalendarMode>
+                  value={selectedCalendarMode}
+                  onChange={setSelectedCalendarMode}
+                  options={[
+                    { value: 'monthly', label: t('trainings.calendarMode.monthly') },
+                    { value: 'yearly', label: t('trainings.calendarMode.yearly') },
+                  ]}
+                  className={calendarModeSwitcherStyles.segmented}
+                  aria-label={t('trainings.calendarMode.selectorAria')}
+                />
+              </label>
+            ) : null}
 
             <label className={styles.filterField}>
               <span className={styles.filterLabel}>{t('trainings.filters.search')}</span>
@@ -863,6 +1082,9 @@ export function TrainingsPage() {
               <DatePicker
                 value={draft.trainingDate ? dayjs(draft.trainingDate) : null}
                 format="DD/MM/YYYY"
+                disabledDate={editingTrainingId == null
+                  ? (current) => current != null && current.endOf('day').isBefore(dayjs().startOf('day'))
+                  : undefined}
                 onChange={(value) => setDraft((current) => ({
                   ...current,
                   trainingDate: value ? value.format('YYYY-MM-DD') : '',
@@ -1012,6 +1234,24 @@ export function TrainingsPage() {
           </div>
         </div>
       </Drawer>
+
+      <TrainingDetailsDrawer
+        open={selectedTraining != null}
+        training={selectedTraining}
+        locale={locale}
+        onEdit={() => {
+          if (selectedTraining) {
+            handleEdit(selectedTraining)
+          }
+        }}
+        onDelete={() => {
+          if (selectedTraining) {
+            setDeleteTarget(selectedTraining)
+            setSelectedTraining(null)
+          }
+        }}
+        onClose={() => setSelectedTraining(null)}
+      />
 
       <Modal
         title={t('trainings.stale.modalTitle')}

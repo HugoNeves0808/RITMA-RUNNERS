@@ -108,6 +108,9 @@ public class TrainingService {
     @Transactional
     public List<TrainingTableItemResponse> createTraining(UUID userId, TrainingRequest request) {
         ValidatedTraining validatedTraining = validateTraining(userId, request);
+        if (validatedTraining.trainingDate().isBefore(LocalDate.now())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Training date cannot be before today when creating a training.");
+        }
         List<UUID> createdIds = new ArrayList<>();
 
         if (validatedTraining.recurrenceEnabled()) {
@@ -184,8 +187,13 @@ public class TrainingService {
 
     @Transactional
     public TrainingTableItemResponse updateCompleted(UUID userId, UUID trainingId, boolean completed) {
-        if (!trainingRepository.trainingExists(userId, trainingId)) {
+        TrainingTableItemResponse existingTraining = trainingRepository.findTraining(userId, trainingId);
+        if (existingTraining == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Training not found.");
+        }
+
+        if (completed && existingTraining.trainingDate().isAfter(LocalDate.now())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Future trainings cannot be marked as completed.");
         }
 
         trainingRepository.updateTrainingCompleted(userId, trainingId, completed);

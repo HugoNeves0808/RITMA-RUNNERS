@@ -44,6 +44,20 @@ const trainingTranslationsEn = {
   },
   trainings: {
     title: 'Trainings',
+    list: {
+      trainingsCount: 'trainings',
+    },
+    view: {
+      list: 'List',
+      calendar: 'Calendar',
+      selectorAria: 'Trainings view selector',
+    },
+    calendarMode: {
+      label: 'Calendar mode',
+      monthly: 'Monthly',
+      yearly: 'Yearly',
+      selectorAria: 'Trainings calendar mode',
+    },
     loading: 'Loading trainings',
     actions: {
       add: 'Add Training',
@@ -111,6 +125,54 @@ const trainingTranslationsEn = {
       editTitle: 'Edit training',
       recurrenceHint: 'Series creates new occurrences on creation. While editing, this configuration only applies to this item.',
     },
+    details: {
+      title: 'Training details',
+      overviewEyebrow: 'Training overview',
+      summary: {
+        date: 'Date',
+        time: 'Time',
+        type: 'Type',
+      },
+      actions: {
+        edit: 'Edit',
+        delete: 'Delete',
+      },
+      fields: {
+        status: 'Status',
+        completed: 'Completed',
+        associatedRace: 'Associated race',
+        associatedRaceDate: 'Associated race date',
+        series: 'Series',
+        seriesUntil: 'Series until',
+        seriesDays: 'Weekdays',
+        notes: 'Notes',
+      },
+      values: {
+        none: 'None',
+        single: 'Single training',
+        everyWeeks: 'Every {{count}} week(s)',
+      },
+    },
+    calendar: {
+      dayTitle: 'Calendar day',
+      meta: {
+        time: 'Time',
+        trainingType: 'Training type',
+        raceType: 'Race type',
+      },
+      monthly: {
+        loadErrorTitle: 'Could not load the trainings calendar for this month.',
+        loadErrorFallback: 'Calendar data is temporarily unavailable.',
+      },
+      yearly: {
+        loadErrorTitle: 'Could not load the trainings calendar for this year.',
+        loadErrorFallback: 'Calendar data is temporarily unavailable.',
+      },
+      yearMonth: {
+        titleOne: '{{day}} - 1 item',
+        titleOther: '{{day}} - {{count}} items',
+      },
+    },
     weekdays: {
       mon: 'Mon',
       tue: 'Tue',
@@ -169,6 +231,20 @@ const trainingTranslationsPt = {
   },
   trainings: {
     title: 'Treinos',
+    list: {
+      trainingsCount: 'treinos',
+    },
+    view: {
+      list: 'Lista',
+      calendar: 'Calendário',
+      selectorAria: 'Seletor de vista dos treinos',
+    },
+    calendarMode: {
+      label: 'Modo de calendário',
+      monthly: 'Mensal',
+      yearly: 'Anual',
+      selectorAria: 'Modo do calendário de treinos',
+    },
     loading: 'A carregar treinos',
     actions: {
       add: 'Adicionar Treino',
@@ -235,6 +311,54 @@ const trainingTranslationsPt = {
       addTitle: 'Adicionar treino',
       editTitle: 'Editar treino',
       recurrenceHint: 'A série cria ocorrências novas na criação. Na edição, esta configuração aplica-se apenas a este registo.',
+    },
+    details: {
+      title: 'Detalhes do treino',
+      overviewEyebrow: 'Visão geral do treino',
+      summary: {
+        date: 'Data',
+        time: 'Hora',
+        type: 'Tipo',
+      },
+      actions: {
+        edit: 'Editar',
+        delete: 'Apagar',
+      },
+      fields: {
+        status: 'Estado',
+        completed: 'Realizado',
+        associatedRace: 'Prova associada',
+        associatedRaceDate: 'Data da prova associada',
+        series: 'Série',
+        seriesUntil: 'Série até',
+        seriesDays: 'Dias da semana',
+        notes: 'Notas',
+      },
+      values: {
+        none: 'Nenhum',
+        single: 'Treino individual',
+        everyWeeks: 'A cada {{count}} semana(s)',
+      },
+    },
+    calendar: {
+      dayTitle: 'Dia no calendário',
+      meta: {
+        time: 'Hora',
+        trainingType: 'Tipo de treino',
+        raceType: 'Tipo de prova',
+      },
+      monthly: {
+        loadErrorTitle: 'Não foi possível carregar o calendário de treinos deste mês.',
+        loadErrorFallback: 'Os dados do calendário estão temporariamente indisponíveis.',
+      },
+      yearly: {
+        loadErrorTitle: 'Não foi possível carregar o calendário de treinos deste ano.',
+        loadErrorFallback: 'Os dados do calendário estão temporariamente indisponíveis.',
+      },
+      yearMonth: {
+        titleOne: '{{day}} - 1 item',
+        titleOther: '{{day}} - {{count}} itens',
+      },
     },
     weekdays: {
       mon: 'Seg',

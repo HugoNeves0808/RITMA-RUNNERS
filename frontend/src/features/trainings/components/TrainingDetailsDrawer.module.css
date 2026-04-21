@@ -1,0 +1,200 @@
+.drawer :global(.ant-drawer-header) {
+  border-bottom: 1px solid rgba(16, 24, 40, 0.08);
+}
+
+.drawer :global(.ant-drawer-body) {
+  padding: 20px 24px 28px;
+  background: linear-gradient(180deg, #fffaf5 0%, #ffffff 22%);
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.headerActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.headerAction {
+  font-weight: 700;
+}
+
+.overviewCard {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 20px;
+  border: 1px solid rgba(249, 115, 22, 0.14);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at top right, rgba(251, 191, 36, 0.16), transparent 42%),
+    linear-gradient(180deg, rgba(255, 247, 237, 0.98) 0%, #ffffff 100%);
+}
+
+.overviewHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.overviewEyebrow {
+  color: #c2410c;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.overviewTitle {
+  margin: 8px 0 0;
+  color: #101828;
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 114px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.statusScheduled {
+  background: rgba(226, 232, 240, 0.95);
+  color: #334155;
+}
+
+.statusPlanned {
+  background: rgba(255, 237, 213, 0.95);
+  color: #9a3412;
+}
+
+.statusDone {
+  background: rgba(220, 252, 231, 0.95);
+  color: #166534;
+}
+
+.summaryRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.summaryItem {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.summaryLabel {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.summaryValue {
+  color: #101828;
+  font-size: 16px;
+  font-weight: 700;
+  word-break: break-word;
+}
+
+.fieldsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.fieldRow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 100%;
+  padding: 16px;
+  border: 1px solid rgba(16, 24, 40, 0.08);
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.fieldLabel {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.fieldValue {
+  color: #101828;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.notesPanel {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+.noteCard {
+  padding: 18px;
+  border: 1px solid rgba(16, 24, 40, 0.08);
+  border-radius: 18px;
+  background: #ffffff;
+}
+
+.noteLabel {
+  display: inline-block;
+  margin-bottom: 10px;
+  color: #667085;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.noteValue {
+  margin: 0;
+  color: #101828;
+  font-size: 15px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.emptyState {
+  display: grid;
+  place-items: center;
+  min-height: 240px;
+  color: #667085;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .overviewHeader,
+  .summaryRow,
+  .fieldsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .overviewHeader {
+    display: grid;
+  }
+}

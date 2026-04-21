@@ -276,26 +276,30 @@ export function RaceDetailsDrawer({
       ) : t('races.details.title')}
       placement="right"
       width={860}
-      extra={race ? (
+      extra={race && (onEdit || onDelete) ? (
         <div className={styles.headerActions}>
-          <Button
-            type="text"
-            className={styles.headerAction}
-            icon={<FontAwesomeIcon icon={faPenToSquare} />}
-            onClick={onEdit}
-          >
-            {t('races.details.actions.edit')}
-          </Button>
-          <Button
-            danger
-            type="text"
-            className={styles.headerAction}
-            icon={<FontAwesomeIcon icon={faTrashCan} />}
-            onClick={onDelete}
-            loading={isDeleting}
-          >
-            {t('races.details.actions.delete')}
-          </Button>
+          {onEdit ? (
+            <Button
+              type="text"
+              className={styles.headerAction}
+              icon={<FontAwesomeIcon icon={faPenToSquare} />}
+              onClick={onEdit}
+            >
+              {t('races.details.actions.edit')}
+            </Button>
+          ) : null}
+          {onDelete ? (
+            <Button
+              danger
+              type="text"
+              className={styles.headerAction}
+              icon={<FontAwesomeIcon icon={faTrashCan} />}
+              onClick={onDelete}
+              loading={isDeleting}
+            >
+              {t('races.details.actions.delete')}
+            </Button>
+          ) : null}
         </div>
       ) : null}
       onClose={onClose}
