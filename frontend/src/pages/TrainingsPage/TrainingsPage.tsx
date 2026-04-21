@@ -276,6 +276,12 @@ function getResolvedRaceStatus(raceDate: string, raceStatus: string | null) {
   return raceStatus
 }
 
+function getEligibleTrainingRaces(races: TrainingCreateOptions['races']) {
+  return [...races]
+    .filter((race) => Boolean(race.raceDate) && race.raceStatus !== 'IN_LIST')
+    .sort((left, right) => dayjs(right.raceDate).valueOf() - dayjs(left.raceDate).valueOf())
+}
+
 export function TrainingsPage() {
   const { token } = useAuth()
   const { t, i18n } = useTranslation()
@@ -368,10 +374,7 @@ export function TrainingsPage() {
   }, [selectedCalendarMode, selectedView])
 
   const raceSections = useMemo(() => {
-    const today = dayjs().startOf('day')
-    const datedRaces = [...createOptions.races]
-      .filter((race) => Boolean(race.raceDate) && !dayjs(race.raceDate).isAfter(today, 'day'))
-      .sort((left, right) => dayjs(right.raceDate).valueOf() - dayjs(left.raceDate).valueOf())
+    const datedRaces = getEligibleTrainingRaces(createOptions.races)
 
     if (datedRaces.length === 0) {
       return []
@@ -389,6 +392,14 @@ export function TrainingsPage() {
       .sort((left, right) => getTrainingSortValue(right) - getTrainingSortValue(left))
 
     sortedTrainings.forEach((training) => {
+      if (training.associatedRaceId) {
+        const explicitlyAssociatedSection = sections.find((section) => section.key === training.associatedRaceId)
+        if (explicitlyAssociatedSection) {
+          explicitlyAssociatedSection.items.push(training)
+          return
+        }
+      }
+
       const trainingDate = dayjs(training.trainingDate)
       const sectionIndex = datedRaces.findIndex((race, index) => {
         if (trainingDate.isAfter(dayjs(race.raceDate), 'day')) {
@@ -411,15 +422,15 @@ export function TrainingsPage() {
   }, [createOptions.races, trainings])
 
   const timelineItems = useMemo(() => {
-    const today = dayjs().startOf('day')
-    const datedRaces = [...createOptions.races]
-      .filter((race) => Boolean(race.raceDate) && !dayjs(race.raceDate).isAfter(today, 'day'))
-      .sort((left, right) => dayjs(right.raceDate).valueOf() - dayjs(left.raceDate).valueOf())
+    const datedRaces = getEligibleTrainingRaces(createOptions.races)
 
     const latestRaceDate = datedRaces.length > 0 ? dayjs(datedRaces[0].raceDate) : null
 
     const trainingItems: TimelineItem[] = trainings
-      .filter((training) => latestRaceDate == null || dayjs(training.trainingDate).isAfter(latestRaceDate, 'day'))
+      .filter((training) => (
+        !training.associatedRaceId
+        && (latestRaceDate == null || dayjs(training.trainingDate).isAfter(latestRaceDate, 'day'))
+      ))
       .map((training) => ({
         key: `training-${training.id}`,
         kind: 'training',
@@ -925,7 +936,6 @@ export function TrainingsPage() {
                   <div className={styles.yearSections}>
                     {trainingsListYearSections.map((section) => (
                       <div key={section.year} className={styles.yearSection}>
-                        <div className={styles.yearDivider}>{section.year}</div>
                         <div className={styles.yearSectionContent}>
                           {section.entries.map((entry, index) => (
                             entry.kind === 'training'
@@ -933,6 +943,7 @@ export function TrainingsPage() {
                               : renderRaceSection(entry.group, index === section.entries.length - 1)
                           ))}
                         </div>
+                        <div className={styles.yearDivider}>{section.year}</div>
                       </div>
                     ))}
                   </div>
