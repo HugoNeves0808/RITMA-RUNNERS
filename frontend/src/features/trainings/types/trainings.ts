@@ -4,6 +4,7 @@ export type TrainingTableItem = {
   id: string
   trainingDate: string
   trainingTime: string | null
+  createdAt: string
   name: string
   trainingTypeId: string | null
   trainingTypeName: string | null

@@ -118,6 +118,13 @@ function sortCalendarItems(items: TrainingCalendarItem[]) {
       return left.kind === 'race' ? -1 : 1
     }
 
+    if (left.kind === 'training' && right.kind === 'training' && left.time == null && right.time == null) {
+      const createdAtComparison = dayjs(right.createdAt).valueOf() - dayjs(left.createdAt).valueOf()
+      if (createdAtComparison !== 0) {
+        return createdAtComparison
+      }
+    }
+
     return left.name.localeCompare(right.name)
   })
 }
@@ -184,6 +191,7 @@ function buildMonthlyTrainingDays(trainings: TrainingTableItem[], year: number, 
       name: training.name,
       date: training.trainingDate,
       time: training.trainingTime,
+      createdAt: training.createdAt,
       subtitle: training.trainingTypeName,
       status: training.trainingStatus,
     })
@@ -216,6 +224,7 @@ function buildYearlyTrainingMonths(trainings: TrainingTableItem[], year: number)
       name: training.name,
       date: training.trainingDate,
       time: training.trainingTime,
+      createdAt: training.createdAt,
       subtitle: training.trainingTypeName,
       status: training.trainingStatus,
     })

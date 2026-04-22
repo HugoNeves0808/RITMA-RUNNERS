@@ -264,6 +264,30 @@ function isFutureTraining(training: Pick<TrainingTableItem, 'trainingDate'>) {
   return dayjs(training.trainingDate).isAfter(dayjs(), 'day')
 }
 
+function compareTrainingsForDisplay(left: Pick<TrainingTableItem, 'trainingDate' | 'trainingTime' | 'createdAt' | 'name'>,
+  right: Pick<TrainingTableItem, 'trainingDate' | 'trainingTime' | 'createdAt' | 'name'>) {
+  const dateComparison = dayjs(left.trainingDate).valueOf() - dayjs(right.trainingDate).valueOf()
+  if (dateComparison !== 0) {
+    return dateComparison
+  }
+
+  const leftTime = left.trainingTime ?? '99:99:99'
+  const rightTime = right.trainingTime ?? '99:99:99'
+  const timeComparison = leftTime.localeCompare(rightTime)
+  if (timeComparison !== 0) {
+    return timeComparison
+  }
+
+  if (!left.trainingTime && !right.trainingTime) {
+    const createdAtComparison = dayjs(right.createdAt).valueOf() - dayjs(left.createdAt).valueOf()
+    if (createdAtComparison !== 0) {
+      return createdAtComparison
+    }
+  }
+
+  return left.name.localeCompare(right.name, undefined, { sensitivity: 'base' })
+}
+
 function getTrainingSortValue(training: TrainingTableItem) {
   return dayjs(`${training.trainingDate}T${training.trainingTime ?? '00:00:00'}`).valueOf()
 }
@@ -389,7 +413,7 @@ export function TrainingsPage() {
     }))
 
     const sortedTrainings = [...trainings]
-      .sort((left, right) => getTrainingSortValue(right) - getTrainingSortValue(left))
+      .sort((left, right) => compareTrainingsForDisplay(right, left))
 
     sortedTrainings.forEach((training) => {
       if (training.associatedRaceId) {
@@ -438,7 +462,7 @@ export function TrainingsPage() {
         training,
       }))
 
-    return trainingItems.sort((left, right) => right.sortValue - left.sortValue)
+    return trainingItems.sort((left, right) => compareTrainingsForDisplay(right.training, left.training))
   }, [createOptions.races, trainings])
 
   const defaultOpenRaceSectionKeys = useMemo(() => {
@@ -495,11 +519,7 @@ export function TrainingsPage() {
 
     return trainings
       .filter((training) => training.seriesId === deleteTarget.seriesId)
-      .sort((left, right) => {
-        const leftValue = dayjs(`${left.trainingDate}T${left.trainingTime ?? '00:00:00'}`).valueOf()
-        const rightValue = dayjs(`${right.trainingDate}T${right.trainingTime ?? '00:00:00'}`).valueOf()
-        return leftValue - rightValue
-      })
+      .sort(compareTrainingsForDisplay)
   }, [deleteTarget?.seriesId, trainings])
 
   const stalePlannedTrainings = useMemo(
@@ -633,6 +653,13 @@ export function TrainingsPage() {
     }
   }
 
+  const closeTypeDrawer = () => {
+    setIsTypeModalOpen(false)
+    setTypeEditorValue('')
+    setEditingTypeId(null)
+    setTypeError(null)
+  }
+
   const handleSaveType = async () => {
     if (!token || !typeEditorValue.trim()) {
       return
@@ -662,7 +689,6 @@ export function TrainingsPage() {
 
       setTypeEditorValue('')
       setEditingTypeId(null)
-      setIsTypeModalOpen(false)
     } catch (saveError) {
       setTypeError(saveError instanceof Error ? saveError.message : t('trainings.errors.typeSave'))
     }
@@ -686,6 +712,10 @@ export function TrainingsPage() {
       }))
       if (draft.trainingTypeId === trainingTypeId) {
         setDraft((current) => ({ ...current, trainingTypeId: null }))
+      }
+      if (editingTypeId === trainingTypeId) {
+        setTypeEditorValue('')
+        setEditingTypeId(null)
       }
     } catch (deleteError) {
       setTypeError(deleteError instanceof Error ? deleteError.message : t('trainings.errors.typeDelete'))
@@ -937,7 +967,7 @@ export function TrainingsPage() {
                     {trainingsListYearSections.map((section) => (
                       <div key={section.year} className={styles.yearSection}>
                         <div className={styles.yearSectionContent}>
-                          {section.entries.map((entry, index) => (
+                          {section.entries.map((entry) => (
                             entry.kind === 'training'
                               ? renderTrainingRow(entry.training, entry.key)
                                 : renderRaceSection(entry.group)
@@ -1150,10 +1180,14 @@ export function TrainingsPage() {
             </label>
 
             <Tooltip title={t('trainings.actions.manageTypes')}>
-              <Button
-                icon={<FontAwesomeIcon icon={faPenToSquare} />}
+              <button
+                type="button"
+                className={styles.addManagedOptionButton}
+                aria-label={t('trainings.actions.manageTypes')}
                 onClick={() => setIsTypeModalOpen(true)}
-              />
+              >
+                <FontAwesomeIcon icon={faPlus} />
+              </button>
             </Tooltip>
           </div>
 
@@ -1309,16 +1343,14 @@ export function TrainingsPage() {
         </div>
       </Modal>
 
-      <Modal
+      <Drawer
         title={t('trainings.types.title')}
         open={isTypeModalOpen}
-        footer={null}
-        onCancel={() => {
-          setIsTypeModalOpen(false)
-          setTypeEditorValue('')
-          setEditingTypeId(null)
-          setTypeError(null)
-        }}
+        placement="right"
+        width={560}
+        zIndex={1300}
+        destroyOnHidden
+        onClose={closeTypeDrawer}
       >
         {typeError ? (
           <Alert
@@ -1326,53 +1358,55 @@ export function TrainingsPage() {
             showIcon
             message={t('trainings.errors.typeSaveTitle')}
             description={typeError}
-            style={{ marginBottom: 16 }}
+            className={styles.typeDrawerAlert}
           />
         ) : null}
 
-        <div className={styles.typeEditor} style={{ marginBottom: 16 }}>
-          <Input
-            value={typeEditorValue}
-            placeholder={t('trainings.types.placeholder')}
-            onChange={(event) => setTypeEditorValue(event.target.value)}
-          />
-          <Button
-            type="primary"
-            className={styles.typeSaveButton}
-            disabled={isTypeSaveDisabled}
-            onClick={() => void handleSaveType()}
-          >
-            {editingTypeId ? t('trainings.actions.save') : t('trainings.actions.addShort')}
-          </Button>
-        </div>
+        <div className={styles.typeDrawerBody}>
+          <div className={styles.typeEditor}>
+            <Input
+              value={typeEditorValue}
+              placeholder={t('trainings.types.placeholder')}
+              onChange={(event) => setTypeEditorValue(event.target.value)}
+            />
+            <Button
+              type="primary"
+              className={styles.typeSaveButton}
+              disabled={isTypeSaveDisabled}
+              onClick={() => void handleSaveType()}
+            >
+              {editingTypeId ? t('trainings.actions.save') : t('trainings.actions.addShort')}
+            </Button>
+          </div>
 
-        <div className={styles.typeList}>
-          {trainingTypeOptions.map((type) => (
-            <div key={type.id} className={styles.typeItem}>
-              <span className={styles.typeName}>{type.name}</span>
-              <Space>
-                <Button
-                  type="text"
-                  onClick={() => {
-                    setEditingTypeId(type.id)
-                    setTypeEditorValue(type.name)
-                  }}
-                >
-                  {t('trainings.actions.edit')}
-                </Button>
-                <Button
-                  type="text"
-                  danger
-                  icon={<FontAwesomeIcon icon={faTrashCan} />}
-                  onClick={() => void handleDeleteType(type.id)}
-                >
-                  {t('trainings.actions.delete')}
-                </Button>
-              </Space>
-            </div>
-          ))}
+          <div className={styles.typeList}>
+            {trainingTypeOptions.map((type) => (
+              <div key={type.id} className={styles.typeItem}>
+                <span className={styles.typeName}>{type.name}</span>
+                <Space>
+                  <Button
+                    type="text"
+                    onClick={() => {
+                      setEditingTypeId(type.id)
+                      setTypeEditorValue(type.name)
+                    }}
+                  >
+                    {t('trainings.actions.edit')}
+                  </Button>
+                  <Button
+                    type="text"
+                    danger
+                    icon={<FontAwesomeIcon icon={faTrashCan} />}
+                    onClick={() => void handleDeleteType(type.id)}
+                  >
+                    {t('trainings.actions.delete')}
+                  </Button>
+                </Space>
+              </div>
+            ))}
+          </div>
         </div>
-      </Modal>
+      </Drawer>
 
       <Modal
         title={t('trainings.delete.title')}

@@ -2,6 +2,7 @@ package com.ritma.runners.training.service;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
@@ -148,7 +149,8 @@ public class TrainingService {
                 .map(trainingId -> trainingRepository.findTraining(userId, trainingId))
                 .filter(Objects::nonNull)
                 .sorted(Comparator.comparing(TrainingTableItemResponse::trainingDate)
-                        .thenComparing(item -> item.trainingTime() == null ? java.time.LocalTime.MAX : item.trainingTime())
+                        .thenComparing(item -> item.trainingTime() == null ? LocalTime.MAX : item.trainingTime())
+                        .thenComparing(TrainingTableItemResponse::createdAt, Comparator.nullsLast(Comparator.reverseOrder()))
                         .thenComparing(TrainingTableItemResponse::name, String.CASE_INSENSITIVE_ORDER))
                 .toList();
     }
@@ -263,7 +265,8 @@ public class TrainingService {
         }
 
         if (trainingRepository.countTrainingTypeUsage(userId, trainingTypeId) > 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Training type cannot be deleted because it is already being used.");
+            trainingRepository.updateTrainingTypeArchived(userId, trainingTypeId, true);
+            return;
         }
 
         try {

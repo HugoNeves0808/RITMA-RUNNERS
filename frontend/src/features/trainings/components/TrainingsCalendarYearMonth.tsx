@@ -1,3 +1,4 @@
+import dayjs from 'dayjs'
 import { useTranslation } from 'react-i18next'
 import type { TrainingCalendarDay, TrainingCalendarItem } from '../types/trainingsCalendar'
 import styles from './TrainingsCalendarYearMonth.module.css'
@@ -25,7 +26,19 @@ function getPrimaryItemForDay(items: TrainingCalendarItem[]) {
 
     const leftTime = left.time ?? '99:99:99'
     const rightTime = right.time ?? '99:99:99'
-    return leftTime.localeCompare(rightTime)
+    const timeComparison = leftTime.localeCompare(rightTime)
+    if (timeComparison !== 0) {
+      return timeComparison
+    }
+
+    if (left.kind === 'training' && right.kind === 'training' && left.time == null && right.time == null) {
+      const createdAtComparison = dayjs(right.createdAt).valueOf() - dayjs(left.createdAt).valueOf()
+      if (createdAtComparison !== 0) {
+        return createdAtComparison
+      }
+    }
+
+    return left.name.localeCompare(right.name)
   })
 
   return sortedItems[0] ?? null

@@ -948,12 +948,42 @@
   flex: 1;
 }
 
+.addManagedOptionButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-end;
+  min-height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #f97316;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.addManagedOptionButton:hover,
+.addManagedOptionButton:focus {
+  color: #ea580c;
+}
+
 .typeList {
   display: flex;
   flex-direction: column;
   gap: 10px;
   max-height: 320px;
   overflow-y: auto;
+}
+
+.typeDrawerBody {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.typeDrawerAlert {
+  margin-bottom: 16px;
 }
 
 .typeItem {
@@ -1059,5 +1089,9 @@
   .recurrenceRow,
   .weekdayGrid {
     grid-template-columns: 1fr;
+  }
+
+  .typeEditor {
+    flex-direction: column;
   }
 }

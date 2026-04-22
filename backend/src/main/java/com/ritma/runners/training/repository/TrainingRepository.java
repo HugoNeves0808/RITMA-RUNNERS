@@ -5,6 +5,7 @@ import java.sql.Time;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -42,6 +43,7 @@ public class TrainingRepository {
                     uct.id,
                     uct.training_date,
                     uct.training_time,
+                    uct.created_at,
                     uct.name,
                     uct.training_type_id,
                     uctt.name AS training_type_name,
@@ -70,6 +72,7 @@ public class TrainingRepository {
                     lower(ur.name) ASC NULLS LAST,
                     uct.training_date ASC,
                     uct.training_time ASC NULLS LAST,
+                    CASE WHEN uct.training_time IS NULL THEN uct.created_at END DESC NULLS LAST,
                     lower(uct.name) ASC
                 """);
 
@@ -79,6 +82,7 @@ public class TrainingRepository {
                         rs.getObject("id", UUID.class),
                         rs.getObject("training_date", LocalDate.class),
                         getNullableLocalTime(rs.getTime("training_time")),
+                        rs.getObject("created_at", OffsetDateTime.class),
                         rs.getString("name"),
                         rs.getObject("training_type_id", UUID.class),
                         rs.getString("training_type_name"),
@@ -316,6 +320,7 @@ public class TrainingRepository {
                             uct.id,
                             uct.training_date,
                             uct.training_time,
+                            uct.created_at,
                             uct.name,
                             uct.training_type_id,
                             uctt.name AS training_type_name,
@@ -340,6 +345,7 @@ public class TrainingRepository {
                         rs.getObject("id", UUID.class),
                         rs.getObject("training_date", LocalDate.class),
                         getNullableLocalTime(rs.getTime("training_time")),
+                        rs.getObject("created_at", OffsetDateTime.class),
                         rs.getString("name"),
                         rs.getObject("training_type_id", UUID.class),
                         rs.getString("training_type_name"),
@@ -393,6 +399,26 @@ public class TrainingRepository {
                         rs.getBoolean("archived")
                 ),
                 name,
+                userId,
+                trainingTypeId
+        );
+    }
+
+    public TrainingTypeOptionResponse updateTrainingTypeArchived(UUID userId, UUID trainingTypeId, boolean archived) {
+        return jdbcTemplate().queryForObject(
+                """
+                        UPDATE user_custom_training_types
+                        SET archived = ?
+                        WHERE user_id = ?
+                          AND id = ?
+                        RETURNING id, name, archived
+                        """,
+                (rs, rowNum) -> new TrainingTypeOptionResponse(
+                        rs.getObject("id", UUID.class),
+                        rs.getString("name"),
+                        rs.getBoolean("archived")
+                ),
+                archived,
                 userId,
                 trainingTypeId
         );
