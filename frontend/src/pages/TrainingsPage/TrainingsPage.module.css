@@ -420,19 +420,6 @@
   border-radius: 0 !important;
 }
 
-.yearSectionCollapseLast:global(.ant-collapse) {
-  border-bottom-left-radius: 14px !important;
-  border-bottom-right-radius: 14px !important;
-}
-
-.yearSectionCollapseLast:global(.ant-collapse > .ant-collapse-item),
-.yearSectionCollapseLast:global(.ant-collapse > .ant-collapse-item > .ant-collapse-header),
-.yearSectionCollapseLast:global(.ant-collapse > .ant-collapse-item > .ant-collapse-content),
-.yearSectionCollapseLast:global(.ant-collapse > .ant-collapse-item > .ant-collapse-content > .ant-collapse-content-box) {
-  border-bottom-left-radius: 14px !important;
-  border-bottom-right-radius: 14px !important;
-}
-
 .collapseTrainingList {
   margin-bottom: 0;
   border: none;

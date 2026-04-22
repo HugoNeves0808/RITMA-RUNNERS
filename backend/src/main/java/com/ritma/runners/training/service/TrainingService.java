@@ -108,9 +108,6 @@ public class TrainingService {
     @Transactional
     public List<TrainingTableItemResponse> createTraining(UUID userId, TrainingRequest request) {
         ValidatedTraining validatedTraining = validateTraining(userId, request);
-        if (validatedTraining.trainingDate().isBefore(LocalDate.now())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Training date cannot be before today when creating a training.");
-        }
         List<UUID> createdIds = new ArrayList<>();
 
         if (validatedTraining.recurrenceEnabled()) {

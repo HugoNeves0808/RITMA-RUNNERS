@@ -106,6 +106,7 @@ Notes:
 - `associatedRaceId` is still accepted by the backend contract
 - the current web flow sends `null` and instead places trainings between dated race blocks in the UI
 - when recurrence is enabled, the backend creates all matching occurrences for the requested weekday pattern
+- past dates are accepted for manual training creation
 
 Postman:
 
@@ -201,6 +202,8 @@ Archives or removes one custom training type according to backend rules.
 ## Current Web Notes
 
 - the `Treinos` page is currently labeled as in development
+- the page supports both table and calendar views, with calendar month/year mode switching persisted in session storage
 - races are shown as dated collapsible blocks and trainings are placed between those race dates
 - past race blocks receive a completed visual state
+- cancelled race blocks keep the same straight row treatment used by the grouped list layout
 - stale past trainings that are still `PLANEADO` raise a header warning and can be bulk-marked as completed from the modal

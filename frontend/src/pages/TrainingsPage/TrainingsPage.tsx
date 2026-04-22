@@ -783,12 +783,12 @@ export function TrainingsPage() {
     </div>
   )
 
-  const renderRaceSection = (group: RaceSection, isLastInSection = false) => (
-    <Collapse
-      key={group.key}
-      className={`${styles.yearSectionCollapse} ${isLastInSection ? styles.yearSectionCollapseLast : ''}`.trim()}
-      defaultActiveKey={defaultOpenRaceSectionKeys.includes(group.key) ? [group.key] : []}
-      items={[{
+  const renderRaceSection = (group: RaceSection) => (
+      <Collapse
+        key={group.key}
+        className={styles.yearSectionCollapse}
+        defaultActiveKey={defaultOpenRaceSectionKeys.includes(group.key) ? [group.key] : []}
+        items={[{
         key: group.key,
         showArrow: group.items.length > 0,
         collapsible: group.items.length > 0 ? undefined : 'disabled',
@@ -940,8 +940,8 @@ export function TrainingsPage() {
                           {section.entries.map((entry, index) => (
                             entry.kind === 'training'
                               ? renderTrainingRow(entry.training, entry.key)
-                              : renderRaceSection(entry.group, index === section.entries.length - 1)
-                          ))}
+                                : renderRaceSection(entry.group)
+                            ))}
                         </div>
                         <div className={styles.yearDivider}>{section.year}</div>
                       </div>
