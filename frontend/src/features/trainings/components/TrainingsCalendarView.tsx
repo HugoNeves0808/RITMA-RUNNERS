@@ -59,11 +59,7 @@ function getTrainingStatusLabel(status: TrainingTableItem['trainingStatus'], t: 
     return t('trainings.status.done')
   }
 
-  if (status === 'PLANEADO') {
-    return t('trainings.status.planned')
-  }
-
-  return t('trainings.status.scheduled')
+  return t('trainings.status.planned')
 }
 
 function getItemStatusLabel(item: TrainingCalendarItem, t: (key: string, options?: Record<string, unknown>) => string) {
@@ -98,11 +94,7 @@ function getItemStatusClassName(item: TrainingCalendarItem) {
     return styles.statusTrainingDone
   }
 
-  if (item.status === 'PLANEADO') {
-    return styles.statusTrainingPlanned
-  }
-
-  return styles.statusTrainingScheduled
+  return styles.statusTrainingPlanned
 }
 
 function sortCalendarItems(items: TrainingCalendarItem[]) {
@@ -176,11 +168,15 @@ function filterTrainingsBySearch(trainings: TrainingTableItem[], search: string)
 }
 
 function buildMonthlyTrainingDays(trainings: TrainingTableItem[], year: number, month: number): TrainingCalendarDay[] {
+  const firstOfMonth = dayjs(new Date(year, month - 1, 1))
+  const firstWeekday = (firstOfMonth.day() + 6) % 7
+  const firstVisibleDay = firstOfMonth.subtract(firstWeekday, 'day')
+  const lastVisibleDay = firstVisibleDay.add(41, 'day')
   const itemsByDate = new Map<string, TrainingCalendarItem[]>()
 
   trainings.forEach((training) => {
     const trainingDate = dayjs(training.trainingDate)
-    if (trainingDate.year() !== year || trainingDate.month() + 1 !== month) {
+    if (trainingDate.isBefore(firstVisibleDay, 'day') || trainingDate.isAfter(lastVisibleDay, 'day')) {
       return
     }
 

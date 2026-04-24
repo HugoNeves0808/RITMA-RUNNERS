@@ -154,6 +154,32 @@
   background: #000000 !important;
 }
 
+.dataRows {
+  display: flex;
+  flex-direction: column;
+}
+
+.dataRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(16, 24, 40, 0.08);
+}
+
+.dataRow:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.dataRowLabel {
+  color: #101828;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
 .infoStack {
   display: flex;
   flex-direction: column;
@@ -227,5 +253,10 @@
 @media (max-width: 960px) {
   .layout {
     grid-template-columns: 1fr;
+  }
+
+  .dataRow {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }

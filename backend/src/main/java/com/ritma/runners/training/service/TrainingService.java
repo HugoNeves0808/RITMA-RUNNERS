@@ -29,13 +29,14 @@ import com.ritma.runners.training.dto.TrainingTableItemResponse;
 import com.ritma.runners.training.dto.TrainingTableResponse;
 import com.ritma.runners.training.dto.TrainingTypeOptionResponse;
 import com.ritma.runners.training.dto.TrainingTypeRequest;
+import com.ritma.runners.training.dto.TrainingTypeUsageResponse;
 import com.ritma.runners.training.repository.TrainingRepository;
 
 @Service
 public class TrainingService {
     private static final int MAX_NAME_LENGTH = 50;
     private static final int MAX_TYPE_NAME_LENGTH = 100;
-    private static final Set<String> ALLOWED_STATUSES = Set.of("AGENDADO", "PLANEADO", "REALIZADO");
+    private static final Set<String> ALLOWED_STATUSES = Set.of("PLANEADO", "REALIZADO");
     private static final Set<String> ALLOWED_ASSOCIATIONS = Set.of("associated", "individual");
 
     private final TrainingRepository trainingRepository;
@@ -259,14 +260,33 @@ public class TrainingService {
     }
 
     @Transactional
+    public TrainingTypeOptionResponse updateTrainingTypeArchived(UUID userId, UUID trainingTypeId, boolean archived) {
+        if (!trainingRepository.trainingTypeExists(userId, trainingTypeId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Training type not found.");
+        }
+
+        return trainingRepository.updateTrainingTypeArchived(userId, trainingTypeId, archived);
+    }
+
+    public TrainingTypeUsageResponse getTrainingTypeUsage(UUID userId, UUID trainingTypeId) {
+        if (!trainingRepository.trainingTypeExists(userId, trainingTypeId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Training type not found.");
+        }
+
+        return new TrainingTypeUsageResponse(
+                trainingRepository.countTrainingTypeUsage(userId, trainingTypeId),
+                trainingRepository.findTrainingTypeUsage(userId, trainingTypeId)
+        );
+    }
+
+    @Transactional
     public void deleteTrainingType(UUID userId, UUID trainingTypeId) {
         if (!trainingRepository.trainingTypeExists(userId, trainingTypeId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Training type not found.");
         }
 
         if (trainingRepository.countTrainingTypeUsage(userId, trainingTypeId) > 0) {
-            trainingRepository.updateTrainingTypeArchived(userId, trainingTypeId, true);
-            return;
+            trainingRepository.clearTrainingTypeUsage(trainingTypeId);
         }
 
         try {

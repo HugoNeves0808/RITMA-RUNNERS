@@ -649,19 +649,27 @@
 .manageOptionsForm {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-bottom: 16px;
-}
-
-.manageInputRow {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 140px auto;
-  gap: 8px;
-  align-items: center;
+  gap: 18px;
+  margin-top: 4px;
 }
 
 .manageTargetInput {
   width: 100%;
+}
+
+.manageFieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.manageFieldLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #111827;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .manageInputActions {
@@ -827,10 +835,6 @@
 
 @media (max-width: 768px) {
   .row {
-    grid-template-columns: 1fr;
-  }
-
-  .manageInputRow {
     grid-template-columns: 1fr;
   }
 

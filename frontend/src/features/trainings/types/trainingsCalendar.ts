@@ -16,7 +16,7 @@ export type TrainingCalendarTrainingItem = {
   time: string | null
   createdAt: string
   subtitle: string | null
-  status: 'AGENDADO' | 'PLANEADO' | 'REALIZADO'
+  status: 'PLANEADO' | 'REALIZADO'
 }
 
 export type TrainingCalendarItem = TrainingCalendarRaceItem | TrainingCalendarTrainingItem

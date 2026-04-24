@@ -1,4 +1,4 @@
-export type TrainingStatus = 'AGENDADO' | 'PLANEADO' | 'REALIZADO'
+export type TrainingStatus = 'PLANEADO' | 'REALIZADO'
 
 export type TrainingTableItem = {
   id: string
@@ -28,6 +28,17 @@ export type TrainingTypeOption = {
   id: string
   name: string
   archived: boolean
+}
+
+export type TrainingTypeUsage = {
+  usageCount: number
+  records: TrainingTypeUsageItem[]
+}
+
+export type TrainingTypeUsageItem = {
+  trainingId: string
+  trainingName: string
+  trainingDate: string | null
 }
 
 export type AssociatedRaceOption = {

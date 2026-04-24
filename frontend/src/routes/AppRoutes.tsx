@@ -54,6 +54,11 @@ const PersonalOptionsRaceTypesPage = lazy(async () => {
   return { default: () => <module.PersonalOptionsPage optionType="race-types" /> }
 })
 
+const PersonalOptionsTrainingTypesPage = lazy(async () => {
+  const module = await import('../pages/PersonalOptionsPage/PersonalOptionsPage')
+  return { default: () => <module.PersonalOptionsPage optionType="training-types" /> }
+})
+
 const PersonalOptionsTeamsPage = lazy(async () => {
   const module = await import('../pages/PersonalOptionsPage/PersonalOptionsPage')
   return { default: () => <module.PersonalOptionsPage optionType="teams" /> }
@@ -100,6 +105,7 @@ export function AppRoutes() {
           <Route path={ROUTES.bestEfforts} element={<BestEffortsPage />} />
           <Route path={ROUTES.podiums} element={<PodiumsPage />} />
           <Route path={ROUTES.personalOptionRaceTypes} element={<PersonalOptionsRaceTypesPage />} />
+          <Route path={ROUTES.personalOptionTrainingTypes} element={<PersonalOptionsTrainingTypesPage />} />
           <Route path={ROUTES.personalOptionTeams} element={<PersonalOptionsTeamsPage />} />
           <Route path={ROUTES.personalOptionCircuits} element={<PersonalOptionsCircuitsPage />} />
           <Route path={ROUTES.personalOptionShoes} element={<PersonalOptionsShoesPage />} />

@@ -20,14 +20,14 @@ import com.ritma.runners.training.dto.AssociatedRaceOptionResponse;
 import com.ritma.runners.training.dto.TrainingFilters;
 import com.ritma.runners.training.dto.TrainingTableItemResponse;
 import com.ritma.runners.training.dto.TrainingTypeOptionResponse;
+import com.ritma.runners.training.dto.TrainingTypeUsageItemResponse;
 
 @Repository
 public class TrainingRepository {
     private static final String TRAINING_STATUS_SQL = """
             CASE
                 WHEN uct.completed_at IS NOT NULL THEN 'REALIZADO'
-                WHEN uct.training_date < CURRENT_DATE + INTERVAL '7 days' THEN 'PLANEADO'
-                ELSE 'AGENDADO'
+                ELSE 'PLANEADO'
             END
             """;
 
@@ -436,6 +436,17 @@ public class TrainingRepository {
         );
     }
 
+    public void clearTrainingTypeUsage(UUID trainingTypeId) {
+        jdbcTemplate().update(
+                """
+                        UPDATE user_custom_trainings
+                        SET training_type_id = NULL
+                        WHERE training_type_id = ?
+                        """,
+                trainingTypeId
+        );
+    }
+
     public int countTrainingTypeUsage(UUID userId, UUID trainingTypeId) {
         Integer count = jdbcTemplate().queryForObject(
                 """
@@ -449,6 +460,28 @@ public class TrainingRepository {
                 trainingTypeId
         );
         return count == null ? 0 : count;
+    }
+
+    public List<TrainingTypeUsageItemResponse> findTrainingTypeUsage(UUID userId, UUID trainingTypeId) {
+        return jdbcTemplate().query(
+                """
+                        SELECT
+                            id,
+                            name,
+                            training_date
+                        FROM user_custom_trainings
+                        WHERE user_id = ?
+                          AND training_type_id = ?
+                        ORDER BY training_date DESC, created_at DESC
+                        """,
+                (rs, rowNum) -> new TrainingTypeUsageItemResponse(
+                        rs.getObject("id", UUID.class),
+                        rs.getString("name"),
+                        rs.getObject("training_date", LocalDate.class)
+                ),
+                userId,
+                trainingTypeId
+        );
     }
 
     private void appendTrainingFilters(StringBuilder sql, List<Object> args, TrainingFilters filters) {

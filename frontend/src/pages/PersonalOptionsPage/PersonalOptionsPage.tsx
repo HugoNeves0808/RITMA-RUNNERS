@@ -1,5 +1,6 @@
 import { faBoxArchive, faBroom, faMagnifyingGlass, faPenToSquare, faPlus, faRotateLeft, faTrashCan } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import dayjs from 'dayjs'
 import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Alert, Button, Card, Checkbox, Drawer, Empty, Input, InputNumber, Modal, Space, Spin, Tooltip, Typography } from 'antd'
@@ -16,22 +17,43 @@ import {
   type RaceOptionUsage,
   type RaceTypeOption,
 } from '../../features/races'
+import {
+  createTrainingType,
+  deleteTrainingType,
+  fetchTrainingTypeUsage,
+  fetchTrainingTypes,
+  updateTrainingType,
+  updateTrainingTypeArchived,
+  type TrainingTypeOption,
+  type TrainingTypeUsage,
+} from '../../features/trainings'
 import { translateRaceTypeName } from '../../utils/raceTypeLocalization'
 import styles from './PersonalOptionsPage.module.css'
 
 const { Title } = Typography
 
 type ManagedOptionConfirmState =
-  | { kind: 'delete'; option: RaceTypeOption }
+  | { kind: 'delete'; option: PersonalOptionItem }
   | { kind: 'detach-delete'; option: RaceTypeOption }
   | null
+
+type PersonalOptionType = ManagedRaceOptionType | 'training-types'
+type PersonalOptionItem = RaceTypeOption | TrainingTypeOption
 
 function getLocaleFromLanguage(language: string | undefined) {
   return language === 'pt' ? 'pt-PT' : 'en-GB'
 }
 
-function getOptionTypeKey(optionType: ManagedRaceOptionType) {
-  return optionType === 'race-types' ? 'raceTypes' : optionType
+function getOptionTypeKey(optionType: PersonalOptionType) {
+  if (optionType === 'race-types') {
+    return 'raceTypes'
+  }
+
+  if (optionType === 'training-types') {
+    return 'trainingTypes'
+  }
+
+  return optionType
 }
 
 function normalizeDecimalInput(value: string | number | undefined) {
@@ -57,7 +79,7 @@ function parseDecimalNumberInput(value: string | number | undefined) {
 }
 
 type PersonalOptionsPageProps = {
-  optionType: ManagedRaceOptionType
+  optionType: PersonalOptionType
 }
 
 export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
@@ -65,7 +87,7 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
   const { t, i18n } = useTranslation()
   const language = i18n.resolvedLanguage ?? i18n.language
   const locale = getLocaleFromLanguage(language)
-  const [options, setOptions] = useState<RaceTypeOption[]>([])
+  const [options, setOptions] = useState<PersonalOptionItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [optionName, setOptionName] = useState('')
@@ -75,6 +97,7 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
   const [isEditorOpen, setIsEditorOpen] = useState(false)
   const [isDiscardModalOpen, setIsDiscardModalOpen] = useState(false)
   const [usage, setUsage] = useState<RaceOptionUsage | null>(null)
+  const [trainingTypeUsage, setTrainingTypeUsage] = useState<TrainingTypeUsage | null>(null)
   const [pendingDeleteOption, setPendingDeleteOption] = useState<RaceTypeOption | null>(null)
   const [confirmState, setConfirmState] = useState<ManagedOptionConfirmState>(null)
   const [search, setSearch] = useState('')
@@ -82,6 +105,11 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
   const [showDefaultFromRitma, setShowDefaultFromRitma] = useState(true)
 
   const activeType = optionType
+  const isTrainingType = activeType === 'training-types'
+  const managedRaceOptionType = isTrainingType ? null : activeType
+  const supportsDefaultOptions = !isTrainingType
+  const supportsArchiveToggle = true
+  const supportsDetachDelete = !isTrainingType
   const optionTypeKey = getOptionTypeKey(activeType)
   const config = useMemo(() => ({
     title: t(`personalOptions.options.${optionTypeKey}.title`),
@@ -100,7 +128,7 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
         return false
       }
 
-      if (!showDefaultFromRitma && option.isDefault) {
+      if (supportsDefaultOptions && !showDefaultFromRitma && 'isDefault' in option && option.isDefault) {
         return false
       }
 
@@ -110,33 +138,40 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
 
       return true
     }),
-    [activeType, deferredSearch, options, showArchived, showDefaultFromRitma, t],
+    [activeType, deferredSearch, options, showArchived, showDefaultFromRitma, supportsDefaultOptions, t],
   )
 
-  const hasActiveFilters = search.trim().length > 0 || showArchived || !showDefaultFromRitma
+  const hasActiveFilters = search.trim().length > 0 || showArchived || (supportsDefaultOptions && !showDefaultFromRitma)
 
-  useEffect(() => {
-    const loadOptions = async () => {
-      if (!token) {
-        setOptions([])
-        setIsLoading(false)
+  const loadOptions = async () => {
+    if (!token) {
+      setOptions([])
+      setIsLoading(false)
+      return
+    }
+
+    try {
+      setIsLoading(true)
+      setError(null)
+
+      if (isTrainingType) {
+        const payload = await fetchTrainingTypes(token, true)
+        setOptions(payload)
         return
       }
 
-      try {
-        setIsLoading(true)
-        setError(null)
-        const payload = await fetchManagedRaceOptions(activeType, token, true)
-        setOptions(payload)
-      } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : t('personalOptions.errors.load'))
-      } finally {
-        setIsLoading(false)
-      }
+      const payload = await fetchManagedRaceOptions(managedRaceOptionType!, token, true)
+      setOptions(payload)
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : t('personalOptions.errors.load'))
+    } finally {
+      setIsLoading(false)
     }
+  }
 
+  useEffect(() => {
     void loadOptions()
-  }, [activeType, t, token])
+  }, [activeType, isTrainingType, t, token])
 
   const resetEditorState = () => {
     setOptionName('')
@@ -145,6 +180,7 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
     setIsEditorOpen(false)
     setIsDiscardModalOpen(false)
     setUsage(null)
+    setTrainingTypeUsage(null)
     setPendingDeleteOption(null)
     setConfirmState(null)
     setError(null)
@@ -157,6 +193,7 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
     setIsEditorOpen(false)
     setIsDiscardModalOpen(false)
     setUsage(null)
+    setTrainingTypeUsage(null)
     setPendingDeleteOption(null)
     setConfirmState(null)
     setError(null)
@@ -195,22 +232,30 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
       setConfirmState(null)
 
       const savedOption = editingOptionId
-        ? await updateManagedRaceOption(
-          activeType,
-          editingOptionId,
-          {
-            name: optionName,
-            targetKm: activeType === 'race-types' ? targetKm : undefined,
-          },
-          token,
+        ? (
+          isTrainingType
+            ? await updateTrainingType(editingOptionId, optionName, token)
+            : await updateManagedRaceOption(
+              activeType,
+              editingOptionId,
+              {
+                name: optionName,
+                targetKm: activeType === 'race-types' ? targetKm : undefined,
+              },
+              token,
+            )
         )
-        : await createManagedRaceOption(
-          activeType,
-          {
-            name: optionName,
-            targetKm: activeType === 'race-types' ? targetKm : undefined,
-          },
-          token,
+        : (
+          isTrainingType
+            ? await createTrainingType(optionName, token)
+            : await createManagedRaceOption(
+              activeType,
+              {
+                name: optionName,
+                targetKm: activeType === 'race-types' ? targetKm : undefined,
+              },
+              token,
+            )
         )
 
       const nextOptions = editingOptionId
@@ -230,7 +275,7 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
     }
   }
 
-  const handleDelete = async (option: RaceTypeOption) => {
+  const handleDelete = async (option: PersonalOptionItem) => {
     if (!token) {
       return
     }
@@ -238,11 +283,20 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
     try {
       setError(null)
       setUsage(null)
+      setTrainingTypeUsage(null)
       setPendingDeleteOption(null)
-      const nextUsage = await fetchManagedRaceOptionUsage(activeType, option.id, token)
+
+      if (isTrainingType) {
+        const nextUsage = await fetchTrainingTypeUsage(option.id, token)
+        setTrainingTypeUsage(nextUsage)
+        setConfirmState({ kind: 'delete', option })
+        return
+      }
+
+      const nextUsage = await fetchManagedRaceOptionUsage(managedRaceOptionType!, option.id, token)
 
       if (nextUsage.usageCount > 0) {
-        setPendingDeleteOption(option)
+        setPendingDeleteOption(option as RaceTypeOption)
         setUsage(nextUsage)
         return
       }
@@ -253,7 +307,7 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
     }
   }
 
-  const handleToggleArchived = async (option: RaceTypeOption, archived: boolean) => {
+  const handleToggleArchived = async (option: PersonalOptionItem, archived: boolean) => {
     if (!token) {
       return
     }
@@ -261,7 +315,9 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
     try {
       setIsSubmitting(true)
       setError(null)
-      const savedOption = await updateManagedRaceOptionArchived(activeType, option.id, archived, token)
+      const savedOption = isTrainingType
+        ? await updateTrainingTypeArchived(option.id, archived, token)
+        : await updateManagedRaceOptionArchived(managedRaceOptionType!, option.id, archived, token)
       setOptions((current) => current
         .map((currentOption) => (currentOption.id === savedOption.id ? savedOption : currentOption))
         .sort((left, right) => left.name.localeCompare(right.name)))
@@ -281,11 +337,21 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
       setIsSubmitting(true)
       setError(null)
 
-      if (confirmState.kind === 'detach-delete') {
-        await detachManagedRaceOptionUsage(activeType, confirmState.option.id, token)
+      if (isTrainingType) {
+        await deleteTrainingType(confirmState.option.id, token)
+        await loadOptions()
+        setUsage(null)
+        setTrainingTypeUsage(null)
+        setPendingDeleteOption(null)
+        setConfirmState(null)
+        return
       }
 
-      await deleteManagedRaceOption(activeType, confirmState.option.id, token)
+      if (confirmState.kind === 'detach-delete') {
+        await detachManagedRaceOptionUsage(managedRaceOptionType!, confirmState.option.id, token)
+      }
+
+      await deleteManagedRaceOption(managedRaceOptionType!, confirmState.option.id, token)
 
       setOptions((current) => current.filter((option) => option.id !== confirmState.option.id))
 
@@ -296,6 +362,7 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
       }
 
       setUsage(null)
+      setTrainingTypeUsage(null)
       setPendingDeleteOption(null)
       setConfirmState(null)
     } catch (deleteError) {
@@ -314,8 +381,8 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
       setIsSubmitting(true)
       setError(null)
 
-      await detachManagedRaceOptionUsage(activeType, pendingDeleteOption.id, token)
-      await deleteManagedRaceOption(activeType, pendingDeleteOption.id, token)
+      await detachManagedRaceOptionUsage(managedRaceOptionType!, pendingDeleteOption.id, token)
+      await deleteManagedRaceOption(managedRaceOptionType!, pendingDeleteOption.id, token)
 
       setOptions((current) => current.filter((option) => option.id !== pendingDeleteOption.id))
 
@@ -400,7 +467,7 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
                       {activeType === 'race-types' ? (
                         <div className={styles.optionMetaRow}>
                           <span className={styles.optionMeta}>
-                            {option.targetKm != null
+                            {'targetKm' in option && option.targetKm != null
                               ? `${new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(option.targetKm)} km`
                               : t('personalOptions.raceTypes.noTargetKm')}
                           </span>
@@ -408,25 +475,27 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
                       ) : null}
                     </div>
 
-                    {option.isDefault ? (
+                    {'isDefault' in option && option.isDefault ? (
                       <div className={styles.optionActions}>
                         <span className={styles.defaultOptionBadge}>{t('personalOptions.badges.defaultFromRitma')}</span>
                       </div>
                     ) : (
                       <div className={styles.optionActions}>
-                        <Button
-                          type="text"
-                          icon={<FontAwesomeIcon icon={option.archived ? faRotateLeft : faBoxArchive} />}
-                          onClick={() => void handleToggleArchived(option, !option.archived)}
-                        >
-                          {option.archived ? t('personalOptions.actions.restore') : t('personalOptions.actions.archive')}
-                        </Button>
+                        {supportsArchiveToggle ? (
+                          <Button
+                            type="text"
+                            icon={<FontAwesomeIcon icon={option.archived ? faRotateLeft : faBoxArchive} />}
+                            onClick={() => void handleToggleArchived(option, !option.archived)}
+                          >
+                            {option.archived ? t('personalOptions.actions.restore') : t('personalOptions.actions.archive')}
+                          </Button>
+                        ) : null}
                         <Button
                           type="text"
                           icon={<FontAwesomeIcon icon={faPenToSquare} />}
                           onClick={() => {
                             setOptionName(option.name)
-                            setTargetKm(activeType === 'race-types' ? (option.targetKm ?? null) : null)
+                            setTargetKm(activeType === 'race-types' && 'targetKm' in option ? (option.targetKm ?? null) : null)
                             setEditingOptionId(option.id)
                             setIsEditorOpen(true)
                             setUsage(null)
@@ -492,13 +561,15 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
               </label>
             </div>
 
-            <div className={styles.filterField}>
-              <span className={styles.filterLabel}>{t('personalOptions.filters.source')}</span>
-              <label className={styles.checkboxRow}>
-                <Checkbox checked={showDefaultFromRitma} onChange={(event) => setShowDefaultFromRitma(event.target.checked)} />
-                <span>{t('personalOptions.badges.defaultFromRitma')}</span>
-              </label>
-            </div>
+            {supportsDefaultOptions ? (
+              <div className={styles.filterField}>
+                <span className={styles.filterLabel}>{t('personalOptions.filters.source')}</span>
+                <label className={styles.checkboxRow}>
+                  <Checkbox checked={showDefaultFromRitma} onChange={(event) => setShowDefaultFromRitma(event.target.checked)} />
+                  <span>{t('personalOptions.badges.defaultFromRitma')}</span>
+                </label>
+              </div>
+            ) : null}
           </div>
         </aside>
       </div>
@@ -590,7 +661,7 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
 
       <Modal
         title={t('personalOptions.detachDelete.title')}
-        open={usage != null && pendingDeleteOption != null}
+        open={supportsDetachDelete && usage != null && pendingDeleteOption != null}
         okText={t('personalOptions.detachDelete.ok')}
         cancelText={t('common.cancel')}
         okButtonProps={{ danger: true }}
@@ -598,6 +669,7 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
         onOk={() => void handleConfirmDetachDelete()}
         onCancel={() => {
           setUsage(null)
+          setTrainingTypeUsage(null)
           setPendingDeleteOption(null)
         }}
       >
@@ -608,31 +680,45 @@ export function PersonalOptionsPage({ optionType }: PersonalOptionsPageProps) {
               {t('personalOptions.detachDelete.body', { item: config.itemLabel })}
             </span>
           </div>
-
-          <div className={styles.usageList}>
-            {usage?.records.map((record) => (
-              <div key={`${record.contextLabel}-${record.raceId}`} className={styles.usageRow}>
-                <span className={styles.usageRaceName}>{record.raceName}</span>
-                <span className={styles.usageContext}>{record.contextLabel}</span>
-              </div>
-            ))}
-          </div>
         </div>
       </Modal>
 
       <Modal
-        title={t('personalOptions.delete.title')}
+        title={isTrainingType && (trainingTypeUsage?.usageCount ?? 0) > 0 ? t('personalOptions.detachDelete.title') : t('personalOptions.delete.title')}
         open={confirmState?.kind === 'delete'}
-        okText={t('personalOptions.actions.delete')}
+        okText={isTrainingType && (trainingTypeUsage?.usageCount ?? 0) > 0 ? t('personalOptions.detachDelete.ok') : t('personalOptions.actions.delete')}
         cancelText={t('common.cancel')}
         okButtonProps={{ danger: true }}
         confirmLoading={isSubmitting}
         onOk={() => void handleConfirmDelete()}
-        onCancel={() => setConfirmState(null)}
+        onCancel={() => {
+          setTrainingTypeUsage(null)
+          setConfirmState(null)
+        }}
       >
-        <p>
-          {t('personalOptions.delete.body', { name: confirmState?.option.name ?? '' })}
-        </p>
+        {isTrainingType && (trainingTypeUsage?.usageCount ?? 0) > 0 ? (
+          <div className={styles.usageCard}>
+            <div className={styles.usageHeader}>
+              <strong>{t('personalOptions.detachDelete.trainingTypeUsedIn', { count: trainingTypeUsage?.usageCount ?? 0 })}</strong>
+              <span>{t('personalOptions.detachDelete.trainingTypeBody')}</span>
+            </div>
+
+            <div className={styles.usageList}>
+              {trainingTypeUsage?.records?.map((record) => (
+                <div key={record.trainingId} className={styles.usageRow}>
+                  <span className={styles.usageRaceName}>{record.trainingName}</span>
+                  <span className={styles.usageContext}>
+                    {record.trainingDate ? dayjs(record.trainingDate).locale(locale).format('DD/MM/YYYY') : '-'}
+                  </span>
+                </div>
+              )) ?? null}
+            </div>
+          </div>
+        ) : (
+          <p>
+            {t('personalOptions.delete.body', { name: confirmState?.option.name ?? '' })}
+          </p>
+        )}
       </Modal>
     </div>
   )

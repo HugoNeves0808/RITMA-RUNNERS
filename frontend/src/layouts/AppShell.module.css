@@ -258,34 +258,6 @@
   font-size: 1.15rem;
 }
 
-.languageButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  padding: 0;
-  border: none;
-  border-radius: 12px;
-  color: #667085;
-  text-decoration: none;
-  background: transparent;
-  opacity: 0.72;
-  font-size: 0.82rem;
-  font-weight: 750;
-  letter-spacing: 0.08em;
-  cursor: pointer;
-  transition:
-    color 0.2s ease,
-    opacity 0.2s ease;
-}
-
-.languageButton:hover,
-.languageButton:focus-visible {
-  color: #101828;
-  opacity: 1;
-}
-
 .logoutModalConfirmButton:global(.ant-btn),
 .logoutModalConfirmButton:global(.ant-btn-primary) {
   border-color: #111827 !important;

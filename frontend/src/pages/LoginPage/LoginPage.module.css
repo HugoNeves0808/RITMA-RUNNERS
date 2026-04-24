@@ -53,17 +53,6 @@
   text-align: left;
 }
 
-.languageSelect {
-  min-width: 140px;
-}
-
-.fixedLanguage {
-  position: fixed;
-  left: 24px;
-  bottom: 24px;
-  z-index: 10;
-}
-
 .title:global(.ant-typography) {
   margin-bottom: 0;
   color: #111827;
@@ -232,11 +221,6 @@
   .sidePanel {
     min-height: 420px;
     padding: 28px;
-  }
-
-  .fixedLanguage {
-    left: 20px;
-    bottom: 20px;
   }
 
   .sidePoints {

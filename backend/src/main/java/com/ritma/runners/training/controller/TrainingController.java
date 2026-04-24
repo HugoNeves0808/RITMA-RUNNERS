@@ -26,6 +26,7 @@ import com.ritma.runners.training.dto.TrainingTableItemResponse;
 import com.ritma.runners.training.dto.TrainingTableResponse;
 import com.ritma.runners.training.dto.TrainingTypeOptionResponse;
 import com.ritma.runners.training.dto.TrainingTypeRequest;
+import com.ritma.runners.training.dto.TrainingTypeUsageResponse;
 import com.ritma.runners.training.service.TrainingService;
 
 @RestController
@@ -110,6 +111,19 @@ public class TrainingController {
                                                          @PathVariable UUID trainingTypeId,
                                                          @RequestBody TrainingTypeRequest request) {
         return trainingService.updateTrainingType(requireAuthenticatedUserId(user), trainingTypeId, request);
+    }
+
+    @PutMapping("/types/{trainingTypeId:[0-9a-fA-F\\-]{36}}/archive")
+    public TrainingTypeOptionResponse updateTrainingTypeArchived(@AuthenticationPrincipal JwtAuthenticatedUser user,
+                                                                 @PathVariable UUID trainingTypeId,
+                                                                 @RequestParam boolean archived) {
+        return trainingService.updateTrainingTypeArchived(requireAuthenticatedUserId(user), trainingTypeId, archived);
+    }
+
+    @GetMapping("/types/{trainingTypeId:[0-9a-fA-F\\-]{36}}/usage")
+    public TrainingTypeUsageResponse getTrainingTypeUsage(@AuthenticationPrincipal JwtAuthenticatedUser user,
+                                                          @PathVariable UUID trainingTypeId) {
+        return trainingService.getTrainingTypeUsage(requireAuthenticatedUserId(user), trainingTypeId);
     }
 
     @DeleteMapping("/types/{trainingTypeId:[0-9a-fA-F\\-]{36}}")

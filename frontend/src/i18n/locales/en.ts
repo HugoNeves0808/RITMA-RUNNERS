@@ -110,15 +110,32 @@ export const en = {
     sidebar: {
       securityEyebrow: 'Security',
       preferencesEyebrow: 'Preferences',
+      dataEyebrow: 'Data',
     },
     sections: {
       changePassword: 'Change password',
       localPreferences: 'Local preferences',
+      data: 'Export data',
     },
     preferences: {
       languageTitle: 'Language',
       languageEnglish: 'English',
       languagePortuguese: 'Português',
+    },
+    data: {
+      alertTitle: 'Could not complete the data operation',
+      export: {
+        title: 'Export data',
+        excel: 'Export Excel',
+        json: 'Export JSON',
+        sql: 'Export SQL',
+        excelDescription: 'Export data to Excel',
+        jsonDescription: 'Export data to JSON',
+        sqlDescription: 'Export data to PostgreSQL SQL',
+      },
+      errors: {
+        export: 'Could not export your data right now.',
+      },
     },
   },
   profile: {
@@ -524,8 +541,8 @@ export const en = {
       loadRaceErrorFallback: 'Could not load this race right now.',
       today: 'Today',
       noRaceType: 'No race type',
-      moreOne: '+1 more',
-      moreOther: '+{{count}} more',
+      moreOne: '+1',
+      moreOther: '+{{count}}',
       needsUpdate: 'Needs update',
       weekdays: {
         mon: 'Mon',

@@ -17,13 +17,12 @@ import {
   faUsers,
 } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { Button, Dropdown, Layout, Modal } from 'antd'
+import { Button, Layout, Modal } from 'antd'
 import { useEffect, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../features/auth'
 import { ROUTES } from '../constants/routes'
-import { useLanguage } from '../contexts/LanguageContext'
 import styles from './AppShell.module.css'
 
 const { Content } = Layout
@@ -43,6 +42,10 @@ function getDocumentTitle(pathname: string, t: (key: string) => string) {
 
   if (pathname === ROUTES.personalOptionRaceTypes) {
     return `RITMA - ${t('pages.raceTypes')}`
+  }
+
+  if (pathname === ROUTES.personalOptionTrainingTypes) {
+    return `RITMA - ${t('pages.trainingTypes')}`
   }
 
   if (pathname === ROUTES.personalOptionTeams) {
@@ -88,17 +91,8 @@ function getDocumentTitle(pathname: string, t: (key: string) => string) {
   return 'RITMA'
 }
 
-function getLanguageFlag(language: string) {
-  if (language === 'pt') {
-    return String.fromCodePoint(0x1f1f5, 0x1f1f9)
-  }
-
-  return String.fromCodePoint(0x1f1ec, 0x1f1e7)
-}
-
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation()
-  const { language, setSessionLanguage } = useLanguage()
   const location = useLocation()
   const { isAuthenticated, isAdmin, logout, user } = useAuth()
   const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(false)
@@ -113,6 +107,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     || location.pathname === ROUTES.adminPendingApprovals
   const isInPersonalOptionsArea =
     location.pathname === ROUTES.personalOptionRaceTypes
+    || location.pathname === ROUTES.personalOptionTrainingTypes
     || location.pathname === ROUTES.personalOptionTeams
     || location.pathname === ROUTES.personalOptionCircuits
     || location.pathname === ROUTES.personalOptionShoes
@@ -173,6 +168,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       icon: faRoad,
     },
     {
+      key: 'personal-option-training-types',
+      label: t('pages.trainingTypes'),
+      to: ROUTES.personalOptionTrainingTypes,
+      isActive: location.pathname === ROUTES.personalOptionTrainingTypes,
+      icon: faPersonRunning,
+    },
+    {
       key: 'personal-option-teams',
       label: t('pages.teams'),
       to: ROUTES.personalOptionTeams,
@@ -217,11 +219,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   ]
 
   if (isAuthenticatedArea) {
-    const languageMenuItems = [
-      { key: 'en', label: <span>{getLanguageFlag('en')} {t('settings.preferences.languageEnglish')}</span> },
-      { key: 'pt', label: <span>{getLanguageFlag('pt')} {t('settings.preferences.languagePortuguese')}</span> },
-    ] as const
-
     return (
       <Layout className={`${styles.appShell} ${styles.authShell}`}>
         <aside className={styles.sidebar}>
@@ -332,24 +329,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               >
                 <FontAwesomeIcon icon={faGear} />
               </NavLink>
-
-              <Dropdown
-                placement="topLeft"
-                menu={{
-                  items: [...languageMenuItems],
-                  onClick: ({ key }) => setSessionLanguage(key === 'pt' ? 'pt' : 'en'),
-                }}
-                trigger={['click']}
-              >
-                <button
-                  type="button"
-                  className={styles.languageButton}
-                  aria-label={t('common.language')}
-                  title={t('common.language')}
-                >
-                  <span aria-hidden="true">{getLanguageFlag(language)}</span>
-                </button>
-              </Dropdown>
 
               <Button
                 type="primary"

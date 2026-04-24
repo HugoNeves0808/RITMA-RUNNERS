@@ -760,6 +760,22 @@
   color: #fff !important;
 }
 
+.bulkUpdateButton:global(.ant-btn-primary):hover,
+.bulkUpdateButton:global(.ant-btn-primary):focus,
+.singleUpdateButton:global(.ant-btn-primary):hover,
+.singleUpdateButton:global(.ant-btn-primary):focus {
+  background: linear-gradient(135deg, #fb923c 0%, #f97316 100%) !important;
+  color: #fff !important;
+}
+
+.singleUpdateButton:global(.ant-btn-primary) {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%) !important;
+  border: none !important;
+  color: #fff !important;
+  box-shadow: 0 10px 18px rgba(234, 88, 12, 0.16);
+  font-weight: 700;
+}
+
 .staleModalBody {
   display: flex;
   flex-direction: column;
@@ -778,15 +794,69 @@
   overflow-y: auto;
 }
 
-.staleTrainingRow {
+.staleTrainingCard {
   display: flex;
+  align-items: stretch;
+  gap: 16px;
+  padding: 16px 18px;
+  border-radius: 22px;
+  background: rgba(255, 247, 237, 0.96);
+  cursor: default;
+}
+
+.staleTrainingDateBadge {
+  display: flex;
+  flex: 0 0 88px;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.staleTrainingDateDay {
+  color: #101828;
+  font-size: 30px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.staleTrainingDateMonth {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.staleTrainingContent {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.staleTrainingTopRow {
+  display: flex;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 14px;
-  border: 1px solid #fed7aa;
-  border-radius: 12px;
-  background: #fffaf0;
+}
+
+.staleTrainingTitleBlock {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.staleTrainingActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .staleTrainingRowMain {
@@ -797,24 +867,62 @@
 }
 
 .staleTrainingRowName {
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 20px;
+  font-weight: 800;
   color: #101828;
+  line-height: 1.3;
+  word-break: break-word;
 }
 
-.staleTrainingRowMeta {
-  font-size: 12px;
-  color: #667085;
+.staleTrainingMetaGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.staleTrainingMetaItem {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.staleTrainingMetaLabel {
+  color: #98a2b3;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.staleTrainingMetaValue {
+  color: #101828;
+  font-size: 15px;
+  font-weight: 700;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .staleTrainingRowStatus {
   flex: 0 0 auto;
-  padding: 6px 10px;
+  padding: 5px 8px;
   border-radius: 999px;
   background: rgba(255, 237, 213, 0.95);
   color: #9a3412;
-  font-size: 12px;
-  font-weight: 800;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.staleModalFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
 }
 
 .deleteSeriesPreview {
@@ -1081,6 +1189,28 @@
     justify-content: flex-start;
   }
 
+  .staleTrainingCard,
+  .staleTrainingTopRow {
+    flex-direction: column;
+  }
+
+  .staleTrainingDateBadge {
+    flex-basis: auto;
+    width: 92px;
+  }
+
+  .staleTrainingActions {
+    justify-content: flex-start;
+  }
+
+  .staleTrainingMetaGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .staleTrainingMetaValue {
+    white-space: normal;
+  }
+
   .timelineRowMeta {
     justify-content: flex-start;
   }
@@ -1093,5 +1223,10 @@
 
   .typeEditor {
     flex-direction: column;
+  }
+
+  .staleModalFooter {
+    flex-direction: column-reverse;
+    align-items: stretch;
   }
 }

@@ -1,7 +1,6 @@
 import { faPenToSquare, faTrashCan } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { Button, Drawer, Tooltip } from 'antd'
-import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { TrainingTableItem } from '../types/trainings'
 import styles from './TrainingDetailsDrawer.module.css'
@@ -39,29 +38,12 @@ function truncateHeaderTitle(value: string, maxLength = 34) {
   return `${value.slice(0, maxLength)}...`
 }
 
-function renderField(label: string, value: ReactNode) {
-  const tooltipTitle = typeof value === 'string' || typeof value === 'number' ? String(value) : undefined
-
-  return (
-    <div className={styles.fieldRow}>
-      <span className={styles.fieldLabel}>{label}</span>
-      <Tooltip title={tooltipTitle}>
-        <span className={styles.fieldValue}>{value ?? '-'}</span>
-      </Tooltip>
-    </div>
-  )
-}
-
 function getStatusClassName(status: TrainingTableItem['trainingStatus']) {
   if (status === 'REALIZADO') {
     return styles.statusDone
   }
 
-  if (status === 'PLANEADO') {
-    return styles.statusPlanned
-  }
-
-  return styles.statusScheduled
+  return styles.statusPlanned
 }
 
 export function TrainingDetailsDrawer({
@@ -78,15 +60,9 @@ export function TrainingDetailsDrawer({
     ? t(
       training.trainingStatus === 'REALIZADO'
         ? 'trainings.status.done'
-        : training.trainingStatus === 'PLANEADO'
-          ? 'trainings.status.planned'
-          : 'trainings.status.scheduled',
+        : 'trainings.status.planned',
     )
     : ''
-
-  const seriesValue = training?.seriesId
-    ? t('trainings.details.values.everyWeeks', { count: training.seriesIntervalWeeks ?? 1 })
-    : t('trainings.details.values.single')
 
   return (
     <Drawer
@@ -154,12 +130,6 @@ export function TrainingDetailsDrawer({
               </div>
             </div>
           </section>
-
-          <div className={styles.fieldsGrid}>
-            <div>{renderField(t('trainings.details.fields.status'), statusLabel)}</div>
-            <div>{renderField(t('trainings.details.fields.series'), seriesValue)}</div>
-          </div>
-
           <section className={styles.notesPanel}>
             <div className={styles.noteCard}>
               <span className={styles.noteLabel}>{t('trainings.details.fields.notes')}</span>

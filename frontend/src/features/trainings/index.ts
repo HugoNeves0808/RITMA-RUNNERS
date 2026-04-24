@@ -3,6 +3,7 @@ export {
   createTrainingType,
   deleteTraining,
   deleteTrainingType,
+  fetchTrainingTypeUsage,
   fetchTrainingCreateOptions,
   fetchTrainingFilterOptions,
   fetchTrainingTable,
@@ -10,6 +11,7 @@ export {
   updateTraining,
   updateTrainingCompletion,
   updateTrainingType,
+  updateTrainingTypeArchived,
 } from './services/trainingsService'
 export { TrainingDetailsDrawer } from './components/TrainingDetailsDrawer'
 export { TrainingsCalendarView } from './components/TrainingsCalendarView'
@@ -23,6 +25,8 @@ export type {
   TrainingStatus,
   TrainingTableItem,
   TrainingTypeOption,
+  TrainingTypeUsageItem,
+  TrainingTypeUsage,
 } from './types/trainings'
 export type {
   TrainingCalendarDay,

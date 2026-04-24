@@ -155,9 +155,7 @@ export function TrainingsCalendarYearMonth({ year, month, days, onDayClick }: Tr
                       ? (
                         primaryItem.status === 'REALIZADO'
                           ? styles.dayBadgeTrainingDone
-                          : primaryItem.status === 'PLANEADO'
-                            ? styles.dayBadgeTrainingPlanned
-                            : styles.dayBadgeTrainingScheduled
+                          : styles.dayBadgeTrainingPlanned
                       )
                       : '',
                     cell.isToday ? styles.dayBadgeToday : '',

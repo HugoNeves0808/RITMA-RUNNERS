@@ -7,6 +7,7 @@ import type {
   TrainingTableItem,
   TrainingTableResponse,
   TrainingTypeOption,
+  TrainingTypeUsage,
 } from '../types/trainings'
 
 function appendTrainingFilters(params: URLSearchParams, filters?: TrainingFilters) {
@@ -87,8 +88,20 @@ export function updateTrainingType(trainingTypeId: string, name: string, token: 
   })
 }
 
+export function updateTrainingTypeArchived(trainingTypeId: string, archived: boolean, token: string) {
+  return apiPutWithToken<TrainingTypeOption>(`/api/trainings/types/${trainingTypeId}/archive?archived=${archived}`, undefined, token, {
+    suppressUnauthorized: true,
+  })
+}
+
 export function deleteTrainingType(trainingTypeId: string, token: string) {
   return apiDeleteWithToken<void>(`/api/trainings/types/${trainingTypeId}`, token, undefined, {
+    suppressUnauthorized: true,
+  })
+}
+
+export function fetchTrainingTypeUsage(trainingTypeId: string, token: string) {
+  return apiGet<TrainingTypeUsage>(`/api/trainings/types/${trainingTypeId}/usage`, token, {
     suppressUnauthorized: true,
   })
 }

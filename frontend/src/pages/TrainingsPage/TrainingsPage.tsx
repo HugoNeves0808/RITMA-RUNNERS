@@ -1,16 +1,15 @@
-import { faAngleDown, faAngleUp, faBroom, faCalendarDays, faCheck, faClock, faMagnifyingGlass, faPenToSquare, faPlus, faTrashCan, faTriangleExclamation } from '@fortawesome/free-solid-svg-icons'
+import { faAngleDown, faAngleUp, faBroom, faCalendarDays, faCheck, faMagnifyingGlass, faPenToSquare, faPlus, faTrashCan, faTriangleExclamation } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import dayjs from 'dayjs'
 import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Alert, Button, Card, Checkbox, Collapse, DatePicker, Drawer, Empty, Input, InputNumber, Modal, Segmented, Select, Space, Spin, TimePicker, Tooltip, Typography } from 'antd'
+import { Alert, Button, Card, Checkbox, Collapse, DatePicker, Drawer, Empty, Input, InputNumber, Modal, Segmented, Select, Space, Spin, TimePicker, Tooltip, Typography, message } from 'antd'
 import { useAuth } from '../../features/auth'
 import { EMPTY_RACE_FILTERS, fetchRaceTable, getRaceStatusColor, getRaceStatusLabel } from '../../features/races'
 import {
   createTraining,
   createTrainingType,
   deleteTraining,
-  deleteTrainingType,
   EMPTY_TRAINING_FILTERS,
   fetchTrainingCreateOptions,
   fetchTrainingFilterOptions,
@@ -38,7 +37,6 @@ const { Title, Text } = Typography
 const { TextArea } = Input
 
 const STATUS_OPTIONS: Array<{ value: TrainingStatus; labelKey: string }> = [
-  { value: 'AGENDADO', labelKey: 'trainings.status.scheduled' },
   { value: 'PLANEADO', labelKey: 'trainings.status.planned' },
   { value: 'REALIZADO', labelKey: 'trainings.status.done' },
 ]
@@ -204,6 +202,22 @@ function buildTrainingRequest(draft: TrainingDraft): TrainingRequest {
   }
 }
 
+function normalizeRecurrenceDays(days: number[]) {
+  return [...days].sort((left, right) => left - right)
+}
+
+function hasDraftChanges(draft: TrainingDraft, initialDraft: TrainingDraft) {
+  return draft.trainingDate !== initialDraft.trainingDate
+    || draft.trainingTime !== initialDraft.trainingTime
+    || draft.name !== initialDraft.name
+    || draft.trainingTypeId !== initialDraft.trainingTypeId
+    || draft.notes !== initialDraft.notes
+    || draft.recurrenceEnabled !== initialDraft.recurrenceEnabled
+    || draft.recurrenceIntervalWeeks !== initialDraft.recurrenceIntervalWeeks
+    || draft.recurrenceUntilDate !== initialDraft.recurrenceUntilDate
+    || normalizeRecurrenceDays(draft.recurrenceDaysOfWeek).join(',') !== normalizeRecurrenceDays(initialDraft.recurrenceDaysOfWeek).join(',')
+}
+
 function formatDate(value: string | null, locale: string) {
   if (!value) {
     return '-'
@@ -220,16 +234,33 @@ function formatTime(value: string | null) {
   return value ? value.slice(0, 5) : '-'
 }
 
+function getDayLabel(value: string) {
+  const date = new Date(`${value}T00:00:00`)
+
+  if (Number.isNaN(date.getTime())) {
+    return '--'
+  }
+
+  return String(date.getDate()).padStart(2, '0')
+}
+
+function getCompactMonthLabel(value: string, locale: string) {
+  const date = new Date(`${value}T00:00:00`)
+
+  if (Number.isNaN(date.getTime())) {
+    return '---'
+  }
+
+  const month = new Intl.DateTimeFormat(locale, { month: 'short' }).format(date).replace('.', '')
+  return month.charAt(0).toUpperCase() + month.slice(1).toLowerCase()
+}
+
 function getStatusClass(status: TrainingStatus) {
   if (status === 'REALIZADO') {
     return styles.statusDone
   }
 
-  if (status === 'PLANEADO') {
-    return styles.statusPlanned
-  }
-
-  return styles.statusScheduled
+  return styles.statusPlanned
 }
 
 function getTimelineStatusIcon(status: TrainingStatus) {
@@ -237,11 +268,7 @@ function getTimelineStatusIcon(status: TrainingStatus) {
     return faCheck
   }
 
-  if (status === 'PLANEADO') {
-    return faCalendarDays
-  }
-
-  return faClock
+  return faCalendarDays
 }
 
 function getTrainingStatusLabelKey(status: TrainingStatus) {
@@ -249,11 +276,7 @@ function getTrainingStatusLabelKey(status: TrainingStatus) {
     return 'trainings.status.done'
   }
 
-  if (status === 'PLANEADO') {
-    return 'trainings.status.planned'
-  }
-
-  return 'trainings.status.scheduled'
+  return 'trainings.status.planned'
 }
 
 function isPastPlannedTraining(training: TrainingTableItem) {
@@ -307,6 +330,7 @@ function getEligibleTrainingRaces(races: TrainingCreateOptions['races']) {
 }
 
 export function TrainingsPage() {
+  const [messageApi, messageContextHolder] = message.useMessage()
   const { token } = useAuth()
   const { t, i18n } = useTranslation()
   const locale = i18n.resolvedLanguage === 'pt' ? 'pt-PT' : 'en-GB'
@@ -322,8 +346,10 @@ export function TrainingsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+  const [isDiscardModalOpen, setIsDiscardModalOpen] = useState(false)
   const [isTypeModalOpen, setIsTypeModalOpen] = useState(false)
   const [draft, setDraft] = useState<TrainingDraft>(getEmptyDraft)
+  const [initialDraft, setInitialDraft] = useState<TrainingDraft>(getEmptyDraft)
   const [editingTrainingId, setEditingTrainingId] = useState<string | null>(null)
   const [selectedTraining, setSelectedTraining] = useState<TrainingTableItem | null>(null)
   const [typeEditorValue, setTypeEditorValue] = useState('')
@@ -333,6 +359,7 @@ export function TrainingsPage() {
   const [error, setError] = useState<string | null>(null)
   const [typeError, setTypeError] = useState<string | null>(null)
   const [isBulkUpdatingStaleTrainings, setIsBulkUpdatingStaleTrainings] = useState(false)
+  const [updatingStaleTrainingId, setUpdatingStaleTrainingId] = useState<string | null>(null)
   const viewFilters = useMemo<TrainingFilters>(() => ({
     ...filters,
     search: deferredSearch,
@@ -539,6 +566,34 @@ export function TrainingsPage() {
       || draft.recurrenceIntervalWeeks < 1
       || dayjs(draft.recurrenceUntilDate).isBefore(dayjs(draft.trainingDate), 'day')
     ))
+  const hasUnsavedDraftChanges = hasDraftChanges(draft, initialDraft)
+
+  const closeTrainingDrawer = () => {
+    setIsDrawerOpen(false)
+    setIsDiscardModalOpen(false)
+    setEditingTrainingId(null)
+    const emptyDraft = getEmptyDraft()
+    setDraft(emptyDraft)
+    setInitialDraft(emptyDraft)
+  }
+
+  const requestCloseTrainingDrawer = () => {
+    if (!hasUnsavedDraftChanges) {
+      closeTrainingDrawer()
+      return
+    }
+
+    setIsDiscardModalOpen(true)
+  }
+
+  const openCreateTrainingDrawer = () => {
+    const emptyDraft = getEmptyDraft()
+    setEditingTrainingId(null)
+    setDraft(emptyDraft)
+    setInitialDraft(emptyDraft)
+    setIsDiscardModalOpen(false)
+    setIsDrawerOpen(true)
+  }
 
   const handleToggleCompleted = async (training: TrainingTableItem, completed: boolean) => {
     if (!token) {
@@ -555,9 +610,7 @@ export function TrainingsPage() {
   }
 
   const handleEdit = (training: TrainingTableItem) => {
-    setSelectedTraining(null)
-    setEditingTrainingId(training.id)
-    setDraft({
+    const nextDraft: TrainingDraft = {
       trainingDate: training.trainingDate,
       trainingTime: training.trainingTime,
       name: training.name,
@@ -567,7 +620,13 @@ export function TrainingsPage() {
       recurrenceIntervalWeeks: training.seriesIntervalWeeks ?? 1,
       recurrenceUntilDate: training.seriesUntilDate,
       recurrenceDaysOfWeek: training.seriesDaysOfWeek,
-    })
+    }
+
+    setSelectedTraining(null)
+    setEditingTrainingId(training.id)
+    setDraft(nextDraft)
+    setInitialDraft(nextDraft)
+    setIsDiscardModalOpen(false)
     setIsDrawerOpen(true)
   }
 
@@ -590,9 +649,7 @@ export function TrainingsPage() {
         setTrainings((current) => [...current, ...createdTrainings])
       }
 
-      setIsDrawerOpen(false)
-      setEditingTrainingId(null)
-      setDraft(getEmptyDraft())
+      closeTrainingDrawer()
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : t('trainings.errors.save'))
     } finally {
@@ -621,6 +678,25 @@ export function TrainingsPage() {
       setError(bulkUpdateError instanceof Error ? bulkUpdateError.message : t('trainings.errors.update'))
     } finally {
       setIsBulkUpdatingStaleTrainings(false)
+    }
+  }
+
+  const handleUpdateSingleStaleTraining = async (training: TrainingTableItem) => {
+    if (!token) {
+      return
+    }
+
+    try {
+      setUpdatingStaleTrainingId(training.id)
+      setError(null)
+      const updatedTraining = await updateTrainingCompletion(training.id, true, token)
+
+      setTrainings((current) => current.map((item) => (item.id === updatedTraining.id ? updatedTraining : item)))
+      setSelectedTraining((current) => (current?.id === updatedTraining.id ? updatedTraining : current))
+    } catch (updateError) {
+      setError(updateError instanceof Error ? updateError.message : t('trainings.errors.update'))
+    } finally {
+      setUpdatingStaleTrainingId(null)
     }
   }
 
@@ -685,6 +761,7 @@ export function TrainingsPage() {
           ...current,
           trainingTypeId: nextType.id,
         }))
+        void messageApi.success(t('trainings.types.addSuccess'))
       }
 
       setTypeEditorValue('')
@@ -694,33 +771,6 @@ export function TrainingsPage() {
     }
   }
 
-  const handleDeleteType = async (trainingTypeId: string) => {
-    if (!token) {
-      return
-    }
-
-    try {
-      setTypeError(null)
-      await deleteTrainingType(trainingTypeId, token)
-      setCreateOptions((current) => ({
-        ...current,
-        trainingTypes: current.trainingTypes.filter((type) => type.id !== trainingTypeId),
-      }))
-      setFilters((current) => ({
-        ...current,
-        trainingTypeIds: current.trainingTypeIds.filter((id) => id !== trainingTypeId),
-      }))
-      if (draft.trainingTypeId === trainingTypeId) {
-        setDraft((current) => ({ ...current, trainingTypeId: null }))
-      }
-      if (editingTypeId === trainingTypeId) {
-        setTypeEditorValue('')
-        setEditingTypeId(null)
-      }
-    } catch (deleteError) {
-      setTypeError(deleteError instanceof Error ? deleteError.message : t('trainings.errors.typeDelete'))
-    }
-  }
 
   const renderTrainingStatus = (training: TrainingTableItem) => {
     const statusLabel = t(getTrainingStatusLabelKey(training.trainingStatus))
@@ -873,6 +923,7 @@ export function TrainingsPage() {
 
   return (
     <div className={styles.page}>
+      {messageContextHolder}
       <div className={styles.pageHeader}>
         <div className={styles.titleBlock}>
           <div className={styles.pageTitleRow}>
@@ -906,11 +957,7 @@ export function TrainingsPage() {
             type="primary"
             className={styles.addButton}
             icon={<FontAwesomeIcon icon={faPlus} />}
-            onClick={() => {
-              setEditingTrainingId(null)
-              setDraft(getEmptyDraft())
-              setIsDrawerOpen(true)
-            }}
+            onClick={openCreateTrainingDrawer}
           >
             {t('trainings.actions.add')}
           </Button>
@@ -1097,10 +1144,10 @@ export function TrainingsPage() {
         width={560}
         open={isDrawerOpen}
         destroyOnHidden
-        onClose={() => setIsDrawerOpen(false)}
+        onClose={requestCloseTrainingDrawer}
         extra={(
           <Space>
-            <Button onClick={() => setIsDrawerOpen(false)}>{t('common.cancel')}</Button>
+            <Button onClick={requestCloseTrainingDrawer}>{t('common.cancel')}</Button>
             <Button
               type="primary"
               className={styles.drawerSaveButton}
@@ -1277,6 +1324,18 @@ export function TrainingsPage() {
         </div>
       </Drawer>
 
+      <Modal
+        title={t('personalOptions.discard.title')}
+        open={isDiscardModalOpen}
+        okText={t('personalOptions.discard.ok')}
+        cancelText={t('personalOptions.discard.cancel')}
+        okButtonProps={{ danger: true }}
+        onOk={closeTrainingDrawer}
+        onCancel={() => setIsDiscardModalOpen(false)}
+      >
+        <p>{t('personalOptions.discard.body')}</p>
+      </Modal>
+
       <TrainingDetailsDrawer
         open={selectedTraining != null}
         training={selectedTraining}
@@ -1299,46 +1358,76 @@ export function TrainingsPage() {
         title={t('trainings.stale.modalTitle')}
         open={isStaleTrainingsModalOpen}
         onCancel={() => setIsStaleTrainingsModalOpen(false)}
-        footer={[
-          <Button key="cancel" onClick={() => setIsStaleTrainingsModalOpen(false)}>
-            {t('common.cancel')}
-          </Button>,
-          <Button
-            key="update-all"
-            type="primary"
-            className={styles.bulkUpdateButton}
-            loading={isBulkUpdatingStaleTrainings}
-            onClick={() => void handleBulkUpdateStaleTrainings()}
-          >
-            {t('trainings.stale.updateAll', { count: stalePlannedTrainings.length })}
-          </Button>,
-        ]}
+        footer={null}
+        width={980}
       >
         <div className={styles.staleModalBody}>
-          <Alert
-            type="warning"
-            showIcon
-            message={t('trainings.stale.modalMessage')}
-            description={t('trainings.stale.modalDescription')}
-            className={styles.staleModalAlert}
-          />
-
           <div className={styles.staleTrainingList}>
             {stalePlannedTrainings.map((training) => (
-              <div key={training.id} className={styles.staleTrainingRow}>
-                <div className={styles.staleTrainingRowMain}>
-                  <span className={styles.staleTrainingRowName}>{training.name}</span>
-                  <span className={styles.staleTrainingRowMeta}>
-                    {formatDate(training.trainingDate, locale)}
-                    {training.trainingTime ? ` - ${formatTime(training.trainingTime)}` : ''}
-                    {training.trainingTypeName ? ` - ${training.trainingTypeName}` : ''}
-                  </span>
+              <article key={training.id} className={styles.staleTrainingCard}>
+                <div className={styles.staleTrainingDateBadge}>
+                  <span className={styles.staleTrainingDateDay}>{getDayLabel(training.trainingDate)}</span>
+                  <span className={styles.staleTrainingDateMonth}>{getCompactMonthLabel(training.trainingDate, locale)}</span>
                 </div>
-                <span className={styles.staleTrainingRowStatus}>
-                  {t('trainings.status.planned')}
-                </span>
-              </div>
+
+                <div className={styles.staleTrainingContent}>
+                  <div className={styles.staleTrainingTopRow}>
+                    <div className={styles.staleTrainingTitleBlock}>
+                      <span className={styles.staleTrainingRowName}>{training.name}</span>
+                    </div>
+
+                    <div className={styles.staleTrainingActions}>
+                      <span className={styles.staleTrainingRowStatus}>
+                        {t('trainings.status.planned')}
+                      </span>
+                      <Button
+                        type="primary"
+                        className={styles.singleUpdateButton}
+                        loading={updatingStaleTrainingId === training.id}
+                        disabled={isBulkUpdatingStaleTrainings}
+                        onClick={() => void handleUpdateSingleStaleTraining(training)}
+                      >
+                        {t('trainings.stale.updateSingle')}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className={styles.staleTrainingMetaGrid}>
+                    <div className={styles.staleTrainingMetaItem}>
+                      <span className={styles.staleTrainingMetaLabel}>{t('trainings.fields.date')}</span>
+                      <span className={styles.staleTrainingMetaValue}>{formatDate(training.trainingDate, locale)}</span>
+                    </div>
+                    <div className={styles.staleTrainingMetaItem}>
+                      <span className={styles.staleTrainingMetaLabel}>{t('trainings.fields.time')}</span>
+                      <span className={styles.staleTrainingMetaValue}>{formatTime(training.trainingTime)}</span>
+                    </div>
+                    <div className={styles.staleTrainingMetaItem}>
+                      <span className={styles.staleTrainingMetaLabel}>{t('trainings.fields.type')}</span>
+                      <span className={styles.staleTrainingMetaValue}>{training.trainingTypeName ?? '-'}</span>
+                    </div>
+                  </div>
+                </div>
+              </article>
             ))}
+
+            {stalePlannedTrainings.length === 0 ? (
+              <Empty description={t('trainings.stale.empty')} />
+            ) : null}
+          </div>
+
+          <div className={styles.staleModalFooter}>
+            <Button onClick={() => setIsStaleTrainingsModalOpen(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              type="primary"
+              className={styles.bulkUpdateButton}
+              loading={isBulkUpdatingStaleTrainings}
+              disabled={stalePlannedTrainings.length === 0 || updatingStaleTrainingId != null}
+              onClick={() => void handleBulkUpdateStaleTrainings()}
+            >
+              {t('trainings.stale.updateAll', { count: stalePlannedTrainings.length })}
+            </Button>
           </div>
         </div>
       </Modal>
@@ -1377,33 +1466,6 @@ export function TrainingsPage() {
             >
               {editingTypeId ? t('trainings.actions.save') : t('trainings.actions.addShort')}
             </Button>
-          </div>
-
-          <div className={styles.typeList}>
-            {trainingTypeOptions.map((type) => (
-              <div key={type.id} className={styles.typeItem}>
-                <span className={styles.typeName}>{type.name}</span>
-                <Space>
-                  <Button
-                    type="text"
-                    onClick={() => {
-                      setEditingTypeId(type.id)
-                      setTypeEditorValue(type.name)
-                    }}
-                  >
-                    {t('trainings.actions.edit')}
-                  </Button>
-                  <Button
-                    type="text"
-                    danger
-                    icon={<FontAwesomeIcon icon={faTrashCan} />}
-                    onClick={() => void handleDeleteType(type.id)}
-                  >
-                    {t('trainings.actions.delete')}
-                  </Button>
-                </Space>
-              </div>
-            ))}
           </div>
         </div>
       </Drawer>

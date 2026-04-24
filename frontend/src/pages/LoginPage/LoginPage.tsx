@@ -2,11 +2,10 @@ import { useState } from 'react'
 import { faBuffer } from '@fortawesome/free-brands-svg-icons'
 import { faArrowTrendUp, faRankingStar, faRightToBracket } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { Alert, Button, Card, Checkbox, Form, Input, Select, Typography } from 'antd'
+import { Alert, Button, Card, Checkbox, Form, Input, Typography } from 'antd'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ROUTES } from '../../constants/routes'
-import { useLanguage } from '../../contexts/LanguageContext'
 import { RequestAccountModal, useAuth } from '../../features/auth'
 import { isApiError } from '../../services/apiClient'
 import styles from './LoginPage.module.css'
@@ -19,17 +18,8 @@ type LoginFormValues = {
   rememberPassword?: boolean
 }
 
-function getLanguageFlag(language: string) {
-  if (language === 'pt') {
-    return String.fromCodePoint(0x1f1f5, 0x1f1f9)
-  }
-
-  return String.fromCodePoint(0x1f1ec, 0x1f1e7)
-}
-
 export function LoginPage() {
   const { t } = useTranslation()
-  const { language, setLanguage } = useLanguage()
   const { login, isAuthenticated, isAdmin } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -69,23 +59,9 @@ export function LoginPage() {
     }
   }
 
-  const languageOptions = [
-    { value: 'en', label: <span>{getLanguageFlag('en')} {t('settings.preferences.languageEnglish')}</span> },
-    { value: 'pt', label: <span>{getLanguageFlag('pt')} {t('settings.preferences.languagePortuguese')}</span> },
-  ] as const
-
   return (
     <div className={styles.page}>
       <img src="/images/ritma-logo.png" alt="RITMA RUNNERS" className={styles.cornerLogo} />
-      <div className={styles.fixedLanguage}>
-        <Select
-          aria-label={t('common.language')}
-          className={styles.languageSelect}
-          value={language}
-          onChange={setLanguage}
-          options={[...languageOptions]}
-        />
-      </div>
 
       <div className={styles.split}>
         <Card className={`${styles.card} ${styles.formCard}`} variant="borderless">

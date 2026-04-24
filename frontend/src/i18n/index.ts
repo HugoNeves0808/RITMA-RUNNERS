@@ -1,38 +1,14 @@
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
-import { en } from './locales/en'
 import { pt } from './locales/pt'
 
-export const SUPPORTED_LANGUAGES = ['en', 'pt'] as const
+export const SUPPORTED_LANGUAGES = ['pt'] as const
 export type Language = (typeof SUPPORTED_LANGUAGES)[number]
 
 export const LANGUAGE_STORAGE_KEY = 'ritma:language'
 
-function normalizeLanguage(value: string | null | undefined): Language | null {
-  if (!value) {
-    return null
-  }
-
-  const lower = value.toLowerCase()
-  if (lower === 'pt' || lower.startsWith('pt-')) {
-    return 'pt'
-  }
-
-  if (lower === 'en' || lower.startsWith('en-')) {
-    return 'en'
-  }
-
-  return null
-}
-
 export function resolveInitialLanguage(): Language {
-  const stored = normalizeLanguage(localStorage.getItem(LANGUAGE_STORAGE_KEY))
-  if (stored) {
-    return stored
-  }
-
-  const browser = normalizeLanguage(navigator.language)
-  return browser ?? 'en'
+  return 'pt'
 }
 
 const trainingTranslationsEn = {
@@ -68,7 +44,6 @@ const trainingTranslationsEn = {
       manageTypes: 'Manage training types',
     },
     status: {
-      scheduled: 'Scheduled',
       planned: 'Planned',
       done: 'Done',
     },
@@ -195,8 +170,10 @@ const trainingTranslationsEn = {
       modalTitle: 'Pending training updates',
       modalMessage: 'Some past trainings are still planned.',
       modalDescription: 'You can review the list below and mark them all as done in one go.',
+      updateSingle: 'Mark as done',
       updateAll_one: 'Mark {{count}} training as done',
       updateAll_other: 'Mark {{count}} trainings as done',
+      empty: 'No trainings are waiting for an update.',
     },
     delete: {
       title: 'Delete training?',
@@ -208,6 +185,7 @@ const trainingTranslationsEn = {
     types: {
       title: 'Training types',
       placeholder: 'Enter the training type name',
+      addSuccess: 'Training type added successfully.',
     },
     errors: {
       loadTitle: 'Unable to load trainings',
@@ -221,6 +199,8 @@ const trainingTranslationsEn = {
     },
   },
 }
+
+void trainingTranslationsEn
 
 const trainingTranslationsPt = {
   navigation: {
@@ -255,7 +235,6 @@ const trainingTranslationsPt = {
       manageTypes: 'Gerir tipos de treino',
     },
     status: {
-      scheduled: 'Agendado',
       planned: 'Planeado',
       done: 'Realizado',
     },
@@ -382,8 +361,10 @@ const trainingTranslationsPt = {
       modalTitle: 'Updates pendentes de treinos',
       modalMessage: 'Existem treinos passados que ainda estao planeados.',
       modalDescription: 'Podes rever a lista abaixo e marca-los todos como realizados de uma so vez.',
+      updateSingle: 'Marcar realizado',
       updateAll_one: 'Marcar {{count}} treino como realizado',
       updateAll_other: 'Marcar {{count}} treinos como realizados',
+      empty: 'Nenhum treino esta a espera de atualizacao.',
     },
     delete: {
       title: 'Apagar treino?',
@@ -395,6 +376,14 @@ const trainingTranslationsPt = {
     types: {
       title: 'Tipos de treino',
       placeholder: 'Escreve o nome do tipo de treino',
+      addSuccess: 'Tipo de treino adicionado com sucesso.',
+      delete: {
+        title: 'Apagar tipo de treino?',
+        body: 'Apagar "{{name}}"? Esta ação não pode ser desfeita.',
+        usageTitle_one: '{{count}} treino associado',
+        usageTitle_other: '{{count}} treinos associados',
+        usageBody: 'Ao apagar este tipo de treino, os treinos associados vão ficar sem tipo de treino definido.',
+      },
     },
     errors: {
       loadTitle: 'Não foi possível carregar os treinos',
@@ -413,11 +402,10 @@ void i18n
   .use(initReactI18next)
   .init({
     resources: {
-      en: { translation: { ...en, ...trainingTranslationsEn, navigation: { ...en.navigation, ...trainingTranslationsEn.navigation }, pages: { ...en.pages, ...trainingTranslationsEn.pages } } },
       pt: { translation: { ...pt, ...trainingTranslationsPt, navigation: { ...pt.navigation, ...trainingTranslationsPt.navigation }, pages: { ...pt.pages, ...trainingTranslationsPt.pages } } },
     },
-    lng: resolveInitialLanguage(),
-    fallbackLng: 'en',
+    lng: 'pt',
+    fallbackLng: 'pt',
     interpolation: { escapeValue: false },
   })
 

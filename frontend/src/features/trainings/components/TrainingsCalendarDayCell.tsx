@@ -43,11 +43,7 @@ function getTrainingStatusLabel(status: TrainingCalendarItem['status'], t: (key:
     return t('trainings.status.done')
   }
 
-  if (status === 'PLANEADO') {
-    return t('trainings.status.planned')
-  }
-
-  return t('trainings.status.scheduled')
+  return t('trainings.status.planned')
 }
 
 function getItemStatusLabel(item: TrainingCalendarItem, t: (key: string, options?: Record<string, unknown>) => string) {
@@ -81,10 +77,8 @@ function getCardClassName(item: TrainingCalendarItem) {
   switch (item.status) {
     case 'REALIZADO':
       return styles.itemCardTrainingDone
-    case 'PLANEADO':
-      return styles.itemCardTrainingPlanned
     default:
-      return styles.itemCardTrainingScheduled
+      return styles.itemCardTrainingPlanned
   }
 }
 
@@ -113,10 +107,8 @@ function getStatusDotClassName(item: TrainingCalendarItem) {
   switch (item.status) {
     case 'REALIZADO':
       return styles.statusDotTrainingDone
-    case 'PLANEADO':
-      return styles.statusDotTrainingPlanned
     default:
-      return styles.statusDotTrainingScheduled
+      return styles.statusDotTrainingPlanned
   }
 }
 

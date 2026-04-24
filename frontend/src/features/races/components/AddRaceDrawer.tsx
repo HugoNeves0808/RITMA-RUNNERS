@@ -1,4 +1,4 @@
-import { faAngleDown, faAngleUp, faPenToSquare, faPlus, faTrashCan, faXmark } from '@fortawesome/free-solid-svg-icons'
+import { faAngleDown, faAngleUp, faPenToSquare, faPlus } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import dayjs from 'dayjs'
 import type { ReactNode } from 'react'
@@ -9,27 +9,23 @@ import {
   Button,
   DatePicker,
   Drawer,
-  Empty,
   Form,
   Input,
   InputNumber,
   Modal,
-  Popconfirm,
   Select,
   Spin,
   Space,
   Tabs,
   TimePicker,
   Tooltip,
+  message,
 } from 'antd'
 import { useAuth } from '../../auth'
 import {
   createManagedRaceOption,
   createRace,
-  deleteManagedRaceOption,
-  detachManagedRaceOptionUsage,
   fetchManagedRaceOptions,
-  fetchManagedRaceOptionUsage,
   updateRaceTableItem,
   updateManagedRaceOption,
 } from '../services/racesTableService'
@@ -44,7 +40,6 @@ import type {
   RaceCreateOptions,
   CreateRacePayload,
   RaceDetailResponse,
-  RaceOptionUsage,
   RaceTypeOption,
 } from '../types/racesTable'
 import styles from './AddRaceDrawer.module.css'
@@ -71,11 +66,6 @@ type AddRaceDrawerProps = {
   isLoadingInitialRace?: boolean
   onClose?: () => void
 }
-
-type ManagedOptionConfirmState =
-  | { kind: 'delete'; optionType: ManagedRaceOptionType; option: RaceTypeOption }
-  | { kind: 'detach-delete'; optionType: ManagedRaceOptionType; option: RaceTypeOption }
-  | null
 
 type AddRaceFormValues = {
   raceStatus: string
@@ -222,6 +212,14 @@ const FIELD_TAB_MAP: Partial<Record<keyof AddRaceFormValues, DrawerTabKey>> = {
   finalSatisfaction: 'analysis',
   painInjuries: 'analysis',
   analysisNotes: 'analysis',
+}
+
+function getOptionTypeKey(optionType: ManagedRaceOptionType) {
+  if (optionType === 'race-types') {
+    return 'raceTypes'
+  }
+
+  return optionType
 }
 
 function parseTimeToSeconds(value: string | undefined, mode: 'duration' | 'pace', fieldLabel?: string) {
@@ -757,6 +755,7 @@ export function AddRaceDrawer({
 }: AddRaceDrawerProps) {
   const { t, i18n } = useTranslation()
   const { token } = useAuth()
+  const [messageApi, messageContextHolder] = message.useMessage()
   const [form] = Form.useForm<AddRaceFormValues>()
   const effectiveTriggerLabel = triggerLabel ?? t('races.page.addRace')
   const [internalOpen, setInternalOpen] = useState(false)
@@ -771,10 +770,6 @@ export function AddRaceDrawer({
   const [editingManagedOptionId, setEditingManagedOptionId] = useState<string | null>(null)
   const [managedOptionError, setManagedOptionError] = useState<string | null>(null)
   const [isManagedOptionSubmitting, setIsManagedOptionSubmitting] = useState(false)
-  const [isManagedOptionLoading, setIsManagedOptionLoading] = useState(false)
-  const [managedOptionUsage, setManagedOptionUsage] = useState<RaceOptionUsage | null>(null)
-  const [pendingDeleteOption, setPendingDeleteOption] = useState<RaceTypeOption | null>(null)
-  const [managedOptionConfirmState, setManagedOptionConfirmState] = useState<ManagedOptionConfirmState>(null)
   const [activeTabKey, setActiveTabKey] = useState<DrawerTabKey>('race')
   const [tabErrorKeys, setTabErrorKeys] = useState<DrawerTabKey[]>([])
   const isControlled = open !== undefined
@@ -917,9 +912,6 @@ export function AddRaceDrawer({
     setManagedOptionTargetKm(null)
     setEditingManagedOptionId(null)
     setManagedOptionError(null)
-    setManagedOptionUsage(null)
-    setPendingDeleteOption(null)
-    setManagedOptionConfirmState(null)
     setIsManagedOptionSubmitting(false)
   }
 
@@ -936,13 +928,10 @@ export function AddRaceDrawer({
     }
 
     try {
-      setIsManagedOptionLoading(true)
-      const latestOptions = await fetchManagedRaceOptions(optionType, token)
+      const latestOptions = await fetchManagedRaceOptions(optionType, token, true)
       replaceOptionsForType(optionType, latestOptions, { propagateToParent: false })
     } catch (loadError) {
       setManagedOptionError(loadError instanceof Error ? loadError.message : 'Could not load these options right now.')
-    } finally {
-      setIsManagedOptionLoading(false)
     }
   }
 
@@ -1012,8 +1001,6 @@ export function AddRaceDrawer({
     try {
       setIsManagedOptionSubmitting(true)
       setManagedOptionError(null)
-      setManagedOptionUsage(null)
-      setPendingDeleteOption(null)
 
       const savedOption = editingManagedOptionId
         ? await updateManagedRaceOption(
@@ -1043,86 +1030,12 @@ export function AddRaceDrawer({
       setManagedOptionName('')
       setManagedOptionTargetKm(null)
       setEditingManagedOptionId(null)
+
+      if (!editingManagedOptionId) {
+        void messageApi.success(t('races.addEdit.manageOptions.addSuccess', { label: t(MANAGED_OPTION_CONFIG[managedOptionType].labelKey) }))
+      }
     } catch (saveError) {
       setManagedOptionError(saveError instanceof Error ? saveError.message : 'Could not save this option right now.')
-    } finally {
-      setIsManagedOptionSubmitting(false)
-    }
-  }
-
-  const handleDeleteManagedOption = async (optionType: ManagedRaceOptionType, option: RaceTypeOption) => {
-    if (!token) {
-      return
-    }
-
-    try {
-      setManagedOptionError(null)
-      setManagedOptionUsage(null)
-      setPendingDeleteOption(null)
-
-      const usage = await fetchManagedRaceOptionUsage(optionType, option.id, token)
-      if (usage.usageCount > 0) {
-        setPendingDeleteOption(option)
-        setManagedOptionUsage(usage)
-        return
-      }
-
-      setManagedOptionConfirmState({ kind: 'delete', optionType, option })
-    } catch (deleteError) {
-      const nextMessage = deleteError instanceof Error ? deleteError.message : 'Could not delete this option right now.'
-
-      if (/cannot be deleted because it is already being used/i.test(nextMessage)) {
-        setPendingDeleteOption(option)
-        try {
-          const usage = await fetchManagedRaceOptionUsage(optionType, option.id, token)
-          setManagedOptionUsage(usage)
-          setManagedOptionError(null)
-        } catch {
-          setManagedOptionUsage(null)
-          setManagedOptionError(nextMessage)
-        }
-      } else {
-        setManagedOptionError(nextMessage)
-      }
-    } finally {
-      setIsManagedOptionSubmitting(false)
-    }
-  }
-
-  const handleConfirmManagedOptionAction = async () => {
-    if (!token || !managedOptionConfirmState) {
-      return
-    }
-
-    try {
-      setIsManagedOptionSubmitting(true)
-      setManagedOptionError(null)
-      const { kind, optionType, option } = managedOptionConfirmState
-
-      if (kind === 'detach-delete') {
-        await detachManagedRaceOptionUsage(optionType, option.id, token)
-      }
-
-      await deleteManagedRaceOption(optionType, option.id, token)
-
-      const nextOptions = getOptionsForType(optionType).filter((currentOption) => currentOption.id !== option.id)
-      replaceOptionsForType(managedOptionType, nextOptions, { propagateToParent: false })
-
-      const linkedField = Object.entries(FIELD_OPTION_TYPES).find(([, value]) => value === optionType)?.[0] as keyof AddRaceFormValues | undefined
-      if (linkedField && form.getFieldValue(linkedField) === option.id) {
-        form.setFieldValue(linkedField, undefined)
-      }
-
-      if (editingManagedOptionId === option.id) {
-        setManagedOptionName('')
-        setEditingManagedOptionId(null)
-      }
-
-      setManagedOptionUsage(null)
-      setPendingDeleteOption(null)
-      setManagedOptionConfirmState(null)
-    } catch (detachError) {
-      setManagedOptionError(detachError instanceof Error ? detachError.message : 'Could not remove this option from the related records.')
     } finally {
       setIsManagedOptionSubmitting(false)
     }
@@ -1249,6 +1162,7 @@ export function AddRaceDrawer({
 
   return (
     <>
+      {messageContextHolder}
       {!isEditMode && !hideTrigger ? (
         <Button
           type={manageOptionTriggerType ? 'text' : 'primary'}
@@ -1782,9 +1696,7 @@ export function AddRaceDrawer({
 
       <Drawer
           className={styles.manageOptionsDialog}
-          title={managedOptionType === 'race-types'
-            ? t('races.addEdit.manageOptions.raceTypesTitle')
-            : t('races.addEdit.manageOptions.genericTitle', { title: t(MANAGED_OPTION_CONFIG[managedOptionType].titleKey) })}
+          title={t('personalOptions.drawer.addTitle', { item: t(MANAGED_OPTION_CONFIG[managedOptionType].labelKey) })}
           open={isManageOptionsModalOpen}
           zIndex={1300}
           width={560}
@@ -1793,23 +1705,21 @@ export function AddRaceDrawer({
           onClose={closeManageOptionsModal}
           extra={(
             <Space>
-              <Button className={styles.cancelButton} onClick={closeManageOptionsModal}>{t('races.addEdit.manageOptions.close')}</Button>
-              {!managedOptionUsage || !pendingDeleteOption ? (
-                <Button
-                  type="primary"
-                  className={styles.saveButton}
-                  loading={isManagedOptionSubmitting}
-                  disabled={isManagedOptionSaveDisabled}
-                  onClick={() => void handleSaveManagedOption()}
-                >
-                  {editingManagedOptionId ? t('races.addEdit.actions.saveChanges') : t('races.addEdit.manageOptions.add')}
-                </Button>
-              ) : null}
+              <Button className={styles.cancelButton} onClick={closeManageOptionsModal}>{t('common.cancel')}</Button>
+              <Button
+                type="primary"
+                className={styles.saveButton}
+                loading={isManagedOptionSubmitting}
+                disabled={isManagedOptionSaveDisabled}
+                onClick={() => void handleSaveManagedOption()}
+              >
+                {t('personalOptions.actions.addShort')}
+              </Button>
             </Space>
           )}
         >
           <div className={styles.manageOptionsModal}>
-            {managedOptionError && !managedOptionUsage ? (
+            {managedOptionError ? (
               <Alert
                 type="error"
                 showIcon
@@ -1819,177 +1729,45 @@ export function AddRaceDrawer({
             ) : null}
 
             <div className={styles.manageOptionsForm}>
-              <div
-                className={styles.manageInputRow}
-                style={managedOptionType === 'race-types'
-                  ? { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 140px auto', gap: 8, alignItems: 'center' }
-                  : { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 8, alignItems: 'center', justifyContent: 'start' }}
-              >
+              <label className={styles.manageFieldGroup}>
+                <span className={styles.manageFieldLabel}>
+                  <span className={styles.requiredMark} aria-hidden="true">*</span>
+                  <span>{t('personalOptions.fields.name')}</span>
+                </span>
                 <Input
                   value={managedOptionName}
                   maxLength={100}
-                  placeholder={t('races.addEdit.manageOptions.namePlaceholder', { label: t(MANAGED_OPTION_CONFIG[managedOptionType].labelKey) })}
+                  placeholder={t(`personalOptions.options.${getOptionTypeKey(managedOptionType)}.inputPlaceholder`)}
                   onChange={(event) => setManagedOptionName(event.target.value)}
                 />
-                {managedOptionType === 'race-types' ? (
+              </label>
+
+              {managedOptionType === 'race-types' ? (
+                <label className={styles.manageFieldGroup}>
+                  <span className={styles.manageFieldLabel}>
+                    <span className={styles.requiredMark} aria-hidden="true">*</span>
+                    <span>{t('personalOptions.fields.targetKm')}</span>
+                    <Tooltip title={t('personalOptions.raceTypes.targetKmHelp')}>
+                      <span className={styles.infoIcon} aria-label={t('personalOptions.raceTypes.targetKmInfoAria')}>i</span>
+                    </Tooltip>
+                  </span>
                   <InputNumber
                     min={0}
                     max={9999.99}
                     precision={2}
                     step={0.01}
                     className={styles.manageTargetInput}
-                    placeholder={t('races.addEdit.manageOptions.targetKm')}
+                    placeholder={t('personalOptions.fields.targetKm')}
                     value={managedOptionTargetKm ?? undefined}
                     parser={(value) => parseDecimalNumberInput(value)}
                     onChange={(value) => setManagedOptionTargetKm(typeof value === 'number' ? value : null)}
                   />
-                ) : null}
-                <div className={styles.manageInputActions}>
-                  {editingManagedOptionId ? (
-                    <button
-                      type="button"
-                      className={styles.cancelEditingIconButton}
-                      onClick={() => {
-                        setManagedOptionName('')
-                        setManagedOptionTargetKm(null)
-                        setEditingManagedOptionId(null)
-                        setManagedOptionError(null)
-                        setManagedOptionUsage(null)
-                        setPendingDeleteOption(null)
-                      }}
-                      aria-label={t('races.addEdit.manageOptions.cancelEditing')}
-                    >
-                      <FontAwesomeIcon icon={faXmark} />
-                    </button>
-                  ) : null}
-
-                </div>
-              </div>
+                </label>
+              ) : null}
             </div>
-
-            <div className={styles.manageOptionsList}>
-              {isManagedOptionLoading ? (
-                <span className={styles.manageOptionsEmpty}>
-                  {t('races.addEdit.manageOptions.loading', { title: t(MANAGED_OPTION_CONFIG[managedOptionType].titleKey).toLowerCase() })}
-                </span>
-              ) : getOptionsForType(managedOptionType).length === 0 ? (
-                <div className={styles.manageOptionsEmptyState}>
-                  <Empty description={t(MANAGED_OPTION_CONFIG[managedOptionType].emptyLabelKey)} />
-                </div>
-              ) : (
-                getOptionsForType(managedOptionType).map((option) => (
-                  <div key={option.id} className={styles.manageOptionRow}>
-                    <div className={styles.manageOptionInfo}>
-                      <span className={styles.manageOptionName}>
-                        {managedOptionType === 'race-types' ? translateRaceTypeName(option.name, t) : option.name}
-                      </span>
-                      {managedOptionType === 'race-types' ? (
-                        <div className={styles.manageOptionMetaRow}>
-                          <span className={styles.manageOptionMeta}>
-                            {option.targetKm != null ? `${option.targetKm.toFixed(2)} km` : t('races.addEdit.manageOptions.noTargetKm')}
-                          </span>
-                        </div>
-                      ) : null}
-                    </div>
-                    {option.isDefault ? (
-                      <div className={styles.manageOptionActions}>
-                        <span className={styles.defaultOptionBadge}>{t('races.addEdit.manageOptions.defaultBadge')}</span>
-                      </div>
-                    ) : (
-                      <div className={styles.manageOptionActions}>
-                        <Button
-                          type="text"
-                          icon={<FontAwesomeIcon icon={faPenToSquare} />}
-                          onClick={() => {
-                            setManagedOptionName(option.name)
-                            setManagedOptionTargetKm(managedOptionType === 'race-types' ? (option.targetKm ?? null) : null)
-                            setEditingManagedOptionId(option.id)
-                            setManagedOptionError(null)
-                            setManagedOptionUsage(null)
-                            setPendingDeleteOption(null)
-                          }}
-                        >
-                          Edit
-                        </Button>
-                        <Popconfirm
-                          title="Delete option?"
-                          description={`Delete "${option.name}"? This action cannot be undone.`}
-                          open={managedOptionConfirmState?.kind === 'delete' && managedOptionConfirmState.option.id === option.id}
-                          okText="Delete"
-                          cancelText="Cancel"
-                          okButtonProps={{ danger: true, loading: isManagedOptionSubmitting }}
-                          cancelButtonProps={{ className: styles.cancelButton }}
-                          onConfirm={() => void handleConfirmManagedOptionAction()}
-                          onCancel={() => setManagedOptionConfirmState(null)}
-                        >
-                          <Button
-                            type="text"
-                            danger
-                            icon={<FontAwesomeIcon icon={faTrashCan} />}
-                            onClick={() => void handleDeleteManagedOption(managedOptionType, option)}
-                          >
-                            Delete
-                          </Button>
-                        </Popconfirm>
-                      </div>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-
-            {managedOptionUsage && pendingDeleteOption ? (
-              <div className={styles.usageCard}>
-                <div className={styles.usageHeader}>
-                  <strong>Used in {managedOptionUsage.usageCount} record{managedOptionUsage.usageCount === 1 ? '' : 's'}</strong>
-                </div>
-
-                <div className={styles.usageList}>
-                  {managedOptionUsage.records.map((record) => (
-                    <div key={`${record.contextLabel}-${record.raceId}`} className={styles.usageRow}>
-                      <div className={styles.usageRowMain}>
-                        <span className={styles.usageRaceName}>{record.raceName}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <Button
-                  danger
-                  loading={isManagedOptionSubmitting}
-                  onClick={() => {
-                    if (pendingDeleteOption) {
-                      setManagedOptionConfirmState({
-                        kind: 'detach-delete',
-                        optionType: managedOptionType,
-                        option: pendingDeleteOption,
-                      })
-                    }
-                  }}
-                >
-                  Remove from these records and delete
-                </Button>
-              </div>
-            ) : null}
           </div>
         </Drawer>
 
-        <Modal
-          title="Remove associations and delete?"
-          open={managedOptionConfirmState?.kind === 'detach-delete'}
-          zIndex={1310}
-          okText="Remove and delete"
-          cancelText="Cancel"
-          okButtonProps={{ danger: true }}
-          cancelButtonProps={{ className: styles.cancelButton }}
-          confirmLoading={isManagedOptionSubmitting}
-          onOk={() => void handleConfirmManagedOptionAction()}
-          onCancel={() => setManagedOptionConfirmState(null)}
-        >
-          <p>
-            This will remove "{managedOptionConfirmState?.option.name ?? ''}" from the listed records and then delete it.
-          </p>
-        </Modal>
     </>
   )
 }
