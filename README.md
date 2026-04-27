@@ -176,6 +176,108 @@ Expected health response:
 }
 ```
 
+## Deploy On Render
+
+This repo now includes a root `render.yaml` Blueprint that can create:
+
+- `ritma-runners-api`: Spring Boot backend as a Render web service
+- `ritma-runners-web`: Vite frontend as a Render static site
+- `ritma-runners-db`: Render Postgres
+
+### Important Render Limits
+
+Render's current free offering is useful, but there are two important constraints to be aware of:
+
+- Free Render Postgres databases expire `30 days` after creation. If you create one on `2026-04-27`, it expires around `2026-05-27`.
+- Free Render web services cannot send outbound SMTP traffic on ports `25`, `465`, or `587`.
+
+Because of that, the best long-term free setup is usually:
+
+- frontend on Render static site
+- backend on Render web service
+- database on an external free PostgreSQL provider instead of free Render Postgres
+
+### Option 1: Deploy Everything From `render.yaml`
+
+Use this if you want the fastest initial migration and you accept the `30-day` database expiry on free Render Postgres.
+
+1. Push this repository to GitHub.
+2. In Render, open `Blueprints`.
+3. Create a new Blueprint from the repository.
+4. Render will detect the root `render.yaml`.
+5. When prompted for secret values, provide the mail and admin values you actually want to use.
+6. After deploy finishes, open the `ritma-runners-web` URL.
+
+The frontend receives `VITE_API_BASE_URL` automatically from the backend service URL, and the backend receives the frontend URL automatically for CORS.
+
+### Option 2: Render For App Hosting + External Free PostgreSQL
+
+Use this if you want to stay free beyond the Render database trial window.
+
+1. Create a free PostgreSQL database outside Render.
+2. Create the `ritma-runners-api` web service from the `backend/` folder.
+3. Set these backend environment variables in Render:
+
+```text
+PGHOST=<db-host>
+PGPORT=<db-port>
+PGDATABASE=<db-name>
+PGUSER=<db-user>
+PGPASSWORD=<db-password>
+JWT_SECRET=<strong-random-secret>
+JWT_EXPIRATION_MINUTES=10080
+APP_CORS_ALLOWED_ORIGINS=<your-frontend-render-url>
+APP_BOOTSTRAP_ADMIN_ENABLED=false
+```
+
+4. Create the `ritma-runners-web` static site from the `frontend/` folder.
+5. Set this frontend environment variable:
+
+```text
+VITE_API_BASE_URL=<your-backend-render-url>
+```
+
+6. In the frontend static-site settings, add a rewrite rule:
+
+```text
+/*  ->  /index.html
+```
+
+Action should be `Rewrite`, not `Redirect`, so React Router keeps working on refresh and deep links.
+
+### Render Build Settings
+
+If you prefer setting up the services manually instead of using the Blueprint, use these values.
+
+Backend:
+
+```text
+Root Directory: backend
+Environment: Java
+Build Command: chmod +x ./mvnw && ./mvnw clean package -DskipTests
+Start Command: java -jar target/ritma-runners-backend-*.jar
+Health Check Path: /api/health
+```
+
+Frontend:
+
+```text
+Root Directory: frontend
+Environment: Static Site
+Build Command: npm ci && npm run build
+Publish Directory: dist
+```
+
+### Mail On Free Render
+
+This backend currently exposes SMTP-driven configuration, but Render documents that free web services cannot send outbound traffic on SMTP ports `25`, `465`, and `587`.
+
+If you need email features later, use one of these approaches:
+
+- move the backend to a paid Render instance
+- switch to an email provider with an HTTP API instead of SMTP
+- keep the mail-related environment variables unset until you are ready to support email delivery
+
 ## Useful Commands
 
 Web:
