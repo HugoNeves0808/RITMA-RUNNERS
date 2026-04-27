@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import {
   Alert,
   Button,
+  Switch,
   DatePicker,
   Drawer,
   Form,
@@ -1247,10 +1248,17 @@ export function AddRaceDrawer({
             }
 
             if ('raceStatus' in changedValues) {
+              const nextRaceStatus = normalizeRaceStatus(changedValues.raceStatus as string | undefined)
               clearFieldError('raceDate')
               clearFieldError('realKm')
               clearFieldError('chipTime')
               clearFieldError('pacePerKm')
+
+              if (shouldShowRankingValidityField(nextRaceStatus)) {
+                form.setFieldValue('isValidForCategoryRanking', true)
+              } else {
+                form.setFieldValue('isValidForCategoryRanking', false)
+              }
             }
 
             if ('teamId' in changedValues && !changedValues.teamId) {
@@ -1417,6 +1425,17 @@ export function AddRaceDrawer({
 
                           {renderManagedSelect('circuitId', renderInfoLabel(t('races.addEdit.fields.circuit'), t('races.addEdit.tooltips.circuit')), 'circuits', styles.rowItem)}
                         </div>
+
+                        {shouldShowRankingValidityField(currentRaceStatus) ? (
+                          <Form.Item<AddRaceFormValues>
+                            label={renderInfoLabel(t('races.addEdit.fields.validForRanking'), t('races.addEdit.tooltips.validForRanking'))}
+                            name="isValidForCategoryRanking"
+                            valuePropName="checked"
+                            className={styles.rowItem}
+                          >
+                            <Switch checkedChildren={t('common.yes')} unCheckedChildren={t('common.no')} />
+                          </Form.Item>
+                        ) : null}
 
                         {showDistanceFields && !showResultsTab ? (
                           <div className={styles.row}>
